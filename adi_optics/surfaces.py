@@ -1,7 +1,7 @@
 import abc
 import adi_optics.pycg.pycg as pycg
 import numpy as np
-from wolframclient.serializers import export
+import json
 
 OPTICA_MATERIALS = {"Silicon"}
 
@@ -52,6 +52,13 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         self._aperture = _Aperture()
         self._optica_options_dict = {} # a dictionary of additional keyword options
 
+        # a dictionary that holds important parameters that will be used to construct a json string of the object
+        self._json_repr = dict()
+        self._json_repr["name"] = self._name # add name to be exported
+        self._json_repr["type"] = self._shape_label
+
+
+
     def set_aperture_shape(self, new_shape):
         self._aperture.shape = new_shape
         return self
@@ -59,17 +66,20 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
     def set_aperture_offset(self, x_offset, y_offset):
         self._aperture.offset.x = x_offset
         self._aperture.offset.y = y_offset
-        self._optica_options_dict["OffAxis"] = "{{{x:.03f},{y:.03f}}}".format(x=x_offset, y=y_offset)
+        self._optica_options_dict["OffAxis"] = (x_offset,y_offset)
 
     def add_custom_parameter(self,parameter_key: str, parameter_value):
         self._optica_options_dict[str(parameter_key)] = parameter_value
 
-    @abc.abstractmethod
-    def to_json(self):
+    def to_json_string(self):
         """
         return a JSON string representing the object
         """
-        pass
+        self._json_repr["Position"] = tuple(self.get_position()[:3]) # get the non-homogenous position
+        self._json_repr["Rotation"] = tuple(self.get_quaternion()) # get the rotation represented as a quaternion
+        self._json_repr.update(self._optica_options_dict)
+        return json.dumps(self._json_repr, indent=2)
+
 
     def _get_optica_obj_string(self):
         func_name, func_arguments = self._create_optica_function_arguments()
@@ -109,15 +119,31 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         return aperture_str
 
 
-class RefractiveSurface(TracerSurface):
+class ThickSurface(TracerSurface):
+    def __init__(self, thickness, name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs) # call the next constructor in the MRO
+        self._thickness = thickness
+        self._json_repr["thickness"] = self._thickness
+
+    def set_thickness(self, new_thickness):
+        self._thickness = new_thickness
+        self._json_repr["thickness"] = new_thickness
+
+    def get_thickness(self):
+        return self._thickness
+
+
+
+
+class RefractiveSurface(ThickSurface):
     """
     a base class for any refractive surface, has functions to assign material and thickness is a required input
     """
-    def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
-        super().__init__(name, *args, **kwargs) # call the parent constructor
-        self._thickness = thickness
-        self._material = None # declare this, but it's going to be overwritten
+    def __init__(self, thickness=1, name="my_window", material=None, *args, **kwargs):
+        super().__init__(thickness, name, *args, **kwargs) # call the parent constructor
+
         # if a material was provided add it to the dict
+        self._material = None  # declare this, but it's going to be overwritten
         if material is not None:
             self.set_material(material)
 
@@ -127,26 +153,22 @@ class RefractiveSurface(TracerSurface):
             self._optica_options_dict["ComponentMedium"] = new_material
             self._material = new_material
         else:
-            raise ValueError("material {new_material} is not listed as an Optica compliant material")
+            raise ValueError(f"material {new_material} is not listed as an Optica compliant material")
 
     def get_material(self):
         return self._material
-
 
 
 class Window(RefractiveSurface):
     _shape_label = "window"
 
     def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
-        super().__init__(thickness, material, name, *args, **kwargs) # call the parent constructor
+        super().__init__(thickness, name, material, *args, **kwargs) # call the parent constructor
 
     def _create_optica_function_arguments(self):
         func_name = "Window"
         func_args = self._create_aperture_string()+','+f"{self._thickness:.03f}"
         return func_name, func_args
-
-    def to_json(self):
-        pass
 
 
 
