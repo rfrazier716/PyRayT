@@ -9,6 +9,7 @@ tox = "*"
 [packages]
 numpy = "*"
 scipy = "*"
+wolframclient = "*"
 
 [requires]
 python_version = "3.8"
