@@ -45,8 +45,8 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
     def __init__(self, name, *args, **kwargs):
         super().__init__(*args, **kwargs) # call the next constructor in the MRO
         type(self)._object_count+=1 # increment the counter for how many classes of this type were made
-        self._shape_id = type(self)._shape_label + f"{type(self)._object_count:04d}"
-        self._opts_string = self._shape_id+"OPTS"
+        self._surface_id = type(self)._shape_label + f"{type(self)._object_count:04d}"
+        self._opts_string = self._surface_id + "OPTS"
 
         self._name = name # a local name of for the surface
         self._aperture = _Aperture()
@@ -58,6 +58,11 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         self._json_repr["type"] = self._shape_label
 
 
+    def get_surface_id(self):
+        return self._surface_id
+
+    def get_name(self):
+        return self._name
 
     def set_aperture_shape(self, new_shape):
         self._aperture.shape = new_shape
@@ -80,6 +85,17 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         self._json_repr.update(self._optica_options_dict)
         return json.dumps(self._json_repr, indent=2)
 
+    def create_optica_function(self):
+        rules_command = self._create_rules_list() # create the rules list
+        obj_declaration = self._surface_id + " = " + self._get_optica_obj_string() + ';' # create the object string
+        move_array = to_mathematica_array(self.get_position()[:3])
+        rotation_array = to_mathematica_array(self._world_coordinate_transform[:3, :3])
+        move_command = self._name+"=Move[{label}, {move}, {rot}];".format(
+            label=self._surface_id,
+            move=move_array,
+            rot=rotation_array
+        )
+        return "\n".join([rules_command, obj_declaration, move_command])
 
     def _get_optica_obj_string(self):
         func_name, func_arguments = self._create_optica_function_arguments()
@@ -97,18 +113,6 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         rules = to_mathematica_rules(self._optica_options_dict) # create a list of rules from the options dict
         rules_command = self._opts_string+ " = " + rules + ";"
         return rules_command
-
-    def create_optica_function(self):
-        rules_command = self._create_rules_list() # create the rules list
-        obj_declaration = self._shape_id+" = "+ self._get_optica_obj_string()+';' # create the object string
-        move_array = to_mathematica_array(self.get_position()[:3])
-        rotation_array = to_mathematica_array(self._world_coordinate_transform[:3, :3])
-        move_command = self._name+"=Move[{label}, {move}, {rot}];".format(
-            label=self._shape_id,
-            move=move_array,
-            rot=rotation_array
-        )
-        return "\n".join([rules_command, obj_declaration, move_command])
 
     def _create_aperture_string(self):
         # if the aperture isn't a single number, turn it into a string
@@ -131,8 +135,6 @@ class ThickSurface(TracerSurface):
 
     def get_thickness(self):
         return self._thickness
-
-
 
 
 class RefractiveSurface(ThickSurface):
@@ -159,8 +161,32 @@ class RefractiveSurface(ThickSurface):
         return self._material
 
 
+class ThinBaffle(TracerSurface):
+    _shape_label="ThinBaffle"
+
+    def __init__(self, name="my_baffle", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def _create_optica_function_arguments(self):
+        func_name = "ThinBaffle"
+        func_args = self._create_aperture_string()
+        return func_name, func_args
+
+
+class Baffle(ThickSurface):
+    _shape_label = "Baffle"
+
+    def __init__(self, thickness=1, name="my_baffle", *args, **kwargs):
+        super().__init__(thickness, name, *args, **kwargs)
+
+    def _create_optica_function_arguments(self):
+        func_name = "Baffle"
+        func_args = self._create_aperture_string()+','+f"{self._thickness:.03f}"
+        return func_name, func_args
+
+
 class Window(RefractiveSurface):
-    _shape_label = "window"
+    _shape_label = "Window"
 
     def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
         super().__init__(thickness, name, material, *args, **kwargs) # call the parent constructor
@@ -169,6 +195,13 @@ class Window(RefractiveSurface):
         func_name = "Window"
         func_args = self._create_aperture_string()+','+f"{self._thickness:.03f}"
         return func_name, func_args
+
+class AperturedWindow(RefractiveSurface):
+    _shape_label = "AperturedWindow"
+
+    def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
+        super().__init__(thickness, name, material, *args, **kwargs) # call the parent constructor
+        self._sub_aperture = _Aperture()
 
 
 
