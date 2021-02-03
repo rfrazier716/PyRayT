@@ -1,6 +1,7 @@
 import abc
 import adi_optics.pycg.pycg as pycg
 import numpy as np
+from wolframclient.serializers import export
 
 OPTICA_MATERIALS = {"Silicon"}
 
@@ -12,6 +13,31 @@ class _Aperture(object):
 def to_mathematica_array(np_array):
     return np.array2string(np.asarray(np_array), precision=6, separator=',').replace("[","{").replace("]","}").replace('\n','')
 
+
+def to_mathematica_rules(arg_dict):
+    """
+    Converts a dict of keyword arguments into a list of mathematica rules
+
+    :param arg_dict:
+    :return: str
+    """
+    options_associations = []
+    for key,value in arg_dict.items():
+        # if the value is a string we pass it like normal
+        if isinstance(value, str):
+            encoded_value = value
+
+        # if the value has length, assume it's an array and pass the converted expression
+        elif hasattr(value,'__len__'):
+            encoded_value = to_mathematica_array(value)
+
+        # otherwise assume it's a plain ole' float
+        else:
+            encoded_value = f"{value:.03f}"
+
+        options_associations.append(key + " -> " + encoded_value)
+    return "{"+", ".join(options_associations)+"}"
+
 class TracerSurface(pycg.WorldObject, abc.ABC):
     _object_count = 0 # keeps track of how many objects of each type exist
     _shape_label = "GenericSurface" # the label for the shape, class specific
@@ -20,9 +46,11 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         super().__init__(*args, **kwargs) # call the next constructor in the MRO
         type(self)._object_count+=1 # increment the counter for how many classes of this type were made
         self._shape_id = type(self)._shape_label + f"{type(self)._object_count:04d}"
+        self._opts_string = self._shape_id+"OPTS"
 
         self._name = name # a local name of for the surface
         self._aperture = _Aperture()
+        self._optica_options_dict = {} # a dictionary of additional keyword options
 
     def set_aperture_shape(self, new_shape):
         self._aperture.shape = new_shape
@@ -31,6 +59,10 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
     def set_aperture_offset(self, x_offset, y_offset):
         self._aperture.offset.x = x_offset
         self._aperture.offset.y = y_offset
+        self._optica_options_dict["OffAxis"] = "{{{x:.03f},{y:.03f}}}".format(x=x_offset, y=y_offset)
+
+    def add_custom_parameter(self,parameter_key: str, parameter_value):
+        self._optica_options_dict[str(parameter_key)] = parameter_value
 
     @abc.abstractmethod
     def to_json(self):
@@ -39,11 +71,25 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
     def _get_optica_obj_string(self):
-        return "XXX"
+        func_name, func_arguments = self._create_optica_function_arguments()
+        return func_name+"["+func_arguments+","+self._opts_string+"]"
+
+    @abc.abstractmethod
+    def _create_optica_function_arguments(self):
+        """
+        Returns the name of the function and a string of arguments to define it
+        :return:
+        """
+        return "OpticaShape", "{0,0}, 10"
+
+    def _create_rules_list(self):
+        rules = to_mathematica_rules(self._optica_options_dict) # create a list of rules from the options dict
+        rules_command = self._opts_string+ " = " + rules + ";"
+        return rules_command
 
     def create_optica_function(self):
+        rules_command = self._create_rules_list() # create the rules list
         obj_declaration = self._shape_id+" = "+ self._get_optica_obj_string()+';' # create the object string
         move_array = to_mathematica_array(self.get_position()[:3])
         rotation_array = to_mathematica_array(self._world_coordinate_transform[:3, :3])
@@ -52,36 +98,59 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
             move=move_array,
             rot=rotation_array
         )
-        return "\n".join([obj_declaration, move_command])
+        return "\n".join([rules_command, obj_declaration, move_command])
+
+    def _create_aperture_string(self):
+        # if the aperture isn't a single number, turn it into a string
+        if len(self._aperture.shape)!=0:
+            aperture_str = to_mathematica_array(self._aperture.shape)
+        else:
+            aperture_str = f"{self._aperture.shape:.03f}"
+        return aperture_str
 
 
-class Window(TracerSurface):
+class RefractiveSurface(TracerSurface):
+    """
+    a base class for any refractive surface, has functions to assign material and thickness is a required input
+    """
+    def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
+        super().__init__(name, *args, **kwargs) # call the parent constructor
+        self._thickness = thickness
+        self._material = None # declare this, but it's going to be overwritten
+        # if a material was provided add it to the dict
+        if material is not None:
+            self.set_material(material)
+
+    def set_material(self, new_material):
+        # validate that the material exists in the optica surfaces
+        if new_material in OPTICA_MATERIALS:
+            self._optica_options_dict["ComponentMedium"] = new_material
+            self._material = new_material
+        else:
+            raise ValueError("material {new_material} is not listed as an Optica compliant material")
+
+    def get_material(self):
+        return self._material
+
+
+
+class Window(RefractiveSurface):
     _shape_label = "window"
 
     def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
-        print(kwargs)
-        print(args)
-        super().__init__(name, *args, **kwargs) # call the parent constructor
-        self._thickness = thickness
-        self._material = material
+        super().__init__(thickness, material, name, *args, **kwargs) # call the parent constructor
+
+    def _create_optica_function_arguments(self):
+        func_name = "Window"
+        func_args = self._create_aperture_string()+','+f"{self._thickness:.03f}"
+        return func_name, func_args
 
     def to_json(self):
         pass
 
-    def _get_optica_obj_string(self):
-        aperture_str = to_mathematica_array(self._aperture.shape)
-        math_options = []
-        if self._material is not None:
-            if self._material in OPTICA_MATERIALS:
-                math_options.append("ComponentMedium->"+self._material)
 
-        math_opts=""
-        if math_options:
-            math_opts = ', '+', '.join(math_options)
 
-        return "Window[{aperture}, {thickness:.02f}{options}]".format(aperture=aperture_str,
-                                                                        thickness=self._thickness,
-                                                                        options=math_opts)
+
 
 
 
