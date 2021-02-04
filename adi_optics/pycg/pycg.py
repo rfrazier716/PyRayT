@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.linalg as linalg
-import scipy.spatial.transform as transform
 
 
 class HomogeneousCoordinate(np.ndarray):
@@ -96,7 +95,7 @@ class WorldObject(object):
 
         return sin_a, cos_a
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._obj_origin = Point(0, 0, 0)  # position in object space
         self._obj_direction = Vector(0, 0, 1)  # direction in object space
 
@@ -108,6 +107,7 @@ class WorldObject(object):
         self._pos_valid = True
 
         self._world_coordinate_transform = np.identity(4, dtype=float)  # transform matrix from object to world space
+        super().__init__(*args, **kwargs)
 
     def _append_world_transform(self, new_transform):
         self._world_coordinate_transform = np.matmul(new_transform, self._world_coordinate_transform)
@@ -132,13 +132,6 @@ class WorldObject(object):
                 self._world_direction = world_dir / norm
 
         return self._world_direction
-
-    def get_quaternion(self):
-        # make a rotation object
-        r=transform.Rotation.from_matrix(self._world_coordinate_transform[:-1, :-1])
-        # return the quaternion
-        return r.as_quat()
-
 
     # Movement operations
     def move(self, x=0, y=0, z=0):
