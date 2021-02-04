@@ -1,5 +1,5 @@
 import abc
-import adi_optics.pycg.pycg as pycg
+import adi_optics.pycg as pycg
 import numpy as np
 import json
 import copy
