@@ -59,9 +59,6 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         self.set_aperture_shape(1)  # make the aperture a circle with radius of 1 by default
         self._optica_options_dict = {}  # a dictionary of additional keyword options
 
-
-
-
     def get_surface_id(self):
         return self._surface_id
 
@@ -135,7 +132,7 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         return aperture_str
 
 
-class ThickSurface(TracerSurface):
+class ThickSurface(TracerSurface, abc.ABC):
     def __init__(self, thickness, name, *args, **kwargs):
         super().__init__(name, *args, **kwargs) # call the next constructor in the MRO
         self._thickness = thickness
@@ -149,7 +146,7 @@ class ThickSurface(TracerSurface):
         return self._thickness
 
 
-class RefractiveSurface(ThickSurface):
+class RefractiveSurface(ThickSurface, abc.ABC):
     """
     a base class for any refractive surface, has functions to assign material and thickness is a required input
     """
