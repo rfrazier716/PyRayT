@@ -1,0 +1,47 @@
+image: python:3.8
+
+before_script:
+  - python -m pip install tox
+  - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+  - source $HOME/.poetry/env
+  - poetry config repositories.pypi-local https://artifactory.analog.com/artifactory/api/pypi/adi-pypi-local-test
+
+tests:
+  stage: test
+  tags:
+    - python
+    - docker
+  script:
+    - tox
+
+pages:
+  stage: deploy
+  dependencies:
+    - tests
+  tags:
+    - python
+    - docker
+  script:
+    - tox -e docs-deploy
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
+    - ci-debug
+
+deploy:
+  stage: deploy
+  dependencies:
+    - tests
+  tags:
+    - python
+    - docker
+  script:
+    - poetry build
+    - poetry publish -r pypi-local --username rfrazier --password $PYPI_LOCAL_PASS
+
+  only:
+    - main
+    - ci-debug
+
