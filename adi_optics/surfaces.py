@@ -2,6 +2,7 @@ import abc
 import adi_optics.pycg.pycg as pycg
 import numpy as np
 import json
+import copy
 
 OPTICA_MATERIALS = {"Silicon"}
 
@@ -48,14 +49,17 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
         self._surface_id = type(self)._shape_label + f"{type(self)._object_count:04d}"
         self._opts_string = self._surface_id + "OPTS"
 
-        self._name = name # a local name of for the surface
-        self._aperture = _Aperture()
-        self._optica_options_dict = {} # a dictionary of additional keyword options
-
+        self._name = name  # a local name of for the surface
         # a dictionary that holds important parameters that will be used to construct a json string of the object
         self._json_repr = dict()
         self._json_repr["name"] = self._name # add name to be exported
         self._json_repr["type"] = self._shape_label
+
+        self._aperture = _Aperture()
+        self.set_aperture_shape(1)  # make the aperture a circle with radius of 1 by default
+        self._optica_options_dict = {}  # a dictionary of additional keyword options
+
+
 
 
     def get_surface_id(self):
@@ -66,31 +70,39 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
 
     def set_aperture_shape(self, new_shape):
         self._aperture.shape = new_shape
+        self._json_repr["aperture"] = new_shape
         return self
 
     def set_aperture_offset(self, x_offset, y_offset):
         self._aperture.offset.x = x_offset
         self._aperture.offset.y = y_offset
-        self._optica_options_dict["OffAxis"] = (x_offset,y_offset)
+        self._optica_options_dict["OffAxis"] = (x_offset, y_offset)
 
-    def add_custom_parameter(self,parameter_key: str, parameter_value):
+    def add_custom_parameter(self, parameter_key: str, parameter_value):
         self._optica_options_dict[str(parameter_key)] = parameter_value
+
+    def collect_parameters(self):
+        """
+        Returns a dict of key parameters that define the surface
+        :return:
+        """
+        self._json_repr["position"] = tuple(self.get_position()[:3]) # get the non-homogenous position
+        self._json_repr["rotation"] = tuple(self.get_quaternion()) # get the rotation represented as a quaternion
+        self._json_repr.update(self._optica_options_dict)
+        return copy.copy(self._json_repr)
 
     def to_json_string(self):
         """
         return a JSON string representing the object
         """
-        self._json_repr["Position"] = tuple(self.get_position()[:3]) # get the non-homogenous position
-        self._json_repr["Rotation"] = tuple(self.get_quaternion()) # get the rotation represented as a quaternion
-        self._json_repr.update(self._optica_options_dict)
-        return json.dumps(self._json_repr, indent=2)
+        return json.dumps(self.collect_parameters(), indent=2)
 
     def create_optica_function(self):
         rules_command = self._create_rules_list() # create the rules list
         obj_declaration = self._surface_id + " = " + self._get_optica_obj_string() + ';' # create the object string
         move_array = to_mathematica_array(self.get_position()[:3])
         rotation_array = to_mathematica_array(self._world_coordinate_transform[:3, :3])
-        move_command = self._name+"=Move[{label}, {move}, {rot}];".format(
+        move_command = self._name+" = Move[{label}, {move}, {rot}];".format(
             label=self._surface_id,
             move=move_array,
             rot=rotation_array
@@ -116,7 +128,7 @@ class TracerSurface(pycg.WorldObject, abc.ABC):
 
     def _create_aperture_string(self):
         # if the aperture isn't a single number, turn it into a string
-        if len(self._aperture.shape)!=0:
+        if hasattr(self._aperture.shape,'__len__'):
             aperture_str = to_mathematica_array(self._aperture.shape)
         else:
             aperture_str = f"{self._aperture.shape:.03f}"
