@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.linalg as linalg
+import copy
 import scipy.spatial.transform as transform
 
 
@@ -100,19 +101,22 @@ class WorldObject(object):
         self._obj_origin = Point(0, 0, 0)  # position in object space
         self._obj_direction = Vector(0, 0, 1)  # direction in object space
 
-        self._world_position = Point(0,0,0) # the objects position in world space
-        self._world_direction = Vector(0,0,1) # the objects direction in world space
+        self._world_position = Point(0, 0, 0)  # the objects position in world space
+        self._world_direction = Vector(0, 0, 1)  # the objects direction in world space
 
         # Flags that get set to false whenever the transform matrix has been updated
         self._dir_valid = True
         self._pos_valid = True
+        self._obj_transform_valid = True
 
         self._world_coordinate_transform = np.identity(4, dtype=float)  # transform matrix from object to world space
+        self._object_coordinate_transform = np.identity(4, dtype=float)
 
     def _append_world_transform(self, new_transform):
         self._world_coordinate_transform = np.matmul(new_transform, self._world_coordinate_transform)
         self._dir_valid = False
         self._pos_valid = False
+        self._obj_transform_valid = False
 
     def get_position(self):
         # check if the position is valid, if not update it and return
@@ -135,9 +139,34 @@ class WorldObject(object):
 
     def get_quaternion(self):
         # make a rotation object
-        r=transform.Rotation.from_matrix(self._world_coordinate_transform[:-1, :-1])
+        r = transform.Rotation.from_matrix(self._world_coordinate_transform[:-1, :-1])
         # return the quaternion
         return r.as_quat()
+
+    def get_world_transform(self):
+        """
+        returns the 4x4 matrix that translates the object into world coordinate space. the returned matrix is a copy
+        of the internal object and can be modified without changing the object's state.
+
+        :return: a 4x4 matrix of type float representing the object transform
+        """
+        return copy.copy(self._world_coordinate_transform)
+
+    def _get_object_transform(self):
+        # if the object transform matrix is out of date, update it
+        if not self._obj_transform_valid:
+            self._object_coordinate_transform = np.linalg.inv(self._world_coordinate_transform)
+            self._obj_transform_valid = True
+        return self._object_coordinate_transform
+
+    def get_object_transform(self):
+        """
+        returns the 4x4 matrix that translates the world coordinates into object space. the returned matrix is a copy
+        of the internal object and can be modified without changing the object's state.
+
+        :return: a 4x4 numpy array of float
+        """
+        return copy.copy(self._get_object_transform())
 
 
     # Movement operations
@@ -162,6 +191,10 @@ class WorldObject(object):
 
     # Scale operations
     def scale(self, x=1, y=1, z=1):
+        # for now we're only going to allow positive scaling
+        if x < 0 or y < 0 or z < 0:
+            raise ValueError("Negative values for scale operations are prohibited")
+
         tx = np.diag((x, y, z, 1))
         self._append_world_transform(tx)
         return self

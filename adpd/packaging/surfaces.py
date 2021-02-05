@@ -1,5 +1,5 @@
 import abc
-import adpd.packaging.pycg as pycg
+import adpd.packaging.simple_cg as pycg
 import numpy as np
 import json
 import copy
