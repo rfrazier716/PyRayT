@@ -4,7 +4,7 @@ before_script:
   - python -m pip install tox
   - curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
   - source $HOME/.poetry/env
-  - poetry config repositories.pypi-local https://artifactory.analog.com/artifactory/api/pypi/adi-pypi-local-test
+  - poetry config repositories.pypi-local https://artifactory.analog.com/artifactory/api/pypi/adi-pypi-local
 
 tests:
   stage: test
