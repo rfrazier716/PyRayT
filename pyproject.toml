@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "adpd.packutils"
+name = "adpd.packaging"
 version = "0.1.0"
 description = "a toolchain for developing and simulating optical packages"
 authors = ["Frazier, Ryan <Ryan.Frazier@analog.com>"]
