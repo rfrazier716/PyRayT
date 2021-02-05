@@ -1,9 +1,16 @@
 [tool.poetry]
-name = "adi_optics"
+name = "adpd.packutils"
 version = "0.1.0"
 description = "a toolchain for developing and simulating optical packages"
 authors = ["Frazier, Ryan <Ryan.Frazier@analog.com>"]
 license = "MIT"
+packages = [
+    {include = "adpd"}]
+
+[[tool.poetry.source]]
+name = "pypi-local"
+url = "https://artifactory.analog.com/artifactory/api/pypi/adi-pypi-local/simple"
+secondary = true
 
 [tool.poetry.dependencies]
 python = "^3.7"

@@ -1,6 +1,6 @@
 import unittest
 import abc
-import adi_optics.surfaces as surf
+import adpd.packaging.surfaces as surf
 import re
 import numpy as np
 

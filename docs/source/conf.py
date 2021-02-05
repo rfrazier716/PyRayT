@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'adi_optics'
+project = 'packaging'
 copyright = '2021, Ryan Frazier'
 author = 'Ryan Frazier'
 

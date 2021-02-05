@@ -10,7 +10,7 @@ Welcome to adi_optics's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   adi_optics
+   packaging
 
 Indices and tables
 ==================

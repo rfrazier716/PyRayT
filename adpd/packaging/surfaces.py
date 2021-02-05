@@ -1,5 +1,5 @@
 import abc
-import adi_optics.pycg as pycg
+import adpd.packaging.pycg as pycg
 import numpy as np
 import json
 import copy
@@ -7,9 +7,9 @@ import copy
 OPTICA_MATERIALS = {"Silicon"}
 
 class _Aperture(object):
-    def __init__(self,*args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.shape = tuple()
-        self.offset = pycg.Point(0,0,0)
+        self.offset = pycg.Point(0, 0, 0)
 
 def to_mathematica_array(np_array):
     return np.array2string(np.asarray(np_array), precision=6, separator=',').replace("[","{").replace("]","}").replace('\n','')
