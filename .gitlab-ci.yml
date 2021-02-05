@@ -27,8 +27,7 @@ pages:
     paths:
       - public
   only:
-    - master
-    - ci-debug
+    - main
 
 deploy:
   stage: deploy
@@ -43,5 +42,4 @@ deploy:
 
   only:
     - main
-    - ci-debug
 
