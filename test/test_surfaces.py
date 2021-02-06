@@ -4,6 +4,7 @@ import adpd.packaging.surfaces as surf
 import re
 import numpy as np
 
+
 class ImplementedTracerSurface(surf.TracerSurface):
     """
     Simply overwrites the tracer surface abstract method
@@ -21,7 +22,6 @@ class TestMathematicaConverters(unittest.TestCase):
 class CommonSurfaceTests(object):
 
     @classmethod
-    @abc.abstractmethod
     def create_new_surface(cls):
         return cls.surface_to_test(**cls.default_surface_args)
 
