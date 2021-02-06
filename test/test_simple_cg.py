@@ -42,7 +42,7 @@ class TestCountedObject(unittest.TestCase):
         # deleting objects should reduce the count
         for n in range(len(test_objects)):
             test_objects.pop(-1)
-            self.assertEqual(cg.CountedObject.get_count(),  obj_to_create + initial_count - n - 1)
+            self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count - n - 1)
 
     def test_creating_obj_after_deletion(self):
         # create a list of objects then delete them all
@@ -50,11 +50,12 @@ class TestCountedObject(unittest.TestCase):
         obj_to_create = 20
         initial_count = cg.CountedObject.get_count()
         test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
+        max_id = test_objects[-1].get_id()
         del test_objects
 
         # make sure that a new object indexes up and does not reuse any of the deleted IDs
         new_object = cg.CountedObject()
-        self.assertEqual(new_object.get_id(), initial_count + obj_to_create)
+        self.assertEqual(new_object.get_id(), max_id + 1)
 
 
 class TestHomogeneousCoordinate(unittest.TestCase):
@@ -261,7 +262,7 @@ class TestObjectGroup(unittest.TestCase):
 
     def testing_list_properties(self):
         # the group should have two elements in it
-        self.assertEqual(len(self.group),2)
+        self.assertEqual(len(self.group), 2)
 
         # the group should be iterable
         expected_refs = (self.obj1, self.obj2)
@@ -283,7 +284,21 @@ class TestObjectGroup(unittest.TestCase):
         self.assertTrue(np.allclose(self.obj1.get_position(), cg.Point(0, scale, 0)))
         self.assertTrue(np.allclose(self.obj2.get_position(), cg.Point(0, -scale, 0)))
 
+    def test_nesting_object_group(self):
+        # make a subgroup and append it to the top level group
+        subgroup = cg.ObjectGroup()
 
+        sub_object = cg.WorldObject()
+        sub_object.move(1, 0, 0)
+        subgroup.append(sub_object)
+
+        self.group.append(subgroup)
+
+        x_movement = 3
+        self.group.move_x(x_movement)  # move the top level group
+
+        self.assertTrue(np.allclose(subgroup.get_position(), cg.Point(x_movement, 0, 0)))
+        self.assertTrue(np.allclose(sub_object.get_position(), cg.Point(x_movement + 1, 0, 0)))
 
 
 if __name__ == '__main__':
