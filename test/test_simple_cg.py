@@ -249,5 +249,42 @@ class TestWorldObjectQuaternion(WorldObjectTestCase):
         self.assertAlmostEqual(quat[-1], expected_scalar)
 
 
+class TestObjectGroup(unittest.TestCase):
+    def setUp(self):
+        self.group = cg.ObjectGroup()
+
+        self.obj1 = cg.WorldObject()
+        self.obj2 = cg.WorldObject()
+
+        self.group.append(self.obj1)
+        self.group.append(self.obj2)
+
+    def testing_list_properties(self):
+        # the group should have two elements in it
+        self.assertEqual(len(self.group),2)
+
+        # the group should be iterable
+        expected_refs = (self.obj1, self.obj2)
+        for expected, actual in zip(expected_refs, self.group):
+            self.assertEqual(expected, actual)
+
+    def testing_operations_on_group(self):
+        # objects can be moved outside of the group
+        self.obj1.move(1, 0, 0)
+        self.obj2.move(-1, 0, 0)
+
+        scale = 2
+        self.group.scale_all(scale)  # now scale the group by 2
+        self.assertTrue(np.allclose(self.obj1.get_position(), cg.Point(scale, 0, 0)))
+        self.assertTrue(np.allclose(self.obj2.get_position(), cg.Point(-scale, 0, 0)))
+
+        # rotation also applies
+        self.group.rotate_z(90)
+        self.assertTrue(np.allclose(self.obj1.get_position(), cg.Point(0, scale, 0)))
+        self.assertTrue(np.allclose(self.obj2.get_position(), cg.Point(0, -scale, 0)))
+
+
+
+
 if __name__ == '__main__':
     unittest.main()

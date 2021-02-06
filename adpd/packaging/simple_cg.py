@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as linalg
 import copy
 import scipy.spatial.transform as transform
+import collections
 
 
 class CountedObject(object):
@@ -102,10 +103,10 @@ class Vector(HomogeneousCoordinate):
         super().__init__(x, y, z, 0)
 
 
-class WorldObject(object):
+class WorldObject(CountedObject):
     """
     a world object represents an object in 3D space, it has an origin and a direction, as well as a transform
-    matrix to convert it from the local coordinate system to the global coordinate system
+    matrices to convert to/from world space
     """
 
     @staticmethod
@@ -139,7 +140,8 @@ class WorldObject(object):
 
         return sin_a, cos_a
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._obj_origin = Point(0, 0, 0)  # position in object space
         self._obj_direction = Vector(0, 0, 1)  # direction in object space
 
@@ -286,3 +288,27 @@ class WorldObject(object):
 
         self._append_world_transform(tx)
         return self
+
+    def transform(self, transform_matrix):
+        """
+        applies the transform matrix to the object. Can contain rotation, translation, scale, and sheer operations. Can
+        be chained with other transform operations.
+
+        :param transform_matrix:
+        :return: self
+        """
+        self._append_world_transform(transform_matrix)
+        return self
+
+
+class ObjectGroup(WorldObject, collections.UserList):
+    def __init__(self, *args, **kwargs):
+        # inheriting from UserList will make a public variable called data in our group
+        super().__init__(*args, **kwargs)
+
+    def _append_world_transform(self, new_transform):
+        super()._append_world_transform(new_transform)  # update the Groups world transform matrix
+
+        # iterate over all surfaces in the group and update their transform matrices
+        for surface in self.data:
+            surface.transform(new_transform)
