@@ -12,6 +12,51 @@ class WorldObjectTestCase(unittest.TestCase):
         self._obj = cg.WorldObject()
 
 
+class TestCountedObject(unittest.TestCase):
+    def setUp(self):
+        self.obj = cg.CountedObject()
+
+    def test_count_incrementing(self):
+        obj_to_create = 20
+        initial_count = cg.CountedObject.get_count()
+        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
+
+        # the count should be the same for each object and be equal to the number of objects created
+        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
+
+        # none of the objects should have the same count_id
+        obj_ids = set([test_object.get_id() for test_object in test_objects])
+        self.assertEqual(len(obj_ids), obj_to_create)
+
+        # the objects should be incremented sequentially
+        self.assertTrue(np.all(np.diff(np.sort(np.array(list(obj_ids)))) == 1))
+
+    def test_decrementing_object_count(self):
+        obj_to_create = 20
+        initial_count = cg.CountedObject.get_count()
+        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
+
+        # the count should be the same for each object and be equal to the number of objects created
+        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
+
+        # deleting objects should reduce the count
+        for n in range(len(test_objects)):
+            test_objects.pop(-1)
+            self.assertEqual(cg.CountedObject.get_count(),  obj_to_create + initial_count - n - 1)
+
+    def test_creating_obj_after_deletion(self):
+        # create a list of objects then delete them all
+
+        obj_to_create = 20
+        initial_count = cg.CountedObject.get_count()
+        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
+        del test_objects
+
+        # make sure that a new object indexes up and does not reuse any of the deleted IDs
+        new_object = cg.CountedObject()
+        self.assertEqual(new_object.get_id(), initial_count + obj_to_create)
+
+
 class TestHomogeneousCoordinate(unittest.TestCase):
     def setUp(self):
         self.coord = cg.HomogeneousCoordinate(3, 4, 5, 6)
@@ -68,9 +113,9 @@ class TestWorldObjectCreation(WorldObjectTestCase):
     def test_modifying_transform_matrix(self):
         # transforming a returned value should not be copied
         tx_matrix = self._obj.get_world_transform()
-        tx_matrix[3,0] = 5
+        tx_matrix[3, 0] = 5
         tx_matrix = self._obj.get_world_transform()
-        self.assertNotEqual(tx_matrix[3,0], 5)
+        self.assertNotEqual(tx_matrix[3, 0], 5)
 
         tx_matrix = self._obj.get_object_transform()
         tx_matrix[3, 0] = 5
@@ -81,9 +126,9 @@ class TestWorldObjectCreation(WorldObjectTestCase):
         ### if you update the world transform matrix the object transform matrix will be updated when called
         self._obj.scale_all(10)
         to_world_mat = self._obj.get_object_transform()
-        expected_matrix = np.identity(4,dtype=float)
+        expected_matrix = np.identity(4, dtype=float)
         for x in range(3):
-            expected_matrix[x,x] = 0.1
+            expected_matrix[x, x] = 0.1
         self.assertTrue(np.allclose(expected_matrix, to_world_mat))
 
 
@@ -117,13 +162,13 @@ class TestWorldObjectScaling(WorldObjectTestCase):
 
     def test_scale_all(self):
         scale_factor = 1000
-        expected_pos = scale_factor*np.ones(3)
+        expected_pos = scale_factor * np.ones(3)
         self._obj.scale_all(scale_factor)
         self.assertTrue(np.allclose(self._obj.get_position(), cg.Point(*expected_pos)), f"{self._obj.get_position()}")
 
     def test_negative_scaling(self):
         # negative values should raise an exception
-        scale_fns = (getattr(self._obj,x) for x in ['scale','scale_x','scale_y','scale_z','scale_all'])
+        scale_fns = (getattr(self._obj, x) for x in ['scale', 'scale_x', 'scale_y', 'scale_z', 'scale_all'])
         for fn in scale_fns:
             with self.assertRaises(ValueError):
                 fn(-1)
@@ -195,14 +240,13 @@ class TestWorldObjectQuaternion(WorldObjectTestCase):
         self.assertAlmostEqual(quat[-1], 1.)
 
     def test_single_axis_quat(self):
-        rotation_angle = np.pi/2
-        self._obj.rotate_y(rotation_angle, "rad") # rotate along the y-axis by 90 degrees
+        rotation_angle = np.pi / 2
+        self._obj.rotate_y(rotation_angle, "rad")  # rotate along the y-axis by 90 degrees
         quat = self._obj.get_quaternion()
-        expected_vect = np.asarray((0,1,0))*np.sqrt(2)/2
-        expected_scalar = np.sqrt(2)/2
+        expected_vect = np.asarray((0, 1, 0)) * np.sqrt(2) / 2
+        expected_scalar = np.sqrt(2) / 2
         self.assertTrue(np.allclose(quat[:3], expected_vect))
         self.assertAlmostEqual(quat[-1], expected_scalar)
-
 
 
 if __name__ == '__main__':
