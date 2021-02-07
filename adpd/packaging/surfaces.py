@@ -1,5 +1,5 @@
 import abc
-import adpd.packaging.simple_cg as pycg
+import adpd.packaging.simple_cg as cg
 import numpy as np
 import json
 import copy
@@ -10,7 +10,7 @@ OPTICA_MATERIALS = {"Silicon"}
 class _Aperture(object):
     def __init__(self, *args, **kwargs):
         self.shape = tuple()
-        self.offset = pycg.Point(0, 0, 0)
+        self.offset = cg.Point(0, 0, 0)
 
 
 def to_mathematica_array(np_array):
@@ -56,7 +56,43 @@ class NamedObject(object):
         return self._name
 
 
-class TracerSurface(pycg.WorldObject, NamedObject, abc.ABC):
+class RenderObject(cg.WorldObject, NamedObject, abc.ABC):
+    """
+    Render Objects have abstract functions to calculate ray-object intersections and normals
+    """
+
+    def __init__(self, name="RenderObject", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)  # call the next constructor in the MRO
+
+    @abc.abstractmethod
+    def intersect(self, rays):
+        """
+        calculates the intersection of an array of rays with the surface, returning a 1-D array with the hit distance
+            for each ray. Rays are represented by the vector equation x(t) = o + t*v, where o is the point-origin,
+            and v is the vector direction.
+
+        :param rays: a 2x4xn numpy array where n is the number of rays being projected. For each slice of rays the first
+            row is the ray's origin, and the second row is the direction. Both should be represented as homogeneous
+            coordinates
+        :return: an array of the parameter t from the ray equation where the ray intersects the object.
+        :rtype: 1-D numpy array of np.float32
+        """
+        pass
+
+    @abc.abstractmethod
+    def normal(self, intersections):
+        """
+        calculates the normal of a sphere at each point in an array of coordinates. It is assumed that the points lie
+            on the surface of the object, as this is not verified during calculation.
+
+        :param intersections: a 4xn array of homogeneous points representing a point on the sphere.
+        :type intersections: 4xn numpy of np.float32
+        :return: an array of vectors representing the unit normal at each point in intersection
+        :rtype:  4xn numpy array of np.float32
+        """
+
+
+class TracerSurface(cg.WorldObject, NamedObject, abc.ABC):
     _shape_label = "GenericSurface"  # the label for the shape, class specific
 
     def __init__(self, name="surface", *args, **kwargs):
@@ -95,7 +131,8 @@ class TracerSurface(pycg.WorldObject, NamedObject, abc.ABC):
         :return:
         """
         self._json_repr["position"] = tuple(self.get_position()[:3].astype(float))  # get the non-homogenous position
-        self._json_repr["rotation"] = tuple(self.get_quaternion().astype(float))  # get the rotation represented as a quaternion
+        self._json_repr["rotation"] = tuple(
+            self.get_quaternion().astype(float))  # get the rotation represented as a quaternion
         self._json_repr.update(self._optica_options_dict)
         return copy.copy(self._json_repr)
 
@@ -227,3 +264,49 @@ class AperturedWindow(RefractiveSurface):
     def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
         super().__init__(thickness, name, material, *args, **kwargs)  # call the parent constructor
         self._sub_aperture = _Aperture()
+
+
+class Sphere(RenderObject):
+    def __init__(self, radius=1, name="sphere", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+        self._radius = radius  # this is the sphere's radius in object space, it can be manipulated in world space with
+        # scale and transform operations
+
+    def get_radius(self):
+        """
+        Get the sphere's radius in object space. The apparent radius in world space may be different due to object
+            transforms
+
+        :return: the sphere's object space radius
+        :rtype: float
+        """
+
+        return self._radius
+
+    def intersect(self, rays):
+        # a sphere intersection requires the discriminant of the 2nd order roots equation is positive
+        # if the discriminant is zero, the ray is tangent to the sphere
+        # if it's negative, there's not intersection
+        # otherwise it intersects the sphere at two points
+
+        # step one is transform the rays into object space -- rays should always exist in world space!
+        object_space_rays = np.matmul(self._get_object_transform(), np.atleast_3d(rays))
+        origins = object_space_rays[0, :-1]  # should be a 4xn array of points
+        directions = object_space_rays[1, :-1]  # should be a 4xn array of vectors
+
+        # calculate the a,b, and c of the polynomial roots equation
+        a = cg.element_wise_dot(directions, directions, axis=0)  # a must be positive because it's the squared magnitude
+        b = 2*cg.element_wise_dot(directions, origins, axis=0)  # be can be positive or negative
+        c = cg.element_wise_dot(origins, origins, axis=0) - self._radius ** 2  # c can be positive or negative
+
+        # calculate the discriminant, but override the sqrt if it would result in a negative number
+        disc = b ** 2 - 4 * a * c
+        root = np.sqrt(np.maximum(0, disc))
+        hits = np.array(((-b + root), (-b - root))) / (2 * a)  # the positive element of the polynomial root
+
+        # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
+        nearest_hit = np.where(hits[1] >= 0, np.amin(hits, axis=0), hits[0])
+        return np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
+
+    def normal(self, intersections):
+        pass

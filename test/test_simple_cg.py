@@ -105,6 +105,29 @@ class TestVector(unittest.TestCase):
         self.assertEqual(self.coord.w, 0)
 
 
+class TestRay(unittest.TestCase):
+    def test_ray_initialization(self):
+        ray = cg.Ray()
+        self.assertTrue(np.allclose(ray.origin, cg.Point()))
+        self.assertTrue(np.allclose(ray.direction, cg.Vector(1, 0, 0)))
+
+        # the ray elements can be assigned
+        ray.origin.x = 3
+        self.assertEqual(ray.origin[0], 3)
+
+    def test_ray_bundling(self):
+        all_rays = cg.bundle_rays([cg.Ray() for _ in range(1000)])
+        self.assertTrue(all_rays.shape, (2, 4, 1000))
+
+        # rays lose their view when stacked
+        with self.assertRaises(AttributeError):
+            all_rays[0].origin
+            all_rays[0].direction
+
+        # but can be viewed as ray objects
+        self.assertEqual(all_rays[0].view(cg.Ray).origin.x, 0)
+
+
 class TestWorldObjectCreation(WorldObjectTestCase):
     def test_object_creation(self):
         # the object should be centered at the origin facing the positive z-axis
@@ -303,6 +326,28 @@ class TestObjectGroup(unittest.TestCase):
 
         self.assertTrue(np.allclose(subgroup.get_position(), cg.Point(x_movement, 0, 0)))
         self.assertTrue(np.allclose(sub_object.get_position(), cg.Point(x_movement + 1, 0, 0)))
+
+
+class TestElementWiseDotProduct(unittest.TestCase):
+    def setUp(self):
+        self.n_elements = 40
+        self.major_axis_length = 10
+        self.test_matrix = np.arange(self.n_elements).reshape(self.major_axis_length, -1)
+
+    def test_axis_zero_dot(self):
+        dot = cg.element_wise_dot(self.test_matrix, self.test_matrix, axis=0)
+        self.assertEqual(dot.shape[0], (self.test_matrix.shape[-1]))
+        for n, element in enumerate(dot):
+            expected = np.sum(np.arange(n, self.n_elements, self.n_elements / self.major_axis_length) ** 2)
+            self.assertEqual(expected, element)
+
+    def test_axis_one_dot(self):
+        dot = cg.element_wise_dot(self.test_matrix, self.test_matrix, axis=1)
+        self.assertEqual(dot.shape[0], (self.test_matrix.shape[0]))
+        minor_axis = self.test_matrix.shape[-1]
+        for n, element in enumerate(dot):
+            expected = np.sum(np.arange(n * minor_axis, (n + 1) * minor_axis) ** 2)
+            self.assertEqual(expected, element)
 
 
 if __name__ == '__main__':

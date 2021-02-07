@@ -1,6 +1,7 @@
 import unittest
 import abc
 import adpd.packaging.surfaces as surf
+import adpd.packaging.simple_cg as cg
 import re
 import numpy as np
 
@@ -176,6 +177,54 @@ class TestWindow(unittest.TestCase, ThickSurfaceTests):
     default_surface_args = {"thickness": 10, "name": "MyWindow"}
     surface_to_test = surf.Window
     optica_function_name = "Window"
+
+
+class TestSphere(unittest.TestCase):
+    def setUp(self) -> None:
+        self.sphere = surf.Sphere()
+        self.ray = cg.Ray()
+
+    def test_getting_radius(self):
+        # default constructor should assign a radius of 1
+        self.assertEqual(self.sphere.get_radius(), 1)
+
+        # a new sphere can have the radius assigned
+        self.assertEqual(surf.Sphere(3).get_radius(), 3)
+
+    def test_ray_intersection_unit_sphere(self):
+        hit = self.sphere.intersect(self.ray)
+        self.assertEqual(hit.shape,(1,))
+        self.assertAlmostEqual(hit[0], 1.)
+
+        # if the ray is moved out of the radius of the sphere we get inf as the hit
+        new_ray = cg.Ray()
+        new_ray.origin = cg.Point(3,0,0)
+        self.assertEqual(self.sphere.intersect(new_ray)[0], np.inf)
+
+    def test_intersection_scaled_sphere(self):
+        # if the sphere is scaled, the intersection should grow with the scaling
+        scale_factor = 10
+        self.sphere.scale_all(scale_factor)
+        hit = self.sphere.intersect(self.ray)
+        self.assertAlmostEqual(hit[0], scale_factor)
+
+    def test_intersection_translated_sphere(self):
+        movement = 10
+        self.sphere.move_x(movement)
+        hit = self.sphere.intersect(self.ray)
+        self.assertAlmostEqual(hit[0], movement - self.sphere.get_radius())
+
+    def test_intersection_sphere_behind_ray(self):
+        self.sphere.move_x(-100)
+        self.assertEqual(self.sphere.intersect(self.ray)[0],np.inf)
+
+    def test_multi_ray_intersection(self):
+        rays = cg.bundle_rays([cg.Ray() for _ in range(10000)])
+        all_hits = self.sphere.intersect(rays)
+        self.assertTrue(np.allclose(all_hits[:], 1.))
+
+
+
 
 
 if __name__ == '__main__':

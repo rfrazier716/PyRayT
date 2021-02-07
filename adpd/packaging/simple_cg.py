@@ -3,6 +3,28 @@ import numpy.linalg as linalg
 import copy
 import scipy.spatial.transform as transform
 import collections
+import abc
+
+
+def element_wise_dot(mat_1, mat_2, axis=0):
+    """
+    calculates the row-wise/column-wise dot product two nxm matrices
+
+    :param mat_1: the first matrix for the dot product
+    :param mat_2: the second matrix for the dot product
+    :param axis: axis to perform the dot product along, 0 or 1
+    :return: a 1D array of length m for axis 0 and n for axis 1
+    """
+
+    einsum_string = "ij,ij->j"
+    if axis == 1:
+        einsum_string = 'ij,ij->i'
+
+    return np.einsum(einsum_string, mat_1, mat_2)
+
+
+def bundle_rays(rays):
+    return np.stack(rays, axis=2)
 
 
 class CountedObject(object):
@@ -101,6 +123,34 @@ class Point(HomogeneousCoordinate):
 class Vector(HomogeneousCoordinate):
     def __init__(self, x=0, y=0, z=0, *args, **kwargs):
         super().__init__(x, y, z, 0)
+
+
+class Ray(np.ndarray):
+    def __new__(cls, *args, **kwargs):
+        # creates an array with the homogeneous coordinates
+        obj = np.zeros((2, 4), dtype=np.float32).view(cls)
+        return obj
+
+    def __init__(self, origin=Point(), direction=Vector(1, 0, 0)):
+        # assign the magnitude and direction
+        self[0] = origin
+        self[1] = direction
+
+    @property
+    def origin(self):
+        return self[0].view(HomogeneousCoordinate)
+
+    @origin.setter
+    def origin(self, new_origin):
+        self[0] = new_origin
+
+    @property
+    def direction(self):
+        return self[1].view(HomogeneousCoordinate)
+
+    @direction.setter
+    def direction(self, new_direction):
+        self[1] = new_direction
 
 
 class WorldObject(CountedObject):
