@@ -58,16 +58,6 @@ class TestCountedObject(unittest.TestCase):
         self.assertEqual(new_object.get_id(), max_id + 1)
 
 
-class TestNamedObject(unittest.TestCase):
-    def setUp(self):
-        self.object = cg.NamedObject('MyObject')
-
-    def test_getters(self):
-        self.assertEqual(self.object.get_name(), 'MyObject')
-
-    def test_string_repr(self):
-        self.assertEqual(str(self.object), self.object.get_name())
-
 class TestHomogeneousCoordinate(unittest.TestCase):
     def setUp(self):
         self.coord = cg.HomogeneousCoordinate(3, 4, 5, 6)

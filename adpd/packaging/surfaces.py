@@ -44,7 +44,19 @@ def to_mathematica_rules(arg_dict):
     return "{" + ", ".join(options_associations) + "}"
 
 
-class TracerSurface(pycg.WorldObject, abc.ABC):
+class NamedObject(object):
+    def __init__(self, name="NamedObject", *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._name = name
+
+    def get_name(self):
+        return self._name
+
+    def __str__(self):
+        return self._name
+
+
+class TracerSurface(pycg.WorldObject, NamedObject, abc.ABC):
     _shape_label = "GenericSurface"  # the label for the shape, class specific
 
     def __init__(self, name="surface", *args, **kwargs):

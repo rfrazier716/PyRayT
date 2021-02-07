@@ -19,6 +19,17 @@ class TestMathematicaConverters(unittest.TestCase):
         test_dict = dict(zip('abc', [1, 2, 3]))
 
 
+class TestNamedObject(unittest.TestCase):
+    def setUp(self):
+        self.object = surf.NamedObject('MyObject')
+
+    def test_getters(self):
+        self.assertEqual(self.object.get_name(), 'MyObject')
+
+    def test_string_repr(self):
+        self.assertEqual(str(self.object), self.object.get_name())
+
+
 class CommonSurfaceTests(object):
 
     @classmethod
@@ -69,7 +80,7 @@ class CommonSurfaceTests(object):
         surfaces = [type(self).create_new_surface() for _ in range(20)]
         naming_re_pattern = re.compile(r"([a-zA-z]+)([0-9]{4})")
         for n, surface in enumerate(surfaces):
-            match = naming_re_pattern.match(surface.get_surface_id())
+            match = naming_re_pattern.match(surface.get_label())
             self.assertTrue(bool(match))  # require that a match was made
 
             # check that the numbers are incrementing
