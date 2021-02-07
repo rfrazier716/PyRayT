@@ -58,6 +58,16 @@ class TestCountedObject(unittest.TestCase):
         self.assertEqual(new_object.get_id(), max_id + 1)
 
 
+class TestNamedObject(unittest.TestCase):
+    def setUp(self):
+        self.object = cg.NamedObject('MyObject')
+
+    def test_getters(self):
+        self.assertEqual(self.object.get_name(), 'MyObject')
+
+    def test_string_repr(self):
+        self.assertEqual(str(self.object), self.object.get_name())
+
 class TestHomogeneousCoordinate(unittest.TestCase):
     def setUp(self):
         self.coord = cg.HomogeneousCoordinate(3, 4, 5, 6)
@@ -268,6 +278,10 @@ class TestObjectGroup(unittest.TestCase):
         expected_refs = (self.obj1, self.obj2)
         for expected, actual in zip(expected_refs, self.group):
             self.assertEqual(expected, actual)
+
+        self.assertTrue(hasattr(self.group, '__iter__'))
+
+        print(self.group)
 
     def testing_operations_on_group(self):
         # objects can be moved outside of the group

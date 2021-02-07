@@ -47,6 +47,18 @@ class CountedObject(object):
         type(self)._decrement()  # reduce the object count by 1
 
 
+class NamedObject(object):
+    def __init__(self, name="NamedObject", *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._name = name
+
+    def get_name(self):
+        return self._name
+
+    def __str__(self):
+        return self._name
+
+
 class HomogeneousCoordinate(np.ndarray):
     def __new__(cls, *args, **kwargs):
         # creates an array with the homogeneous coordinates
@@ -103,7 +115,7 @@ class Vector(HomogeneousCoordinate):
         super().__init__(x, y, z, 0)
 
 
-class WorldObject(CountedObject):
+class WorldObject(CountedObject, NamedObject):
     """
     a world object represents an object in 3D space, it has an origin and a direction, as well as a transform
     matrices to convert to/from world space
@@ -140,8 +152,8 @@ class WorldObject(CountedObject):
 
         return sin_a, cos_a
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name="WorldObject", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
         self._obj_origin = Point(0, 0, 0)  # position in object space
         self._obj_direction = Vector(0, 0, 1)  # direction in object space
 
@@ -302,9 +314,13 @@ class WorldObject(CountedObject):
 
 
 class ObjectGroup(WorldObject, collections.UserList):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name="ObjectGroup", *args, **kwargs):
         # inheriting from UserList will make a public variable called data in our group
-        super().__init__(*args, **kwargs)
+        super().__init__(name, *args, **kwargs)
+
+    def __str__(self):
+        # for Object groups want to re-override the __str__ statement to it behaves like a list
+        return str(list(self))
 
     def _append_world_transform(self, new_transform):
         super()._append_world_transform(new_transform)  # update the Groups world transform matrix
