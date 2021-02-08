@@ -185,6 +185,9 @@ class TestSphere(unittest.TestCase):
         self.sphere = surf.Sphere()
         self.ray = cg.Ray()
 
+        self.intersection_points = ((0, 0, -1), (0, 0, 1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0))
+        self.intersections = [cg.Point(*intersection) for intersection in self.intersection_points]
+
     def test_getting_radius(self):
         # default constructor should assign a radius of 1
         self.assertEqual(self.sphere.get_radius(), 1)
@@ -194,12 +197,12 @@ class TestSphere(unittest.TestCase):
 
     def test_ray_intersection_unit_sphere(self):
         hit = self.sphere.intersect(self.ray)
-        self.assertEqual(hit.shape,(1,))
+        self.assertEqual(hit.shape, (1,))
         self.assertAlmostEqual(hit[0], 1.)
 
         # if the ray is moved out of the radius of the sphere we get inf as the hit
         new_ray = cg.Ray()
-        new_ray.origin = cg.Point(3,0,0)
+        new_ray.origin = cg.Point(3, 0, 0)
         self.assertEqual(self.sphere.intersect(new_ray)[0], np.inf)
 
     def test_intersection_scaled_sphere(self):
@@ -217,16 +220,61 @@ class TestSphere(unittest.TestCase):
 
     def test_intersection_sphere_behind_ray(self):
         self.sphere.move_x(-100)
-        self.assertEqual(self.sphere.intersect(self.ray)[0],np.inf)
+        self.assertEqual(self.sphere.intersect(self.ray)[0], np.inf)
 
     def test_multi_ray_intersection(self):
         rays = cg.bundle_rays([cg.Ray() for _ in range(100)])
         all_hits = self.sphere.intersect(rays)
         self.assertTrue(np.allclose(all_hits[:], 1.))
 
+    def test_normals_base_sphere(self):
+        # for a nontransformed sphere the normals should be vectors of the coordinates
+        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            self.assertTrue(np.allclose(normal, expected))
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
+    def test_normals_scaled_sphere(self):
+        # scaling a sphere should have no effect on the normals
+        scaling = 5
+        self.sphere.scale_all(scaling)
+        scaled_intersection_points = ((0, 0, -5), (0, 0, 5), (0, 5, 0), (0, -5, 0), (5, 0, 0), (-5, 0, 0))
+        self.intersections = [cg.Point(*intersection) for intersection in scaled_intersection_points]
+        # for a nontransformed sphere the normals should be vectors of the coordinates
+        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            self.assertTrue(np.allclose(normal, expected))
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
+        # assert that the operation did not overwrite the world transform matrix
+        self.assertTrue(np.allclose(self.sphere.get_world_transform()[:-1, :-1], np.identity(3) * scaling))
 
+    def test_normals_rotated_sphere(self):
+        # rotation should give the same normals
+        z_rotation = 45
+        self.sphere.rotate_z(45)
+
+        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            print(normal)
+            self.assertTrue(np.allclose(normal, expected), f"Expected {normal}, got {expected}")
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+
+        # assert that the operation did not overwrite the world transform matrix
+
+    def test_normals_translated_sphere(self):
+        translation = 10
+        self.sphere.move_x(translation)
+        translated_intersections = [intersection + np.array([translation,0,0,0]) for intersection in self.intersections]
+        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            print(normal)
+            self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
 if __name__ == '__main__':
     unittest.main()

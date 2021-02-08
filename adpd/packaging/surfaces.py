@@ -9,7 +9,7 @@ OPTICA_MATERIALS = {"Silicon"}
 
 class _Aperture(object):
     def __init__(self, *args, **kwargs):
-        self.shape = tuple()
+        self.shape = (1)
         self.offset = cg.Point(0, 0, 0)
 
 
@@ -92,12 +92,12 @@ class RenderObject(cg.WorldObject, NamedObject, abc.ABC):
         """
 
 
-class OpticaExportable(cg.WorldObject):
+class OpticaExportable(cg.WorldObject, abc.ABC):
     _optica_function_call = "OpticaSurface"  # the label for the shape, class specific
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._optica_options_dict={} # create a dict to hold optica options
+        self._optica_options_dict = {}  # create a dict to hold optica options
 
     def create_optica_function(self):
         rules_command = self._create_rules_list()  # create the rules list
@@ -139,10 +139,8 @@ class OpticaExportable(cg.WorldObject):
 
 class Apertured(cg.WorldObject):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs) # call the next constructor in the MRO
-
-        self._aperture = _Aperture() # the object's aperture
-        self.set_aperture_shape(1)  # make the aperture a circle with radius of 1 by default
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+        self._aperture = _Aperture()  # the object's aperture
 
     def set_aperture_shape(self, new_shape):
         self._aperture.shape = new_shape
@@ -151,9 +149,10 @@ class Apertured(cg.WorldObject):
     def set_aperture_offset(self, x_offset, y_offset):
         self._aperture.offset.x = x_offset
         self._aperture.offset.y = y_offset
+        return self
 
 
-class TracerSurface(OpticaExportable, Apertured, cg.WorldObject, NamedObject, abc.ABC):
+class TracerSurface(OpticaExportable, Apertured, cg.WorldObject, NamedObject):
 
     def __init__(self, name="surface", *args, **kwargs):
         super().__init__(name, *args, **kwargs)  # call the next constructor in the MRO
@@ -189,11 +188,13 @@ class TracerSurface(OpticaExportable, Apertured, cg.WorldObject, NamedObject, ab
         return json.dumps(self.collect_parameters(), indent=2)
 
     def set_aperture_shape(self, new_shape):
+        # override it to write to the aperture
         self._json_repr["aperture"] = new_shape
         return super().set_aperture_shape(new_shape)
 
     def set_aperture_offset(self, x_offset, y_offset):
-        self._optica_options_dict["OffAxis"] = tuple(x_offset, y_offset)
+        # override the default operation to also write to the _optica_options_dict
+        self._optica_options_dict["OffAxis"] = (x_offset, y_offset)
         super().set_aperture_offset(x_offset, y_offset)
 
 
@@ -313,7 +314,7 @@ class Sphere(RenderObject):
 
         # calculate the a,b, and c of the polynomial roots equation
         a = cg.element_wise_dot(directions, directions, axis=0)  # a must be positive because it's the squared magnitude
-        b = 2*cg.element_wise_dot(directions, origins, axis=0)  # be can be positive or negative
+        b = 2 * cg.element_wise_dot(directions, origins, axis=0)  # be can be positive or negative
         c = cg.element_wise_dot(origins, origins, axis=0) - self._radius ** 2  # c can be positive or negative
 
         # calculate the discriminant, but override the sqrt if it would result in a negative number
@@ -326,4 +327,27 @@ class Sphere(RenderObject):
         return np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
 
     def normal(self, intersections):
-        pass
+        # calculates the normal of a transformed sphere at a point XYZ
+        # the normal is the distance from the origin to the point (assuming they were on the sphere)
+        # to get it back into world coordinates it has to be multiplied by the transpose of the world coord transform
+        # https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/geometry/transforming-normals
+
+        # if only one point was provided, wrap it and transpose it
+        padded_intersections = intersections
+        dims = intersections.ndim
+        if dims != 2:
+            if dims == 1:
+                padded_intersections = np.atleast_2d(intersections).T
+            else:
+                raise AttributeError(f"Argument intersections has too many dimensions, expect 1 or 2, got {dims}")
+
+        # transform intersections into local coordinates
+        # eliminate the scale factors from the world coord transpose to preserve the vector magnitude
+        local_normals = np.matmul(self._get_object_transform(), padded_intersections)
+        local_normals[-1, :] = 0
+        world_normals = np.matmul(self.get_object_transform().T, local_normals)
+
+        # need to normalize and convert to vectors
+        world_normals /= np.linalg.norm(world_normals, axis=0)
+        # if a 1d array was passed, transpose it and strip a dimension
+        return world_normals if dims == 2 else world_normals.T[0]
