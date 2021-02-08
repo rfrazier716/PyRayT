@@ -92,55 +92,12 @@ class RenderObject(cg.WorldObject, NamedObject, abc.ABC):
         """
 
 
-class TracerSurface(cg.WorldObject, NamedObject, abc.ABC):
-    _shape_label = "GenericSurface"  # the label for the shape, class specific
+class OpticaExportable(cg.WorldObject):
+    _optica_function_call = "OpticaSurface"  # the label for the shape, class specific
 
-    def __init__(self, name="surface", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)  # call the next constructor in the MRO
-        self._surface_id = type(self)._shape_label + f"{self.get_id():04d}"
-        self._opts_string = self._surface_id + "OPTS"
-
-        # a dictionary that holds important parameters that will be used to construct a json string of the object
-        self._json_repr = dict()
-        self._json_repr["name"] = self._name  # add name to be exported
-        self._json_repr["type"] = self._shape_label
-
-        self._aperture = _Aperture()
-        self.set_aperture_shape(1)  # make the aperture a circle with radius of 1 by default
-        self._optica_options_dict = {}  # a dictionary of additional keyword options
-
-    def get_label(self):
-        return self._surface_id
-
-    def set_aperture_shape(self, new_shape):
-        self._aperture.shape = new_shape
-        self._json_repr["aperture"] = new_shape
-        return self
-
-    def set_aperture_offset(self, x_offset, y_offset):
-        self._aperture.offset.x = x_offset
-        self._aperture.offset.y = y_offset
-        self._optica_options_dict["OffAxis"] = (x_offset, y_offset)
-
-    def add_custom_parameter(self, parameter_key: str, parameter_value):
-        self._optica_options_dict[str(parameter_key)] = parameter_value
-
-    def collect_parameters(self):
-        """
-        Returns a dict of key parameters that define the surface
-        :return:
-        """
-        self._json_repr["position"] = tuple(self.get_position()[:3].astype(float))  # get the non-homogenous position
-        self._json_repr["rotation"] = tuple(
-            self.get_quaternion().astype(float))  # get the rotation represented as a quaternion
-        self._json_repr.update(self._optica_options_dict)
-        return copy.copy(self._json_repr)
-
-    def to_json_string(self):
-        """
-        return a JSON string representing the object
-        """
-        return json.dumps(self.collect_parameters(), indent=2)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._optica_options_dict={} # create a dict to hold optica options
 
     def create_optica_function(self):
         rules_command = self._create_rules_list()  # create the rules list
@@ -178,6 +135,66 @@ class TracerSurface(cg.WorldObject, NamedObject, abc.ABC):
         else:
             aperture_str = f"{self._aperture.shape:.03f}"
         return aperture_str
+
+
+class Apertured(cg.WorldObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs) # call the next constructor in the MRO
+
+        self._aperture = _Aperture() # the object's aperture
+        self.set_aperture_shape(1)  # make the aperture a circle with radius of 1 by default
+
+    def set_aperture_shape(self, new_shape):
+        self._aperture.shape = new_shape
+        return self
+
+    def set_aperture_offset(self, x_offset, y_offset):
+        self._aperture.offset.x = x_offset
+        self._aperture.offset.y = y_offset
+
+
+class TracerSurface(OpticaExportable, Apertured, cg.WorldObject, NamedObject, abc.ABC):
+
+    def __init__(self, name="surface", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)  # call the next constructor in the MRO
+        self._surface_id = type(self)._optica_function_call + f"{self.get_id():04d}"
+        self._opts_string = self._surface_id + "OPTS"
+
+        # a dictionary that holds important parameters that will be used to construct a json string of the object
+        self._json_repr = dict()
+        self._json_repr["name"] = self._name  # add name to be exported
+        self._json_repr["type"] = self._optica_function_call
+
+    def get_label(self):
+        return self._surface_id
+
+    def add_custom_parameter(self, parameter_key: str, parameter_value):
+        self._optica_options_dict[str(parameter_key)] = parameter_value
+
+    def collect_parameters(self):
+        """
+        Returns a dict of key parameters that define the surface
+        :return:
+        """
+        self._json_repr["position"] = tuple(self.get_position()[:3].astype(float))  # get the non-homogenous position
+        self._json_repr["rotation"] = tuple(
+            self.get_quaternion().astype(float))  # get the rotation represented as a quaternion
+        self._json_repr.update(self._optica_options_dict)
+        return copy.copy(self._json_repr)
+
+    def to_json_string(self):
+        """
+        return a JSON string representing the object
+        """
+        return json.dumps(self.collect_parameters(), indent=2)
+
+    def set_aperture_shape(self, new_shape):
+        self._json_repr["aperture"] = new_shape
+        return super().set_aperture_shape(new_shape)
+
+    def set_aperture_offset(self, x_offset, y_offset):
+        self._optica_options_dict["OffAxis"] = tuple(x_offset, y_offset)
+        super().set_aperture_offset(x_offset, y_offset)
 
 
 class ThickSurface(TracerSurface, abc.ABC):
@@ -220,43 +237,43 @@ class RefractiveSurface(ThickSurface, abc.ABC):
 
 
 class ThinBaffle(TracerSurface):
-    _shape_label = "ThinBaffle"
+    _optica_function_call = "ThinBaffle"
 
     def __init__(self, name="my_baffle", *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
     def _create_optica_function_arguments(self):
         func_name = "ThinBaffle"
-        func_args = self._create_aperture_string()
+        func_args = to_mathematica_array(self._aperture.shape)
         return func_name, func_args
 
 
 class Baffle(ThickSurface):
-    _shape_label = "Baffle"
+    _optica_function_call = "Baffle"
 
     def __init__(self, thickness=1, name="my_baffle", *args, **kwargs):
         super().__init__(thickness, name, *args, **kwargs)
 
     def _create_optica_function_arguments(self):
         func_name = "Baffle"
-        func_args = self._create_aperture_string() + ', ' + f"{self._thickness:.03f}"
+        func_args = to_mathematica_array(self._aperture.shape) + ', ' + f"{self._thickness:.03f}"
         return func_name, func_args
 
 
 class Window(RefractiveSurface):
-    _shape_label = "Window"
+    _optica_function_call = "Window"
 
     def __init__(self, thickness=1, material=None, name="my_window", *args, **kwargs):
         super().__init__(thickness, name, material, *args, **kwargs)  # call the parent constructor
 
     def _create_optica_function_arguments(self):
         func_name = "Window"
-        func_args = self._create_aperture_string() + ',' + f"{self._thickness:.03f}"
+        func_args = to_mathematica_array(self._aperture.shape) + ',' + f"{self._thickness:.03f}"
         return func_name, func_args
 
 
 class AperturedWindow(RefractiveSurface):
-    _shape_label = "AperturedWindow"
+    _optica_function_call = "AperturedWindow"
 
     def _create_optica_function_arguments(self):
         pass

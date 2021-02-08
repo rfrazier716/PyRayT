@@ -128,6 +128,7 @@ class TestTracerSurface(unittest.TestCase, CommonSurfaceTests):
     optica_function_name = "Surface"
 
     def test_surface_parameter_export(self):
+        print(surf.TracerSurface().__mro__())
         surface = type(self).create_new_surface()  # make a new surface object
         obj_params = surface.collect_parameters()  # get the parameters as an object
         # the name should be mySurface
@@ -219,7 +220,7 @@ class TestSphere(unittest.TestCase):
         self.assertEqual(self.sphere.intersect(self.ray)[0],np.inf)
 
     def test_multi_ray_intersection(self):
-        rays = cg.bundle_rays([cg.Ray() for _ in range(10000)])
+        rays = cg.bundle_rays([cg.Ray() for _ in range(100)])
         all_hits = self.sphere.intersect(rays)
         self.assertTrue(np.allclose(all_hits[:], 1.))
 
