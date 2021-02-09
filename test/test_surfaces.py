@@ -259,7 +259,6 @@ class TestSphere(unittest.TestCase):
         normals = [self.sphere.normal(intersection) for intersection in self.intersections]
         for normal, intersection in zip(normals, self.intersection_points):
             expected = cg.Vector(*intersection)
-            print(normal)
             self.assertTrue(np.allclose(normal, expected), f"Expected {normal}, got {expected}")
             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
@@ -268,13 +267,24 @@ class TestSphere(unittest.TestCase):
     def test_normals_translated_sphere(self):
         translation = 10
         self.sphere.move_x(translation)
-        translated_intersections = [intersection + np.array([translation,0,0,0]) for intersection in self.intersections]
-        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        translated_intersections = [intersection + np.array([translation, 0, 0, 0]) for intersection in
+                                    self.intersections]
+        normals = [self.sphere.normal(intersection) for intersection in translated_intersections]
         for normal, intersection in zip(normals, self.intersection_points):
             expected = cg.Vector(*intersection)
-            print(normal)
             self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+
+    def test_arrayed_normals(self):
+        # made a bunch of random points on the unit sphere
+        normal_coordinates = 2*(np.random.random_sample((4,1000))-0.5)
+        normal_coordinates[-1] = 1
+        normal_coordinates[:-1] /= np.linalg.norm(normal_coordinates[:-1], axis=0)
+
+        # make sure the sphere normal function accepts an array
+        normals = self.sphere.normal(normal_coordinates)
+        normals[-1] = 1
+        self.assertTrue(np.allclose(normal_coordinates, normals))
 
 if __name__ == '__main__':
     unittest.main()

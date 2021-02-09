@@ -342,10 +342,13 @@ class Sphere(RenderObject):
                 raise AttributeError(f"Argument intersections has too many dimensions, expect 1 or 2, got {dims}")
 
         # transform intersections into local coordinates
-        # eliminate the scale factors from the world coord transpose to preserve the vector magnitude
+        # to translate normals back to normal space you multiply by the transpose of the local coordinate transpose
         local_normals = np.matmul(self._get_object_transform(), padded_intersections)
-        local_normals[-1, :] = 0
-        world_normals = np.matmul(self.get_object_transform().T, local_normals)
+        world_normals = np.matmul(self._get_object_transform().T, local_normals)
+
+        # The inverse transpose does wonky things with the w component of our vectors, but we know that all vectors
+        # should be zero so we can mask those values to zero
+        world_normals[-1, :] = 0
 
         # need to normalize and convert to vectors
         world_normals /= np.linalg.norm(world_normals, axis=0)
