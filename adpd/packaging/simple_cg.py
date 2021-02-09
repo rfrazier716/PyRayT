@@ -386,3 +386,113 @@ class ObjectGroup(WorldObject, collections.UserList):
         # iterate over all surfaces in the group and update their transform matrices
         for surface in self.data:
             surface.transform(new_transform)
+
+
+class SurfacePrimitive(abc.ABC):
+    """
+    SurfacePrimitive classes have abstract functions to calculate ray-object intersections and normals
+    """
+
+    def __init__(self,  *args, **kwargs):
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+
+    @abc.abstractmethod
+    def intersect(self, rays):
+        """
+        calculates the intersection of an array of rays with the surface, returning a 1-D array with the hit distance
+            for each ray. Rays are represented by the vector equation x(t) = o + t*v, where o is the point-origin,
+            and v is the vector direction.
+
+        :param rays: a 2x4xn numpy array where n is the number of rays being projected. For each slice of rays the first
+            row is the ray's origin, and the second row is the direction. Both should be represented as homogeneous
+            coordinates
+        :return: an array of the parameter t from the ray equation where the ray intersects the object.
+        :rtype: 1-D numpy array of np.float32
+        """
+        pass
+
+    @abc.abstractmethod
+    def normal(self, intersections):
+        """
+        calculates the normal of a sphere at each point in an array of coordinates. It is assumed that the points lie
+            on the surface of the object, as this is not verified during calculation.
+
+        :param intersections: a 4xn array of homogeneous points representing a point on the sphere.
+        :type intersections: 4xn numpy of np.float32
+        :return: an array of vectors representing the unit normal at each point in intersection
+        :rtype:  4xn numpy array of np.float32
+        """
+
+
+class Sphere(SurfacePrimitive):
+    def __init__(self, radius=1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._radius = radius  # this is the sphere's radius in object space, it can be manipulated in world space with
+        # scale and transform operations
+
+    def get_radius(self):
+        """
+        Get the sphere's radius in object space. The apparent radius in world space may be different due to object
+            transforms
+
+        :return: the sphere's object space radius
+        :rtype: float
+        """
+
+        return self._radius
+
+    def intersect(self, rays):
+        # a sphere intersection requires the discriminant of the 2nd order roots equation is positive
+        # if the discriminant is zero, the ray is tangent to the sphere
+        # if it's negative, there's not intersection
+        # otherwise it intersects the sphere at two points
+        padded_rays = np.atleast_3d(rays)
+        # step one is transform the rays into object space -- rays should always exist in world space!
+        origins = padded_rays[0, :-1]  # should be a 3xn array of points
+        directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
+
+        # calculate the a,b, and c of the polynomial roots equation
+        a = element_wise_dot(directions, directions, axis=0)  # a must be positive because it's the squared magnitude
+        b = 2 * element_wise_dot(directions, origins, axis=0)  # be can be positive or negative
+        c = element_wise_dot(origins, origins, axis=0) - self._radius ** 2  # c can be positive or negative
+
+        # calculate the discriminant, but override the sqrt if it would result in a negative number
+        disc = b ** 2 - 4 * a * c
+        root = np.sqrt(np.maximum(0, disc))
+        hits = np.array(((-b + root), (-b - root))) / (2 * a)  # the positive element of the polynomial root
+
+        # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
+        nearest_hit = np.where(hits[1] >= 0, np.amin(hits, axis=0), hits[0])
+        hit_array = np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
+
+        # collect the intersections into an array as well
+        intersection_array = np.where(np.tile(np.isfinite(hit_array), (4, 1)),
+                                      (padded_rays[0] + nearest_hit*padded_rays[1]), np.zeros(rays[0].shape))
+
+        # if only one element was passed, transpose it back to the expected dimension
+        if intersection_array.shape == (4, 1):
+            intersection_array = intersection_array.T[0]
+        return hit_array, intersection_array
+
+    def normal(self, intersections):
+        # calculates the normal of a transformed sphere at a point XYZ
+        # the normal is the distance from the origin to the point (assuming they were on the sphere)
+        # to get it back into world coordinates it has to be multiplied by the transpose of the world coord transform
+        # https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/geometry/transforming-normals
+
+        # if only one point was provided, wrap it and transpose it
+        padded_intersections = intersections
+        dims = intersections.ndim
+        if dims != 2:
+            if dims == 1:
+                padded_intersections = np.atleast_2d(intersections).T
+            else:
+                raise AttributeError(f"Argument intersections has too many dimensions, expect 1 or 2, got {dims}")
+
+        # for a sphere the normal is pretty easy, just scale the coordinate
+        world_normals = padded_intersections.copy()
+        world_normals[-1] = 0 # wipe out the point coordinate aspect
+        world_normals /= np.linalg.norm(world_normals, axis=0)
+
+        # if a 1d array was passed, transpose it and strip a dimension
+        return world_normals if dims == 2 else world_normals.T[0]

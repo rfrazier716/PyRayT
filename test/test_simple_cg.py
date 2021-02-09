@@ -387,5 +387,132 @@ class TestReflections(unittest.TestCase):
                         f"expected (1,1,0), got {reflection}")
 
 
+class OtherSphereTests(object):
+    # these tests don't work on a sphere primitive since it has no sense of position
+
+    def test_intersection_scaled_sphere(self):
+        # if the sphere is scaled, the intersection should grow with the scaling
+        scale_factor = 10
+        self.sphere.scale_all(scale_factor)
+        hit = self.sphere.intersect(self.ray)
+        self.assertAlmostEqual(hit[0], scale_factor)
+
+    def test_intersection_translated_sphere(self):
+        movement = 10
+        self.sphere.move_x(movement)
+        hit = self.sphere.intersect(self.ray)
+        self.assertAlmostEqual(hit[0], movement - self.sphere.get_radius())
+
+    def test_intersection_sphere_behind_ray(self):
+        self.sphere.move_x(-100)
+        self.assertEqual(self.sphere.intersect(self.ray)[0], np.inf)
+
+    def test_multi_ray_intersection(self):
+        rays = cg.bundle_rays([cg.Ray() for _ in range(100)])
+        all_hits = self.sphere.intersect(rays)
+        self.assertTrue(np.allclose(all_hits[:], 1.))
+
+    def test_normals_scaled_sphere(self):
+        # scaling a sphere should have no effect on the normals
+        scaling = 5
+        self.sphere.scale_all(scaling)
+        scaled_intersection_points = ((0, 0, -5), (0, 0, 5), (0, 5, 0), (0, -5, 0), (5, 0, 0), (-5, 0, 0))
+        self.intersections = [cg.Point(*intersection) for intersection in scaled_intersection_points]
+        # for a nontransformed sphere the normals should be vectors of the coordinates
+        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            self.assertTrue(np.allclose(normal, expected))
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+
+        # assert that the operation did not overwrite the world transform matrix
+        self.assertTrue(np.allclose(self.sphere.get_world_transform()[:-1, :-1], np.identity(3) * scaling))
+
+    def test_normals_rotated_sphere(self):
+        # rotation should give the same normals
+        z_rotation = 45
+        self.sphere.rotate_z(45)
+
+        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            self.assertTrue(np.allclose(normal, expected), f"Expected {normal}, got {expected}")
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+
+        # assert that the operation did not overwrite the world transform matrix
+
+    def test_normals_translated_sphere(self):
+        translation = 10
+        self.sphere.move_x(translation)
+        translated_intersections = [intersection + np.array([translation, 0, 0, 0]) for intersection in
+                                    self.intersections]
+        normals = [self.sphere.normal(intersection) for intersection in translated_intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+
+
+class TestSphere(unittest.TestCase):
+    def setUp(self) -> None:
+        self.sphere = cg.Sphere()
+        self.ray = cg.Ray()
+
+        self.intersection_points = ((0, 0, -1), (0, 0, 1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0))
+        self.intersections = [cg.Point(*intersection) for intersection in self.intersection_points]
+
+    def test_getting_radius(self):
+        # default constructor should assign a radius of 1
+        self.assertEqual(self.sphere.get_radius(), 1)
+
+        # a new sphere can have the radius assigned
+        self.assertEqual(cg.Sphere(3).get_radius(), 3)
+
+    def test_ray_intersection_unit_sphere(self):
+        hit, coord = self.sphere.intersect(self.ray)
+        self.assertEqual(hit.shape, (1,))
+        self.assertAlmostEqual(hit[0], 1.)
+
+        self.assertEqual(coord.shape, (4,))
+        self.assertTrue(np.allclose(coord, cg.Point(1,0,0)), f"Expected (1,0,0), got {coord}")
+
+        # if the ray is moved out of the radius of the sphere we get inf as the hit
+        new_ray = cg.Ray()
+        new_ray.origin = cg.Point(3, 0, 0)
+        self.assertEqual(self.sphere.intersect(new_ray)[0], np.inf)
+
+    def test_arrayed_intersections(self):
+        # make a bunch of rays projected down the x-axis
+        n_rays =1000
+        rays = np.zeros((2, 4, n_rays))
+        rays[0, -1] = 1
+        rays[1, 0] = 1
+        hit, coord = self.sphere.intersect(rays)
+
+        self.assertEqual(hit.shape, (n_rays,))
+        self.assertTrue(np.all(np.isclose(hit, 1.)))
+
+        self.assertEqual(coord.shape, (4, n_rays))
+        self.assertTrue(np.allclose(coord, np.tile(cg.Point(1, 0, 0),(n_rays, 1)).T))
+
+    def test_normals_base_sphere(self):
+        # for a nontransformed sphere the normals should be vectors of the coordinates
+        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
+        for normal, intersection in zip(normals, self.intersection_points):
+            expected = cg.Vector(*intersection)
+            self.assertTrue(np.allclose(normal, expected))
+            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+
+    def test_arrayed_normals(self):
+        # made a bunch of random points on the unit sphere
+        normal_coordinates = 2*(np.random.random_sample((4,1000))-0.5)
+        normal_coordinates[-1] = 1
+        normal_coordinates[:-1] /= np.linalg.norm(normal_coordinates[:-1], axis=0)
+
+        # make sure the sphere normal function accepts an array
+        normals = self.sphere.normal(normal_coordinates)
+        normals[-1] = 1
+        self.assertTrue(np.allclose(normal_coordinates, normals))
+
 if __name__ == '__main__':
     unittest.main()
