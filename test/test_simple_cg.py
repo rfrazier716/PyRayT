@@ -350,5 +350,42 @@ class TestElementWiseDotProduct(unittest.TestCase):
             self.assertEqual(expected, element)
 
 
+class TestReflections(unittest.TestCase):
+    def test_single_vector_reflection(self):
+        vect_in = cg.Vector(1, -1, 0)
+        normal = cg.Vector(0, 1, 0)
+        reflection = cg.reflect(vect_in, normal)
+        self.assertTrue(np.allclose(reflection, cg.Vector(1, 1, 0)), f"expected (1,1,0), got {reflection}")
+
+        vect_in = cg.Vector(0, -1, 0)
+        normal = cg.Vector(1, 1, 0) / np.sqrt(2)
+        reflection = cg.reflect(vect_in, normal)
+        self.assertTrue(np.allclose(reflection, cg.Vector(1, 0, 0), atol=1E-5), f"expected (1,0,0), got {reflection}")
+
+    def test_single_normal_reflection(self):
+        # make an array of a bunch of identical elements
+        n_vects = 1000
+        vect_in = np.zeros((4, n_vects))
+        vect_in[0] = 1
+        vect_in[1] = -1
+
+        normal = cg.Vector(0, 1, 0)
+        reflection = cg.reflect(vect_in, normal)
+        self.assertTrue(np.allclose(reflection, np.tile(cg.Vector(1, 1, 0), (n_vects, 1)).T),
+                        f"expected (1,1,0), got {reflection}")
+
+    def test_multi_normal_reflection(self):
+        # make an array of a bunch of identical elements
+        n_vects = 1000
+        vect_in = np.zeros((4, n_vects))
+        vect_in[0] = 1
+        vect_in[1] = -1
+
+        normals = np.tile(cg.Vector(0, 1, 0),(n_vects,1)).T
+        reflection = cg.reflect(vect_in, normals)
+        self.assertTrue(np.allclose(reflection, np.tile(cg.Vector(1, 1, 0), (n_vects, 1)).T),
+                        f"expected (1,1,0), got {reflection}")
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -23,6 +23,30 @@ def element_wise_dot(mat_1, mat_2, axis=0):
     return np.einsum(einsum_string, mat_1, mat_2)
 
 
+def reflect(vectors, normals):
+    """
+    reflects an array of vectors by a normal vector.
+
+    :param vectors: a mxn array of vectors, where each column corresponds to one vector
+    :param normals: a mxn array of unit-normal vectors or a 4x0 single normal vector. If only one normal is provided,
+        every vector is reflected across that normal
+    :return: an mxn array of reflected vector
+    """
+    # if we got 2x 1x4 arrays it's a basic case
+    if vectors.ndim==1 and normals.ndim==1:
+        return vectors - normals*2*vectors.dot(normals)
+
+    # if only one normal was provided reflect every vector off of it
+    elif normals.ndim == 1:
+        dots = np.einsum('ij,i->j', vectors, normals)
+        return vectors - 2*np.tile(normals, (vectors.shape[1], 1)).T*dots
+
+    # otherwise it's full blown matrix math
+    else:
+        dots = element_wise_dot(vectors, normals, axis=0)
+        return vectors - 2 * normals * dots
+
+    return
 def bundle_rays(rays):
     return np.stack(rays, axis=2)
 
