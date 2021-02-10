@@ -33,13 +33,13 @@ def reflect(vectors, normals):
     :return: an mxn array of reflected vector
     """
     # if we got 2x 1x4 arrays it's a basic case
-    if vectors.ndim==1 and normals.ndim==1:
-        return vectors - normals*2*vectors.dot(normals)
+    if vectors.ndim == 1 and normals.ndim == 1:
+        return vectors - normals * 2 * vectors.dot(normals)
 
     # if only one normal was provided reflect every vector off of it
     elif normals.ndim == 1:
         dots = np.einsum('ij,i->j', vectors, normals)
-        return vectors - 2*np.tile(normals, (vectors.shape[1], 1)).T*dots
+        return vectors - 2 * np.tile(normals, (vectors.shape[1], 1)).T * dots
 
     # otherwise it's full blown matrix math
     else:
@@ -47,6 +47,8 @@ def reflect(vectors, normals):
         return vectors - 2 * normals * dots
 
     return
+
+
 def bundle_rays(rays):
     return np.stack(rays, axis=2)
 
@@ -393,7 +395,7 @@ class SurfacePrimitive(abc.ABC):
     SurfacePrimitive classes have abstract functions to calculate ray-object intersections and normals
     """
 
-    def __init__(self,  *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
 
     @abc.abstractmethod
@@ -467,7 +469,7 @@ class Sphere(SurfacePrimitive):
 
         # collect the intersections into an array as well
         intersection_array = np.where(np.tile(np.isfinite(hit_array), (4, 1)),
-                                      (padded_rays[0] + nearest_hit*padded_rays[1]), np.zeros(rays[0].shape))
+                                      (padded_rays[0] + nearest_hit * padded_rays[1]), np.zeros(rays[0].shape))
 
         # if only one element was passed, transpose it back to the expected dimension
         if intersection_array.shape == (4, 1):
@@ -491,8 +493,47 @@ class Sphere(SurfacePrimitive):
 
         # for a sphere the normal is pretty easy, just scale the coordinate
         world_normals = padded_intersections.copy()
-        world_normals[-1] = 0 # wipe out the point coordinate aspect
+        world_normals[-1] = 0  # wipe out the point coordinate aspect
         world_normals /= np.linalg.norm(world_normals, axis=0)
 
         # if a 1d array was passed, transpose it and strip a dimension
         return world_normals if dims == 2 else world_normals.T[0]
+
+
+class Paraboloid(SurfacePrimitive):
+    """
+    A Spherical parabola with focus at point (0,0,f). The directrix plane is the YZ plane
+    """
+
+    def __init__(self, focus=1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._focus = focus
+
+    def get_focus(self):
+        return self._focus
+
+    def intersect(self, rays):
+        # this is similar to the line sphere intersection, only you start with |x-2f|^2=x_z^2 for the line intersection
+        padded_rays = np.atleast_3d(rays)
+
+        # get the origins and directions
+        origins = padded_rays[0, :-1]  # should be a 3xn array of points
+        directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
+
+        # get the components of the polynomial root equation
+        a = element_wise_dot(directions[:-1], directions[:-1], 0)
+        b = 2*(element_wise_dot(directions[:-1], origins[:-1]) - 2 * directions[-1] * self._focus)
+        origin_min_focus = origins.copy()
+        origin_min_focus[-1] -= 2 * self._focus
+        c = element_wise_dot(origin_min_focus, origin_min_focus, axis=0) - origins[-1]
+
+        # if a = 0 we have a trivial single intersection
+        if a == 0:
+            hits = -c/b
+
+        return hits
+
+
+
+    def normal(self, intersections):
+        pass

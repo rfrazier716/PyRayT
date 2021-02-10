@@ -514,5 +514,18 @@ class TestSphere(unittest.TestCase):
         normals[-1] = 1
         self.assertTrue(np.allclose(normal_coordinates, normals))
 
+
+class TestParaboloid(unittest.TestCase):
+    def setUp(self) -> None:
+        self.f = 1
+        self.surface = cg.Paraboloid(self.f)
+        self.ray = cg.Ray(cg.Point(2*self.f,0,0), cg.Vector(0, 0, 1))
+
+    def test_intersection(self):
+        hit = self.surface.intersect(self.ray)
+        print(hit)
+        # self.assertEqual(hit.shape, (1,))
+        # self.assertAlmostEqual(hit[0], 1.)
+
 if __name__ == '__main__':
     unittest.main()
