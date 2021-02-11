@@ -578,6 +578,34 @@ class TestParaboloid(unittest.TestCase):
         hit = surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1,0,0)))
         self.assertAlmostEqual(hit[0], 1, places=5)
 
+    def test_intersection_far(self):
+        # check that an error is not raised when a grossly large value is passed to the intersection
+        # TODO: decide a max distance to clip value at?
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 1000000000), cg.Vector(1.3, 0, 0)))
+        print(hit)
+
+    def test_normal(self):
+        normal = self.surface.normal(cg.Point(0, 0, 0))
+        self.assertTrue(np.allclose(normal, cg.Vector(-1, 0, 0)))
+
+        normal = self.surface.normal(cg.Point(self.f, 2*self.f, 0))
+        self.assertTrue(np.allclose(normal, cg.Vector(-1, 1, 0)/np.sqrt(2)))
+
+    def test_arrayed_normals(self):
+        n_pts = 1000
+        coords = np.zeros((4, n_pts))
+        coords[-1] = 1 # make them points
+
+        normals = self.surface.normal(coords)
+        self.assertEqual(normals.shape, (4, n_pts))
+
+        expected_normals = np.zeros((4,n_pts))
+        expected_normals[0] = -1
+        self.assertTrue(np.allclose(normals, expected_normals))
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

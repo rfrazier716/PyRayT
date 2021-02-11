@@ -579,5 +579,6 @@ class Paraboloid(SurfacePrimitive):
         # normals are pretty simple and are of the form <-1,y/2f,x/2f>
         # create the normals array
         normals = intersections.copy()
+        normals[3] = 0 # wipe out the point setting
         normals[0] = -2*self._focus
         return normals/np.linalg.norm(normals, axis=0)
