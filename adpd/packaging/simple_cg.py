@@ -546,10 +546,10 @@ class Paraboloid(SurfacePrimitive):
         hits = np.full(padded_rays.shape[-1], np.inf)
 
         # get the components of the polynomial root equation
-        a = element_wise_dot(directions[:-1], directions[:-1], 0)
-        b = 2*(element_wise_dot(directions[:-1], origins[:-1]) - 2 * directions[-1] * self._focus)
+        a = element_wise_dot(directions[1:], directions[1:], 0)
+        b = 2*(element_wise_dot(directions[1:], origins[1:]) - 2 * directions[0] * self._focus)
 
-        c = element_wise_dot(origins[:-1], origins[:-1], axis=0) - origins[-1]*4*self._focus
+        c = element_wise_dot(origins[1:], origins[1:], axis=0) - origins[0]*4*self._focus
 
         disc = b**2 - 4*a*c # calculate the discriminant for the polynomial roots equation
 
