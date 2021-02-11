@@ -147,3 +147,7 @@ cython_debug/
 notebooks/
 builds/
 *.orig
+
+# Documents created by coverage
+.coverage
+htmlcov
