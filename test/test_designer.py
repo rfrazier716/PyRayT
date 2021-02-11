@@ -43,9 +43,6 @@ class TestOpticalSystem(unittest.TestCase):
         self.system["detectors"].append(TestSurface())
         string_stream = io.StringIO()
         self.system.to_optica(string_stream)
-        print(string_stream.getvalue())
-
-
 
 if __name__ == '__main__':
     unittest.main()
