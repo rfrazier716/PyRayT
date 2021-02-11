@@ -294,8 +294,6 @@ class TestObjectGroup(unittest.TestCase):
 
         self.assertTrue(hasattr(self.group, '__iter__'))
 
-        print(self.group)
-
     def testing_operations_on_group(self):
         # objects can be moved outside of the group
         self.obj1.move(1, 0, 0)
@@ -381,7 +379,7 @@ class TestReflections(unittest.TestCase):
         vect_in[0] = 1
         vect_in[1] = -1
 
-        normals = np.tile(cg.Vector(0, 1, 0),(n_vects,1)).T
+        normals = np.tile(cg.Vector(0, 1, 0), (n_vects, 1)).T
         reflection = cg.reflect(vect_in, normals)
         self.assertTrue(np.allclose(reflection, np.tile(cg.Vector(1, 1, 0), (n_vects, 1)).T),
                         f"expected (1,1,0), got {reflection}")
@@ -469,31 +467,29 @@ class TestSphere(unittest.TestCase):
         self.assertEqual(cg.Sphere(3).get_radius(), 3)
 
     def test_ray_intersection_unit_sphere(self):
-        hit, coord = self.sphere.intersect(self.ray)
+        hit = self.sphere.intersect(self.ray)
         self.assertEqual(hit.shape, (1,))
         self.assertAlmostEqual(hit[0], 1.)
-
-        self.assertEqual(coord.shape, (4,))
-        self.assertTrue(np.allclose(coord, cg.Point(1,0,0)), f"Expected (1,0,0), got {coord}")
 
         # if the ray is moved out of the radius of the sphere we get inf as the hit
         new_ray = cg.Ray()
         new_ray.origin = cg.Point(3, 0, 0)
         self.assertEqual(self.sphere.intersect(new_ray)[0], np.inf)
 
+    def test_intersection_skew_case(self):
+        hit = self.sphere.intersect(cg.Ray(cg.Point(0,0,2*self.sphere.get_radius()),cg.Vector(0,0,1)))
+        self.assertAlmostEqual(hit[0], np.inf)
+
     def test_arrayed_intersections(self):
         # make a bunch of rays projected down the x-axis
-        n_rays =1000
+        n_rays = 1000
         rays = np.zeros((2, 4, n_rays))
         rays[0, -1] = 1
         rays[1, 0] = 1
-        hit, coord = self.sphere.intersect(rays)
+        hit = self.sphere.intersect(rays)
 
         self.assertEqual(hit.shape, (n_rays,))
         self.assertTrue(np.all(np.isclose(hit, 1.)))
-
-        self.assertEqual(coord.shape, (4, n_rays))
-        self.assertTrue(np.allclose(coord, np.tile(cg.Point(1, 0, 0),(n_rays, 1)).T))
 
     def test_normals_base_sphere(self):
         # for a nontransformed sphere the normals should be vectors of the coordinates
@@ -505,7 +501,7 @@ class TestSphere(unittest.TestCase):
 
     def test_arrayed_normals(self):
         # made a bunch of random points on the unit sphere
-        normal_coordinates = 2*(np.random.random_sample((4,1000))-0.5)
+        normal_coordinates = 2 * (np.random.random_sample((4, 1000)) - 0.5)
         normal_coordinates[-1] = 1
         normal_coordinates[:-1] /= np.linalg.norm(normal_coordinates[:-1], axis=0)
 
@@ -517,15 +513,58 @@ class TestSphere(unittest.TestCase):
 
 class TestParaboloid(unittest.TestCase):
     def setUp(self) -> None:
-        self.f = 1
+        self.f = 5
         self.surface = cg.Paraboloid(self.f)
-        self.ray = cg.Ray(cg.Point(2*self.f,0,0), cg.Vector(0, 0, 1))
 
-    def test_intersection(self):
-        hit = self.surface.intersect(self.ray)
-        print(hit)
-        # self.assertEqual(hit.shape, (1,))
-        # self.assertAlmostEqual(hit[0], 1.)
+    def test_intersection_linear_case(self):
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, -1), cg.Vector(0, 0, 1)))
+        self.assertEqual(hit.shape, (1,))
+        self.assertAlmostEqual(hit[0], 1)
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(-2 * self.f, 0, 0), cg.Vector(0, 0, 1)))
+        self.assertAlmostEqual(hit[0], self.f)
+
+    def test_intersection_trivial_case(self):
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0)))
+        self.assertAlmostEqual(hit[0], 0)
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 0, 1)))
+        self.assertAlmostEqual(hit[0], 0)
+
+    def test_intersection_dbl_root_case(self):
+        hit = self.surface.intersect(cg.Ray(cg.Point(-2 * self.f, 0, self.f)))
+        self.assertAlmostEqual(hit[0], 0)
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, self.f), cg.Vector(1, 0, 0)))
+        self.assertAlmostEqual(hit[0], self.f * 2)
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, self.f), cg.Vector(0, 1, 0)))
+        self.assertAlmostEqual(hit[0], self.f * 2)
+
+    def test_intersection_skew_case(self):
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, -1), cg.Vector(1, 0, 0)))
+        self.assertEqual(hit[0], np.inf)
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, -1), cg.Vector(1, 1, 0)))
+        self.assertEqual(hit[0], np.inf)
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, -1), cg.Vector(1, 1, -1)))
+        self.assertEqual(hit[0], np.inf)
+
+    def test_intersection_arrayed_case(self):
+        # make a bunch of rays to intersect, move some s.t. they intersect teh surface at a different point
+        n_rays = 1000
+        split_index = int(n_rays / 2)
+        rays = cg.bundle_of_rays(n_rays)
+        rays[0, 2, :split_index] = self.f  # move the ray's up to originate at the focus
+        rays[1, 1, :split_index] = 1  # have the rays move towards the positive y_axis
+
+        hits = self.surface.intersect(rays)
+
+        self.assertEqual(hits.shape[0], n_rays)
+        self.assertTrue(np.allclose(hits[:split_index], 2 * self.f))
+        self.assertTrue(np.allclose(hits[split_index:], 0))
+
 
 if __name__ == '__main__':
     unittest.main()

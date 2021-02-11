@@ -5,6 +5,24 @@ import scipy.spatial.transform as transform
 import collections
 import abc
 
+def smallest_positive_root(a,b,c):
+    """
+    finds the 2nd order polynomial roots given the equations a*x^2 + b*x + c = 0, returns the smallest root > 0, and
+    np.inf if a root does not satisfy that condition. Note that if a has a value of zero, it will be cast as 1 to avoid
+    a divide by zero error. it's up the user to filter out these results before/after execution (using np.where etc.).
+
+    :param a: coefficients for the second order of the polynomial
+    :param b: coefficients for the first order of the polynomial
+    :param c: coefficients for the zeroth order of the polynomial
+    :return: an array of length n with the smallest positive root for the array
+    """
+    disc = b ** 2 - 4 * a * c  # find the discriminant
+    root = np.sqrt(np.maximum(0, disc)) # the square root of the discriminant protected from being nan
+    polyroots = np.array(((-b + root), (-b - root))) / (2 * a+np.isclose(a,0))  # the positive element of the polynomial root
+
+    # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
+    nearest_hit = np.where(polyroots[1] >= 0, np.amin(polyroots, axis=0), polyroots[0])
+    return np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
 
 def element_wise_dot(mat_1, mat_2, axis=0):
     """
@@ -49,6 +67,17 @@ def reflect(vectors, normals):
     return
 
 
+def bundle_of_rays(n_rays):
+    """
+    returns a 2x4xn_rays array of ray objects where rays[0] are 4xn_ray homogoneous points(0,0,0), and rays[1] are
+    4xn_ray homogeneous vectors(0,0,0)
+
+    :param n_rays:
+    :return:
+    """
+    rays = np.zeros((2,4,n_rays))
+    rays[0,-1] = 1
+    return rays
 def bundle_rays(rays):
     return np.stack(rays, axis=2)
 
@@ -467,14 +496,7 @@ class Sphere(SurfacePrimitive):
         nearest_hit = np.where(hits[1] >= 0, np.amin(hits, axis=0), hits[0])
         hit_array = np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
 
-        # collect the intersections into an array as well
-        intersection_array = np.where(np.tile(np.isfinite(hit_array), (4, 1)),
-                                      (padded_rays[0] + nearest_hit * padded_rays[1]), np.zeros(rays[0].shape))
-
-        # if only one element was passed, transpose it back to the expected dimension
-        if intersection_array.shape == (4, 1):
-            intersection_array = intersection_array.T[0]
-        return hit_array, intersection_array
+        return hit_array
 
     def normal(self, intersections):
         # calculates the normal of a transformed sphere at a point XYZ
@@ -520,19 +542,37 @@ class Paraboloid(SurfacePrimitive):
         origins = padded_rays[0, :-1]  # should be a 3xn array of points
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
+        # prebuild the hits array with np.inf, which is the default if a hit does not exist
+        hits = np.full(padded_rays.shape[-1], np.inf)
+
         # get the components of the polynomial root equation
         a = element_wise_dot(directions[:-1], directions[:-1], 0)
         b = 2*(element_wise_dot(directions[:-1], origins[:-1]) - 2 * directions[-1] * self._focus)
-        origin_min_focus = origins.copy()
-        origin_min_focus[-1] -= 2 * self._focus
-        c = element_wise_dot(origin_min_focus, origin_min_focus, axis=0) - origins[-1]
 
-        # if a = 0 we have a trivial single intersection
-        if a == 0:
-            hits = -c/b
+        c = element_wise_dot(origins[:-1], origins[:-1], axis=0) - origins[-1]*4*self._focus
 
+        disc = b**2 - 4*a*c # calculate the discriminant for the polynomial roots equation
+
+        # trivial cases are where c=0
+        # these points are at the origin and intersect with the sphere at t=0
+        trivial_cases = np.isclose(c, 0)
+
+        # linear cases are where a=0, this cannot be solved by the polyroots equation since the denominator blows up
+        # trivial cases get excluded from the linear case set
+        linear_cases = np.logical_and(np.isclose(a, 0), np.logical_not(trivial_cases))
+
+        # all other cases must have double roots
+        dbl_root_cases = np.logical_not(np.logical_or(trivial_cases, linear_cases))
+
+        # update the hits array based on the cases
+        hits = np.where(trivial_cases, 0, hits)
+        # so trivial_cases is in the denominator so there's not a divide by zero error if b==0, hacky but works
+        hits = np.where(linear_cases, -c/(b+(b==0)), hits)
+
+        hits = np.where(dbl_root_cases, smallest_positive_root(a, b, c), hits)
+
+        # retun the hits array
         return hits
-
 
 
     def normal(self, intersections):
