@@ -386,70 +386,108 @@ class TestReflections(unittest.TestCase):
                         f"expected (1,1,0), got {reflection}")
 
 
-class OtherSphereTests(object):
-    # these tests don't work on a sphere primitive since it has no sense of position
+class TestRefraction(unittest.TestCase):
+    def setUp(self) -> None:
+        self.vector = cg.Vector(1, 1, 0).normalize()
+        self.normal = cg.Vector(-1, 0, 0).normalize()
 
-    def test_intersection_scaled_sphere(self):
-        # if the sphere is scaled, the intersection should grow with the scaling
-        scale_factor = 10
-        self.sphere.scale_all(scale_factor)
-        hit = self.sphere.intersect(self.ray)
-        self.assertAlmostEqual(hit[0], scale_factor)
+    def test_refraction_into_higher(self):
+        n1 = 1
+        n2 = 1.5
+        refracted, index = cg.refract(self.vector, self.normal, n1, n2)
 
-    def test_intersection_translated_sphere(self):
-        movement = 10
-        self.sphere.move_x(movement)
-        hit = self.sphere.intersect(self.ray)
-        self.assertAlmostEqual(hit[0], movement - self.sphere.get_radius())
+        # the ray should have refracted into the higher index
+        self.assertEqual(index, n2)
 
-    def test_intersection_sphere_behind_ray(self):
-        self.sphere.move_x(-100)
-        self.assertEqual(self.sphere.intersect(self.ray)[0], np.inf)
+        # the refracted vector should be closer to the normal and defined by snells law
+        theta_2 = np.arcsin(n1*np.sqrt(2)/(2*n2))
+        expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
+        self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
-    def test_multi_ray_intersection(self):
-        rays = cg.bundle_rays([cg.Ray() for _ in range(100)])
-        all_hits = self.sphere.intersect(rays)
-        self.assertTrue(np.allclose(all_hits[:], 1.))
+    def test_refraction_into_lower(self):
+        n1 = 1.1
+        n2 = 1.0
+        refracted, index = cg.refract(self.vector, self.normal, n1, n2)
 
-    def test_normals_scaled_sphere(self):
-        # scaling a sphere should have no effect on the normals
-        scaling = 5
-        self.sphere.scale_all(scaling)
-        scaled_intersection_points = ((0, 0, -5), (0, 0, 5), (0, 5, 0), (0, -5, 0), (5, 0, 0), (-5, 0, 0))
-        self.intersections = [cg.Point(*intersection) for intersection in scaled_intersection_points]
-        # for a nontransformed sphere the normals should be vectors of the coordinates
-        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
-        for normal, intersection in zip(normals, self.intersection_points):
-            expected = cg.Vector(*intersection)
-            self.assertTrue(np.allclose(normal, expected))
-            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+        # the ray should have refracted into the higher index
+        self.assertEqual(index, n2)
 
-        # assert that the operation did not overwrite the world transform matrix
-        self.assertTrue(np.allclose(self.sphere.get_world_transform()[:-1, :-1], np.identity(3) * scaling))
+        # the refracted vector should be closer to the normal and defined by snells law
+        theta_2 = np.arcsin(n1*np.sqrt(2)/(2*n2))
+        expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
+        self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
-    def test_normals_rotated_sphere(self):
-        # rotation should give the same normals
-        z_rotation = 45
-        self.sphere.rotate_z(45)
+    def test_refraction_into_world(self):
+        n1 = 1.5
+        n2 = 1.5
+        n_world = 1.4
 
-        normals = [self.sphere.normal(intersection) for intersection in self.intersections]
-        for normal, intersection in zip(normals, self.intersection_points):
-            expected = cg.Vector(*intersection)
-            self.assertTrue(np.allclose(normal, expected), f"Expected {normal}, got {expected}")
-            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+        refracted, index = cg.refract(self.vector, -self.normal, n1, n2, n_world)
 
-        # assert that the operation did not overwrite the world transform matrix
+        # the ray should have refracted into the world index
+        self.assertEqual(index, n_world)
 
-    def test_normals_translated_sphere(self):
-        translation = 10
-        self.sphere.move_x(translation)
-        translated_intersections = [intersection + np.array([translation, 0, 0, 0]) for intersection in
-                                    self.intersections]
-        normals = [self.sphere.normal(intersection) for intersection in translated_intersections]
-        for normal, intersection in zip(normals, self.intersection_points):
-            expected = cg.Vector(*intersection)
-            self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
-            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+        # the refracted vector should be closer to the normal and defined by snells law
+        theta_2 = np.arcsin(n1*np.sqrt(2)/(2*n_world))
+        expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
+        self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
+
+    def test_total_internal_reflection(self):
+        # testing case where ray exits surface but is TIR'd back into surface
+        n1 = 1.5
+        n2 = 1.5
+        n_world = 1.0
+
+        refracted, index = cg.refract(self.vector, -self.normal, n1, n2, n_world)
+        # the ray should have refracted into the world index
+        self.assertEqual(index, n1)
+
+        expected_vector = cg.Vector(-1, 1).normalize()
+        self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
+
+        # testing case where ray exits surface but is TIR'd back into surface
+        n1 = 1.5
+        n2 = 1.0
+
+        refracted, index = cg.refract(self.vector, self.normal, n1, n2, n_world)
+        # the ray should have refracted into the world index
+        self.assertEqual(index, n1)
+
+        expected_vector = cg.Vector(-1, 1).normalize()
+        self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
+
+    def test_arrayed_refraction(self):
+        n_elements = 1000
+        split = int(n_elements/2)
+        n1_element = 1.5
+        n2_element = 1.6
+        n1 = np.full(n_elements, n1_element)
+        n2 = np.full(n_elements, n2_element)
+        n2[:split] = 1.0
+
+        # make vectors traveling <1,1>
+        vectors = np.zeros((4,n_elements))
+        vectors[:2, :] = 1/np.sqrt(2)
+
+        normals = np.zeros((4,n_elements))
+        normals[0] = -1
+
+        refracted, index = cg.refract(vectors, normals, n1, n2)
+        self.assertTrue(np.allclose(index[:split], n1_element)) # first bundle reflect
+        self.assertTrue(np.allclose(index[split:], n2_element)) # second bundle refract
+
+        expected_refracted = np.zeros((4,split))
+        expected_refracted[0] = -1
+        expected_refracted[1] = 1
+        expected_refracted/=np.sqrt(2)
+        self.assertTrue(np.allclose(refracted[:,:split], expected_refracted))
+
+        expected_refracted = np.zeros((4,split))
+        theta_2 = np.arcsin(n1_element*np.sqrt(2)/(2*n2_element))
+
+        expected_refracted[0] = np.cos(theta_2)
+        expected_refracted[1] = np.sin(theta_2)
+        self.assertTrue(np.allclose(refracted[:, split:], expected_refracted))
 
 
 class TestSphere(unittest.TestCase):
@@ -477,8 +515,16 @@ class TestSphere(unittest.TestCase):
         new_ray.origin = cg.Point(3, 0, 0)
         self.assertEqual(self.sphere.intersect(new_ray)[0], np.inf)
 
+    def test_intersection_sphere_behind_ray(self):
+        self.assertEqual(self.sphere.intersect(cg.Ray(cg.Point(100, 0, 0), cg.Vector(1, 0, 0)))[0], np.inf)
+
+    def test_multi_ray_intersection(self):
+        rays = cg.bundle_rays([cg.Ray() for _ in range(100)])
+        all_hits = self.sphere.intersect(rays)
+        self.assertTrue(np.allclose(all_hits[:], self.sphere.get_radius()))
+
     def test_intersection_skew_case(self):
-        hit = self.sphere.intersect(cg.Ray(cg.Point(0,0,2*self.sphere.get_radius()),cg.Vector(0,0,1)))
+        hit = self.sphere.intersect(cg.Ray(cg.Point(0, 0, 2 * self.sphere.get_radius()), cg.Vector(0, 0, 1)))
         self.assertAlmostEqual(hit[0], np.inf)
 
     def test_arrayed_intersections(self):
@@ -529,7 +575,7 @@ class TestParaboloid(unittest.TestCase):
         hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0)))
         self.assertAlmostEqual(hit[0], 0)
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 1, 1)/np.sqrt(2)))
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 1, 1) / np.sqrt(2)))
         self.assertAlmostEqual(hit[0], 0)
 
     def test_intersection_dbl_root_case(self):
@@ -570,12 +616,12 @@ class TestParaboloid(unittest.TestCase):
         #  if the focus is negative the intersections should be in the -x region
         surface = cg.Paraboloid(-self.f)
         hit = surface.intersect(cg.Ray(cg.Point(-self.f, 0, 0), cg.Vector(0, 1, 0)))
-        self.assertAlmostEqual(hit[0], 2*self.f, places=5)
+        self.assertAlmostEqual(hit[0], 2 * self.f, places=5)
 
-        hit = surface.intersect(cg.Ray(cg.Point(-self.f, 0, 0), cg.Vector(0, 1, 1)/np.sqrt(2)))
-        self.assertAlmostEqual(hit[0], 2*self.f, places=5)
+        hit = surface.intersect(cg.Ray(cg.Point(-self.f, 0, 0), cg.Vector(0, 1, 1) / np.sqrt(2)))
+        self.assertAlmostEqual(hit[0], 2 * self.f, places=5)
 
-        hit = surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1,0,0)))
+        hit = surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0)))
         self.assertAlmostEqual(hit[0], 1, places=5)
 
     def test_intersection_far(self):
@@ -588,23 +634,20 @@ class TestParaboloid(unittest.TestCase):
         normal = self.surface.normal(cg.Point(0, 0, 0))
         self.assertTrue(np.allclose(normal, cg.Vector(-1, 0, 0)))
 
-        normal = self.surface.normal(cg.Point(self.f, 2*self.f, 0))
-        self.assertTrue(np.allclose(normal, cg.Vector(-1, 1, 0)/np.sqrt(2)))
+        normal = self.surface.normal(cg.Point(self.f, 2 * self.f, 0))
+        self.assertTrue(np.allclose(normal, cg.Vector(-1, 1, 0) / np.sqrt(2)))
 
     def test_arrayed_normals(self):
         n_pts = 1000
         coords = np.zeros((4, n_pts))
-        coords[-1] = 1 # make them points
+        coords[-1] = 1  # make them points
 
         normals = self.surface.normal(coords)
         self.assertEqual(normals.shape, (4, n_pts))
 
-        expected_normals = np.zeros((4,n_pts))
+        expected_normals = np.zeros((4, n_pts))
         expected_normals[0] = -1
         self.assertTrue(np.allclose(normals, expected_normals))
-
-
-
 
 
 if __name__ == '__main__':

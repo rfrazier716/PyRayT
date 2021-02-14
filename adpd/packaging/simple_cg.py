@@ -24,6 +24,7 @@ def smallest_positive_root(a,b,c):
     nearest_hit = np.where(polyroots[1] >= 0, np.amin(polyroots, axis=0), polyroots[0])
     return np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
 
+
 def element_wise_dot(mat_1, mat_2, axis=0):
     """
     calculates the row-wise/column-wise dot product two nxm matrices
@@ -67,6 +68,44 @@ def reflect(vectors, normals):
     return
 
 
+def refract(vectors, normals, n1, n2, n_global=1):
+    """
+    calculates the refracted vector at an interface with index mismatch of n1 and n2. If the angle between the normal
+        and the vector is  <90 degrees, the vector is exiting the medium, and the global refractive index value is used
+        instead. this is analygous to a ray exiting a glass interface and entering air
+
+    :param vectors: the ray transmission vectors in the current medium
+    :param normals: the normals to the surface at the point of intersection with the ray
+    :param n1: refractive index of the medium the ray is currently transmitting through
+    :param n2: refractive index of the medium the ray is entering
+    :param n_global: the world refractive index to use if the ray is exiting the medium
+
+    :return: a 4xn array of homogeneous vectors representing the new transmission direction of the vectors after the
+        medium
+    """
+    cos_theta1_p = element_wise_dot(vectors, normals, axis=0)  # the angle dotted with the normals
+    cos_theta1_n = element_wise_dot(vectors, -normals, axis=0) # the vector dotted with the negative normals
+
+    # anywhere that cos_theta1_p>0, we're exiting the medium and the n2 value should be updated with the global index
+    n2_local = np.where(cos_theta1_p > 0, n_global, n2)
+    normals = np.where(cos_theta1_p > 0, -normals, normals) # update normals so they always are along ray direction
+    r = n1/n2_local # the ratio of refractive indices
+
+    # we want to keep the positive values only, which is the angle between the norm and the vector
+    cos_theta1 = np.where(cos_theta1_p > 0, cos_theta1_p, cos_theta1_n)
+
+    # see https://en.wikipedia.org/wiki/Snell%27s_law#Vector_form for more details on using this
+    radicand = 1-(r**2)*(1-cos_theta1**2) # radicand of the square root function
+    cos_theta2 = np.sqrt(np.maximum(0, radicand)) # pipe in a zero there so that we don't take the sqrt of a negative number
+
+    # return the refracted or reflected ray depending on the radicand
+    refracted = np.where(radicand > 0, r*vectors+(r*cos_theta1 - cos_theta2)*normals, vectors + 2*cos_theta1*normals)
+    refracted /= np.linalg.norm(refracted, axis=0)  # normalize the vectors
+
+    n_refracted = np.where(radicand > 0, n2_local, n1) # the refracted index is the original material if TIR
+    return refracted, n_refracted
+
+
 def bundle_of_rays(n_rays):
     """
     returns a 2x4xn_rays array of ray objects where rays[0] are 4xn_ray homogoneous points(0,0,0), and rays[1] are
@@ -78,6 +117,8 @@ def bundle_of_rays(n_rays):
     rays = np.zeros((2,4,n_rays))
     rays[0,-1] = 1
     return rays
+
+
 def bundle_rays(rays):
     return np.stack(rays, axis=2)
 
@@ -136,6 +177,10 @@ class HomogeneousCoordinate(np.ndarray):
         self[1] = y
         self[2] = z
         self[3] = w
+
+    def normalize(self):
+        self[:2] /= np.linalg.norm(self[:2])
+        return self
 
     @property
     def x(self):
