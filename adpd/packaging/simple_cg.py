@@ -34,6 +34,9 @@ def element_wise_dot(mat_1, mat_2, axis=0):
     :param axis: axis to perform the dot product along, 0 or 1
     :return: a 1D array of length m for axis 0 and n for axis 1
     """
+    # if a regular array was passed just do the dot product
+    if mat_1.ndim == 1:
+        return mat_1.dot(mat_2)
 
     einsum_string = "ij,ij->j"
     if axis == 1:
