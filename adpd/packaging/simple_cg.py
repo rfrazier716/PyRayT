@@ -366,6 +366,12 @@ class WorldObject(CountedObject):
         """
         return copy.copy(self._get_object_transform())
 
+    def to_object_coordinates(self, coordinates):
+        return np.matmul(self._get_object_transform(), coordinates)
+
+    def to_world_coordinates(self, coordinates):
+        return np.matmul(self._world_coordinate_transform, coordinates)
+
     # Movement operations
     def move(self, x=0, y=0, z=0):
         tx = self._transfer_matrix()
