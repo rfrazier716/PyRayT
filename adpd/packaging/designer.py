@@ -15,7 +15,7 @@ def _multi_string_replace(string, replacements: dict):
     return pattern.sub(lambda match: replacements[match.group(0)], string)
 
 
-class OpticalSystem(collections.UserDict):
+class AnalyticSystem(collections.UserDict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
 
@@ -24,26 +24,29 @@ class OpticalSystem(collections.UserDict):
         self.data["components"] = cg.ObjectGroup()
         self.data["detectors"] = cg.ObjectGroup()
 
-    def to_optica(self, output_stream):
-        # iterate over the data fields
-        # for each
-        group_writeout = ''
-        for key, value in self.data.items():
-            items_in_group = self._to_optica_helper(output_stream, value, [])
-            replacement_map = {'\'': '', '[': '{', ']': '}'}
-            group_set = _multi_string_replace(str(items_in_group), replacement_map)
-            group_writeout+=key+' = '+group_set+';\n'
+        self._flattened_system = list() # a placeholder for the flattened optical system
 
-        output_stream.write(group_writeout)
+    def flatten(self):
+        # reset the flattened_system
+        self._flattened_system = []
+        self._flatten_helper(self.data.values(), self._flattened_system)
+        return self._flattened_system
 
     @staticmethod
-    def _to_optica_helper(file_stream, iterable, nested_list):
+    def _flatten_helper(iterable, flattened_list):
+        """
+        a helper method to walk through a nested list and return the flattened list in order
+
+        :param iterable:
+        :param flattened_list:
+        :return:
+        """
         for item in iterable:
             # if the item is itself iterable, recursively enter the function
             if not isinstance(item, str) and hasattr(item, '__iter__'):
-                nested_list.append(OpticalSystem._to_optica_helper(file_stream, item, []))
+                AnalyticSystem._flatten_helper(item, flattened_list)
             else:
-                file_stream.write(f"(*--{item.get_name()}--*)\n")
-                file_stream.write(item.create_optica_function() + '\n\n')
-                nested_list.append(item.get_name())
-        return nested_list
+                flattened_list.append(item)
+
+
+
