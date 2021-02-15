@@ -665,3 +665,4 @@ class Plane(SurfacePrimitive):
         # a plane has a trivial normal, it's the -x axis
         normals = np.zeros(intersections.shape)
         normals[0] = -1
+        return normals
