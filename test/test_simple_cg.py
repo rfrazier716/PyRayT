@@ -650,5 +650,45 @@ class TestParaboloid(unittest.TestCase):
         self.assertTrue(np.allclose(normals, expected_normals))
 
 
+class TestPlane(unittest.TestCase):
+    def setUp(self):
+        self.surface = cg.Plane()
+
+    def test_positive_intersection(self):
+        ray = cg.Ray(cg.Point(-1,0,0), cg.Vector(1,0,0))
+        hit = self.surface.intersect(ray)[0]
+        self.assertAlmostEqual(hit, 1)
+
+        ray = cg.Ray(cg.Point(-1,0,0), cg.Vector(1,1,0).normalize())
+        hit = self.surface.intersect(ray)[0]
+        self.assertAlmostEqual(hit, np.sqrt(2))
+
+    def test_negative_intersection(self):
+        ray = cg.Ray(cg.Point(1,0,0), cg.Vector(1, 0, 0))
+        hit = self.surface.intersect(ray)[0]
+        self.assertAlmostEqual(hit, np.inf)
+
+    def test_parallel_intersection(self):
+        ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(0,1,1).normalize())
+        hit = self.surface.intersect(ray)[0]
+        self.assertAlmostEqual(hit, np.inf)
+
+    def test_arrayed_intersection(self):
+        n_rays = 1000
+        split = int(n_rays/2)
+
+        rays = cg.bundle_of_rays(1000)
+        rays[0,0] = -1
+        rays[1,0,:split] = 1
+        rays[1,1] = 1
+
+        hit = self.surface.intersect(rays)
+        self.assertEqual(hit.shape[0], n_rays)
+        self.assertTrue(np.allclose(hit[:split],1))
+        self.assertTrue(np.allclose(hit[split:],np.inf))
+
+
+
+
 if __name__ == '__main__':
     unittest.main()

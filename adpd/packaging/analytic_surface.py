@@ -34,7 +34,7 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         """
 
         # translate rays to object space
-        return self._material.shade(self, rays, shader_args)
+        return self._material.shade(self, rays, *shader_args)
 
     def get_world_normals(self, positions):
         """
@@ -45,8 +45,10 @@ class TracerSurface(cg.WorldObject, abc.ABC):
             position
         """
         local_ray_set = self.to_object_coordinates(positions)
-        local_normals = self._surface_primitive.normals(local_ray_set)
+        local_normals = self._surface_primitive.normal(local_ray_set)
         world_normals = np.matmul(self._get_object_transform().T, local_normals)
+        world_normals[-1] = 0  # wipe out any w fields caused by the transpose of the transform
+        world_normals /= np.linalg.norm(world_normals, axis=0)
         return world_normals
 
 
@@ -54,7 +56,15 @@ class Sphere(TracerSurface):
     surface = cg.Sphere
 
     def __init__(self, radius, material=None, *args, **kwargs):
-        super().__init__(surface_args=(radius,), material=material)
+        super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
+
+
+class YZPlane(TracerSurface):
+    surface = cg.Plane
+
+    def __init__(self, material=None, *args, **kwargs):
+        super().__init__(surface_args=(), material=material, *args, **kwargs)
+
 
 
 

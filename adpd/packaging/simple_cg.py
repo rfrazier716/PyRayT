@@ -5,7 +5,8 @@ import scipy.spatial.transform as transform
 import collections
 import abc
 
-def smallest_positive_root(a,b,c):
+
+def smallest_positive_root(a, b, c):
     """
     finds the 2nd order polynomial roots given the equations a*x^2 + b*x + c = 0, returns the smallest root > 0, and
     np.inf if a root does not satisfy that condition. Note that if a has a value of zero, it will be cast as 1 to avoid
@@ -17,8 +18,9 @@ def smallest_positive_root(a,b,c):
     :return: an array of length n with the smallest positive root for the array
     """
     disc = b ** 2 - 4 * a * c  # find the discriminant
-    root = np.sqrt(np.maximum(0, disc)) # the square root of the discriminant protected from being nan
-    polyroots = np.array(((-b + root), (-b - root))) / (2 * a+np.isclose(a,0))  # the positive element of the polynomial root
+    root = np.sqrt(np.maximum(0, disc))  # the square root of the discriminant protected from being nan
+    polyroots = np.array(((-b + root), (-b - root))) / (
+                2 * a + np.isclose(a, 0))  # the positive element of the polynomial root
 
     # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
     nearest_hit = np.where(polyroots[1] >= 0, np.amin(polyroots, axis=0), polyroots[0])
@@ -87,25 +89,27 @@ def refract(vectors, normals, n1, n2, n_global=1):
         medium
     """
     cos_theta1_p = element_wise_dot(vectors, normals, axis=0)  # the angle dotted with the normals
-    cos_theta1_n = element_wise_dot(vectors, -normals, axis=0) # the vector dotted with the negative normals
+    cos_theta1_n = element_wise_dot(vectors, -normals, axis=0)  # the vector dotted with the negative normals
 
     # anywhere that cos_theta1_p>0, we're exiting the medium and the n2 value should be updated with the global index
     n2_local = np.where(cos_theta1_p > 0, n_global, n2)
-    normals = np.where(cos_theta1_p > 0, -normals, normals) # update normals so they always are along ray direction
-    r = n1/n2_local # the ratio of refractive indices
+    normals = np.where(cos_theta1_p > 0, -normals, normals)  # update normals so they always are along ray direction
+    r = n1 / n2_local  # the ratio of refractive indices
 
     # we want to keep the positive values only, which is the angle between the norm and the vector
     cos_theta1 = np.where(cos_theta1_p > 0, cos_theta1_p, cos_theta1_n)
 
     # see https://en.wikipedia.org/wiki/Snell%27s_law#Vector_form for more details on using this
-    radicand = 1-(r**2)*(1-cos_theta1**2) # radicand of the square root function
-    cos_theta2 = np.sqrt(np.maximum(0, radicand)) # pipe in a zero there so that we don't take the sqrt of a negative number
+    radicand = 1 - (r ** 2) * (1 - cos_theta1 ** 2)  # radicand of the square root function
+    cos_theta2 = np.sqrt(
+        np.maximum(0, radicand))  # pipe in a zero there so that we don't take the sqrt of a negative number
 
     # return the refracted or reflected ray depending on the radicand
-    refracted = np.where(radicand > 0, r*vectors+(r*cos_theta1 - cos_theta2)*normals, vectors + 2*cos_theta1*normals)
+    refracted = np.where(radicand > 0, r * vectors + (r * cos_theta1 - cos_theta2) * normals,
+                         vectors + 2 * cos_theta1 * normals)
     refracted /= np.linalg.norm(refracted, axis=0)  # normalize the vectors
 
-    n_refracted = np.where(radicand > 0, n2_local, n1) # the refracted index is the original material if TIR
+    n_refracted = np.where(radicand > 0, n2_local, n1)  # the refracted index is the original material if TIR
     return refracted, n_refracted
 
 
@@ -117,8 +121,8 @@ def bundle_of_rays(n_rays):
     :param n_rays:
     :return:
     """
-    rays = np.zeros((2,4,n_rays))
-    rays[0,-1] = 1
+    rays = np.zeros((2, 4, n_rays))
+    rays[0, -1] = 1
     return rays
 
 
@@ -601,11 +605,11 @@ class Paraboloid(SurfacePrimitive):
 
         # get the components of the polynomial root equation
         a = element_wise_dot(directions[1:], directions[1:], 0)
-        b = 2*(element_wise_dot(directions[1:], origins[1:]) - 2 * directions[0] * self._focus)
+        b = 2 * (element_wise_dot(directions[1:], origins[1:]) - 2 * directions[0] * self._focus)
 
-        c = element_wise_dot(origins[1:], origins[1:], axis=0) - origins[0]*4*self._focus
+        c = element_wise_dot(origins[1:], origins[1:], axis=0) - origins[0] * 4 * self._focus
 
-        disc = b**2 - 4*a*c # calculate the discriminant for the polynomial roots equation
+        disc = b ** 2 - 4 * a * c  # calculate the discriminant for the polynomial roots equation
 
         # trivial cases are where c=0
         # these points are at the origin and intersect with the sphere at t=0
@@ -621,18 +625,43 @@ class Paraboloid(SurfacePrimitive):
         # update the hits array based on the cases
         hits = np.where(trivial_cases, 0, hits)
         # so trivial_cases is in the denominator so there's not a divide by zero error if b==0, hacky but works
-        hits = np.where(linear_cases, -c/(b+(b==0)), hits)
+        hits = np.where(linear_cases, -c / (b + (b == 0)), hits)
 
         hits = np.where(dbl_root_cases, smallest_positive_root(a, b, c), hits)
 
         # retun the hits array
         return hits
 
-
     def normal(self, intersections):
         # normals are pretty simple and are of the form <-1,y/2f,x/2f>
         # create the normals array
         normals = intersections.copy()
-        normals[3] = 0 # wipe out the point setting
-        normals[0] = -2*self._focus
-        return normals/np.linalg.norm(normals, axis=0)
+        normals[3] = 0  # wipe out the point setting
+        normals[0] = -2 * self._focus
+        return normals / np.linalg.norm(normals, axis=0)
+
+
+class Plane(SurfacePrimitive):
+    """
+    A YZ-Plane defined at x=0
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def intersect(self, rays):
+        padded_rays = np.atleast_3d(rays)
+
+        # get the origins and directions
+        origins = padded_rays[0, :-1]  # should be a 3xn array of points
+        directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
+
+        hits = np.where(directions[0] != 0, -origins[0] / (directions[0] + (directions[0]==0)), np.inf)
+        positive_hits = np.where(hits >= 0, hits, np.inf)
+
+        return positive_hits
+
+    def normal(self, intersections):
+        # a plane has a trivial normal, it's the -x axis
+        normals = np.zeros(intersections.shape)
+        normals[0] = -1
