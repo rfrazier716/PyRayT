@@ -12,13 +12,15 @@ class TestAnalyticRenderer(unittest.TestCase):
 
     def test_creation(self):
         # make a basic system  with a single generation limit
-        this_renderer = render.AnalyticRenderer(self.sources, self.system, 1, generation_limit=1)
+        this_renderer = render.AnalyticRenderer(self.sources, self.system, 1, generation_limit=10)
         this_renderer.render()
+        pass
 
     def test_full_render(self):
         # make a basic system  with a single generation limit
         this_renderer = render.AnalyticRenderer(self.sources, self.system, 1000, generation_limit=10)
         this_renderer.render()
+        pass
 
 
 if __name__ == '__main__':
