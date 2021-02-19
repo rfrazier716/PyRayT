@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "pyrayt"
-version = "0.1.0"
+version = "0.1.1"
 description = "a toolchain for developing and simulating optical packages"
-authors = ["Frazier, Ryan <Ryan.Frazier@analog.com>"]
+authors = ["Frazier, Ryan"]
 license = "MIT"
 packages = [
     {include = "pyrayt"}]
