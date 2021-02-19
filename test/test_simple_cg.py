@@ -106,6 +106,14 @@ class TestVector(unittest.TestCase):
 
 
 class TestRay(unittest.TestCase):
+    def test_ray_setters(self):
+        ray = cg.Ray()
+        ray.direction = cg.Vector(3, 2, 1)
+        self.assertTrue(np.allclose(ray.direction, cg.Vector(3, 2, 1)))
+
+        ray.origin = cg.Point(1, 2, 3)
+        self.assertTrue(np.allclose(ray.origin, cg.Point(1, 2, 3)))
+
     def test_ray_initialization(self):
         ray = cg.Ray()
         self.assertTrue(np.allclose(ray.origin, cg.Point()))
@@ -156,6 +164,11 @@ class TestWorldObjectCreation(WorldObjectTestCase):
             expected_matrix[x, x] = 0.1
         self.assertTrue(np.allclose(expected_matrix, to_world_mat))
 
+    def test_getting_world_coordinates(self):
+        self._obj.scale_all(10)
+        local_point = cg.Point(1,1,1)
+        world_point = self._obj.to_world_coordinates(local_point)
+        self.assertTrue(np.allclose(world_point, cg.Point(10, 10, 10)))
 
 class TestWorldObjectScaling(WorldObjectTestCase):
     def setUp(self):
@@ -197,6 +210,13 @@ class TestWorldObjectScaling(WorldObjectTestCase):
         for fn in scale_fns:
             with self.assertRaises(ValueError):
                 fn(-1)
+
+    def test_invalid_norm(self):
+        # force a scale of zero and assert an error is raised
+        scale_factor = 0
+        self._obj.scale_all(scale_factor)
+        with self.assertRaises(ValueError):
+            self._obj.get_orientation()
 
 
 class TestWorldObjectTranslation(WorldObjectTestCase):
@@ -256,6 +276,10 @@ class TestWorldObjectRotation(WorldObjectTestCase):
             self._obj.rotate_y(angle, units=unit).rotate_z(angle, units=unit).rotate_x(angle, units=unit)
             self.assertTrue(np.allclose(self._obj.get_orientation(), cg.Vector(0, 0, 1.)),
                             f"Test Failed for unit {unit}, has orientation {self._obj.get_orientation()}")
+
+        # make sure that an invalid rotaiton option raises an error
+        with self.assertRaises(ValueError):
+            self._obj.rotate_x(90, "Chickens")
 
 
 class TestWorldObjectQuaternion(WorldObjectTestCase):
@@ -333,6 +357,10 @@ class TestElementWiseDotProduct(unittest.TestCase):
         self.major_axis_length = 10
         self.test_matrix = np.arange(self.n_elements).reshape(self.major_axis_length, -1)
 
+    def test_simple_dot_product(self):
+        dot = cg.element_wise_dot(np.arange(4), np.arange(4))
+        self.assertEqual(dot, 14)
+
     def test_axis_zero_dot(self):
         dot = cg.element_wise_dot(self.test_matrix, self.test_matrix, axis=0)
         self.assertEqual(dot.shape[0], (self.test_matrix.shape[-1]))
@@ -347,6 +375,75 @@ class TestElementWiseDotProduct(unittest.TestCase):
         for n, element in enumerate(dot):
             expected = np.sum(np.arange(n * minor_axis, (n + 1) * minor_axis) ** 2)
             self.assertEqual(expected, element)
+
+
+class TestSmallestPositiveRoot(unittest.TestCase):
+    def test_root_dbl(self):
+        # define roots
+        a = 1
+        b = -2
+        c = 1
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertEqual(root, 1)
+
+        n_elements = 1000
+        a = np.full(n_elements, 1)
+        b = np.full(n_elements, -2)
+        c = np.full(n_elements, 1)
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertTrue(root.shape[0], n_elements)
+        self.assertTrue(np.allclose(root, 1))
+
+    def test_root_neg(self):
+        # define roots
+        a = 1
+        b = 2
+        c = 1
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertEqual(root, np.inf)
+
+        # arrayed case
+        n_elements = 1000
+        a = np.full(n_elements, 1)
+        b = np.full(n_elements, 2)
+        c = np.full(n_elements, 1)
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertTrue(root.shape[0], n_elements)
+        self.assertTrue(np.allclose(root, np.inf))
+
+    def test_root_imag(self):
+        # define roots
+        a = 1
+        b = 1
+        c = 1
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertEqual(root, np.inf)
+
+        # arrayed case
+        n_elements = 1000
+        a = np.full(n_elements, 1)
+        b = np.full(n_elements, 1)
+        c = np.full(n_elements, 1)
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertTrue(root.shape[0], n_elements)
+        self.assertTrue(np.allclose(root, np.inf))
+
+    def test__root_pos_and_neg(self):
+        # define roots
+        a = 1
+        b = 0
+        c = -4
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertEqual(root, 2)
+
+        # arrayed case
+        n_elements = 1000
+        a = np.full(n_elements, 1)
+        b = np.full(n_elements, 0)
+        c = np.full(n_elements, -4)
+        root = cg.smallest_positive_root(a, b, c)
+        self.assertTrue(root.shape[0], n_elements)
+        self.assertTrue(np.allclose(root, 2))
 
 
 class TestReflections(unittest.TestCase):
@@ -400,7 +497,7 @@ class TestRefraction(unittest.TestCase):
         self.assertEqual(index, n2)
 
         # the refracted vector should be closer to the normal and defined by snells law
-        theta_2 = np.arcsin(n1*np.sqrt(2)/(2*n2))
+        theta_2 = np.arcsin(n1 * np.sqrt(2) / (2 * n2))
         expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
@@ -413,7 +510,7 @@ class TestRefraction(unittest.TestCase):
         self.assertEqual(index, n2)
 
         # the refracted vector should be closer to the normal and defined by snells law
-        theta_2 = np.arcsin(n1*np.sqrt(2)/(2*n2))
+        theta_2 = np.arcsin(n1 * np.sqrt(2) / (2 * n2))
         expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
@@ -428,7 +525,7 @@ class TestRefraction(unittest.TestCase):
         self.assertEqual(index, n_world)
 
         # the refracted vector should be closer to the normal and defined by snells law
-        theta_2 = np.arcsin(n1*np.sqrt(2)/(2*n_world))
+        theta_2 = np.arcsin(n1 * np.sqrt(2) / (2 * n_world))
         expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
@@ -458,7 +555,7 @@ class TestRefraction(unittest.TestCase):
 
     def test_arrayed_refraction(self):
         n_elements = 1000
-        split = int(n_elements/2)
+        split = int(n_elements / 2)
         n1_element = 1.5
         n2_element = 1.6
         n1 = np.full(n_elements, n1_element)
@@ -466,24 +563,24 @@ class TestRefraction(unittest.TestCase):
         n2[:split] = 1.0
 
         # make vectors traveling <1,1>
-        vectors = np.zeros((4,n_elements))
-        vectors[:2, :] = 1/np.sqrt(2)
+        vectors = np.zeros((4, n_elements))
+        vectors[:2, :] = 1 / np.sqrt(2)
 
-        normals = np.zeros((4,n_elements))
+        normals = np.zeros((4, n_elements))
         normals[0] = -1
 
         refracted, index = cg.refract(vectors, normals, n1, n2)
-        self.assertTrue(np.allclose(index[:split], n1_element)) # first bundle reflect
-        self.assertTrue(np.allclose(index[split:], n2_element)) # second bundle refract
+        self.assertTrue(np.allclose(index[:split], n1_element))  # first bundle reflect
+        self.assertTrue(np.allclose(index[split:], n2_element))  # second bundle refract
 
-        expected_refracted = np.zeros((4,split))
+        expected_refracted = np.zeros((4, split))
         expected_refracted[0] = -1
         expected_refracted[1] = 1
-        expected_refracted/=np.sqrt(2)
-        self.assertTrue(np.allclose(refracted[:,:split], expected_refracted))
+        expected_refracted /= np.sqrt(2)
+        self.assertTrue(np.allclose(refracted[:, :split], expected_refracted))
 
-        expected_refracted = np.zeros((4,split))
-        theta_2 = np.arcsin(n1_element*np.sqrt(2)/(2*n2_element))
+        expected_refracted = np.zeros((4, split))
+        theta_2 = np.arcsin(n1_element * np.sqrt(2) / (2 * n2_element))
 
         expected_refracted[0] = np.cos(theta_2)
         expected_refracted[1] = np.sin(theta_2)
@@ -562,6 +659,9 @@ class TestParaboloid(unittest.TestCase):
     def setUp(self) -> None:
         self.f = 5
         self.surface = cg.Paraboloid(self.f)
+
+    def test_object_getters(self):
+        self.assertEqual(self.surface.get_focus(), self.f)
 
     def test_intersection_linear_case(self):
         hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0)))
@@ -655,39 +755,37 @@ class TestPlane(unittest.TestCase):
         self.surface = cg.Plane()
 
     def test_positive_intersection(self):
-        ray = cg.Ray(cg.Point(-1,0,0), cg.Vector(1,0,0))
+        ray = cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0))
         hit = self.surface.intersect(ray)[0]
         self.assertAlmostEqual(hit, 1)
 
-        ray = cg.Ray(cg.Point(-1,0,0), cg.Vector(1,1,0).normalize())
+        ray = cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 1, 0).normalize())
         hit = self.surface.intersect(ray)[0]
         self.assertAlmostEqual(hit, np.sqrt(2))
 
     def test_negative_intersection(self):
-        ray = cg.Ray(cg.Point(1,0,0), cg.Vector(1, 0, 0))
+        ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(1, 0, 0))
         hit = self.surface.intersect(ray)[0]
         self.assertAlmostEqual(hit, np.inf)
 
     def test_parallel_intersection(self):
-        ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(0,1,1).normalize())
+        ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(0, 1, 1).normalize())
         hit = self.surface.intersect(ray)[0]
         self.assertAlmostEqual(hit, np.inf)
 
     def test_arrayed_intersection(self):
         n_rays = 1000
-        split = int(n_rays/2)
+        split = int(n_rays / 2)
 
         rays = cg.bundle_of_rays(1000)
-        rays[0,0] = -1
-        rays[1,0,:split] = 1
-        rays[1,1] = 1
+        rays[0, 0] = -1
+        rays[1, 0, :split] = 1
+        rays[1, 1] = 1
 
         hit = self.surface.intersect(rays)
         self.assertEqual(hit.shape[0], n_rays)
-        self.assertTrue(np.allclose(hit[:split],1))
-        self.assertTrue(np.allclose(hit[split:],np.inf))
-
-
+        self.assertTrue(np.allclose(hit[:split], 1))
+        self.assertTrue(np.allclose(hit[split:], np.inf))
 
 
 if __name__ == '__main__':

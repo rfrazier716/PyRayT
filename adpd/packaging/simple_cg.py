@@ -70,8 +70,6 @@ def reflect(vectors, normals):
         dots = element_wise_dot(vectors, normals, axis=0)
         return vectors - 2 * normals * dots
 
-    return
-
 
 def refract(vectors, normals, n1, n2, n_global=1):
     """
@@ -666,3 +664,14 @@ class Plane(SurfacePrimitive):
         normals = np.zeros(intersections.shape)
         normals[0] = -1
         return normals
+
+class Cube(SurfacePrimitive):
+    """
+    a cube with one corner at the origin and the opposite corner at (1,1,1)
+    """
+
+    def intersect(self, rays):
+        pass
+
+    def normal(self, intersections):
+        pass
