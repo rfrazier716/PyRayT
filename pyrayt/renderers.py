@@ -1,5 +1,6 @@
 from enum import Enum
 import pyrayt.simple_cg as cg
+import pyrayt.designer as designer
 import pandas as pd
 import numpy as np
 
@@ -10,8 +11,9 @@ def analytic_render(system):
 
 class _AnalyticDataFrame(object):
     def __init__(self):
-        self.df_columns = ["id", "generation", "wavelength", "index", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt", "y_tilt", "z_tilt"]
-        self.data = pd.DataFrame(columns = self.df_columns, dtype='float32')
+        self.df_columns = ["id", "generation", "wavelength", "index", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
+                           "y_tilt", "z_tilt"]
+        self.data = pd.DataFrame(columns=self.df_columns, dtype='float32')
 
     def insert(self, gen_number, ids, wavelengths, indices, ray_starts, ray_ends):
         # create an array of generation numbers
@@ -24,8 +26,9 @@ class _AnalyticDataFrame(object):
         tilts = trimmed_ends - trimmed_starts
         tilts /= np.linalg.norm(tilts, axis=0)
 
-        new_frame = pd.DataFrame(np.vstack((ids, gen_numbers, wavelengths, indices, trimmed_starts, trimmed_ends, tilts)).T,
-                                 columns = self.df_columns)
+        new_frame = pd.DataFrame(
+            np.vstack((ids, gen_numbers, wavelengths, indices, trimmed_starts, trimmed_ends, tilts)).T,
+            columns=self.df_columns)
 
         self.data = self.data.append(new_frame, ignore_index=True)
 
@@ -39,14 +42,15 @@ class AnalyticRenderer(object):
         INITIALIZE = 5
         TRIM = 6
 
-    def __init__(self, sources=[], system=[], rays_per_source=10, generation_limit=10):
-        self._frame = _AnalyticDataFrame() # make a new dataframe to hold results
+    def __init__(self, system=designer.AnalyticSystem(), rays_per_source=10, generation_limit=10):
+        self._frame = _AnalyticDataFrame()  # make a new dataframe to hold results
         self._state = AnalyticRenderer.States.IDLE  # by default the renderer is idling
         self._generation_number = 0
         self._simulation_complete = False
 
-        self._sources = sources
-        self._system = system  # list of surfaces in the optical system
+        self._system = system  # reference to the Analytical System
+        self._sources = designer.flatten(self._system['sources'])
+        self._surfaces = designer.flatten([self._system[key] for key in ('components', 'detectors')])
         self._rays_per_source = rays_per_source
         self._generation_limit = generation_limit  # how many reflections/refractions a ray can encounter
         self._world_index = 1  # the refractive index of the world
@@ -59,15 +63,15 @@ class AnalyticRenderer(object):
             AnalyticRenderer.States.FINISH: self._st_finish,
         }
 
-        self._ids = None # the ray IDs, which get logged as the propagate
-        self._rays = None # the set of rays
+        self._ids = None  # the ray IDs, which get logged as the propagate
+        self._rays = None  # the set of rays
         self._next_ray_set = None  # the next rays to trace with
         self._index = None  # the refractive index of each ray
         self._wavelength = None  # the wavelength of each ray
 
     def reset(self):
         self._simulation_complete = False
-        self._frame = _AnalyticDataFrame() # reset the dataframe
+        self._frame = _AnalyticDataFrame()  # reset the dataframe
         self._state = AnalyticRenderer.States.IDLE  # by default the renderer is idling
         self._generation_number = 0
 
@@ -79,6 +83,9 @@ class AnalyticRenderer(object):
 
     def load_system(self, system):
         self._system = system
+
+    def get_system(self):
+        return self._system
 
     def render(self):
         self._state = AnalyticRenderer.States.INITIALIZE  # kick off the state machine
@@ -95,21 +102,26 @@ class AnalyticRenderer(object):
         """
         return self._frame.data
 
+    def _generate_flattened_structures(self):
+        self._sources = designer.flatten(self._system['sources'])
+        self._surfaces = designer.flatten([self._system[key] for key in ('components', 'detectors')])
+
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
+        self._generate_flattened_structures()
 
         # iterate over components in system, if they have a function to generate rays, call it
         attr_string = 'generate_rays'
 
         # create the ray and associated parameter matrices
-        n_rays = self._rays_per_source * len(self._sources)  # how many rays to create for the system
-        self._ids = np.arange(n_rays) # assign ids
+        n_rays = self._rays_per_source * len(self._surfaces)  # how many rays to create for the system
+        self._ids = np.arange(n_rays)  # assign ids
         self._rays = cg.bundle_of_rays(n_rays)  # allocate the ray matrix
         self._index = np.full(n_rays, self._world_index)
         self._wavelength = np.zeros(n_rays)
 
         # fill the matrix with rays
-        for n, source in enumerate(self._sources):
+        for n, source in enumerate(self._surfaces):
             self._rays[:, :, n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.generate_rays(
                 self._rays_per_source)
             self._wavelength[n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.get_wavelength(
