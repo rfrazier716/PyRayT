@@ -2,7 +2,7 @@ import unittest
 import io
 import adpd.packaging.designer as designer
 import adpd.packaging.simple_cg as cg
-import adpd.packaging.surfaces as surfaces
+import adpd.packaging.__surf_old as surfaces
 
 
 class TestSurface(surfaces.TracerSurface):

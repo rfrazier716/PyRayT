@@ -1,4 +1,3 @@
-import adpd.packaging.surfaces as surfaces
 import adpd.packaging.simple_cg as cg
 import collections
 import re

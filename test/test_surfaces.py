@@ -1,6 +1,6 @@
 import unittest
 import abc
-import adpd.packaging.surfaces as surf
+import adpd.packaging.__surf_old as surf
 import adpd.packaging.simple_cg as cg
 import re
 import numpy as np
