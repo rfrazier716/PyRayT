@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "adpd.packaging"
+name = "pyrayt"
 version = "0.1.0"
 description = "a toolchain for developing and simulating optical packages"
 authors = ["Frazier, Ryan <Ryan.Frazier@analog.com>"]
 license = "MIT"
 packages = [
-    {include = "adpd"}]
+    {include = "pyrayt"}]
 
 [tool.poetry.dependencies]
 python = "^3.7.5"
