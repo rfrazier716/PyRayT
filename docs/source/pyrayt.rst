@@ -1,11 +1,11 @@
 Documentation
 =================================
 
-adi_optics.surfaces module
+Placeholder Text!
 --------------------------
 has definitions for traceable surfaces
 
-.. automodule:: pyrayt
+.. automodule:: pyrayt.simple_cg
    :members:
    :undoc-members:
    :show-inheritance:

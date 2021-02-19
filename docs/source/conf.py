@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'packaging'
+project = 'PyRayT'
 copyright = '2021, Ryan Frazier'
 author = 'Ryan Frazier'
 
