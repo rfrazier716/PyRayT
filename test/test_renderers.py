@@ -1,7 +1,7 @@
 import unittest
 import adpd.packaging.renderers as render
 from adpd.packaging.components.sources import LineOfRays
-from adpd.packaging.analytic_surface import YZPlane
+from adpd.packaging.surfaces import YZPlane
 import adpd.packaging.shaders.analytic as mat
 
 

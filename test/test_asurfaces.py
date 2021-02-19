@@ -1,5 +1,5 @@
 import unittest
-import adpd.packaging.analytic_surface as asurf
+import adpd.packaging.surfaces as asurf
 import numpy as np
 import adpd.packaging.simple_cg as cg
 

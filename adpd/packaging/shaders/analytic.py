@@ -1,6 +1,6 @@
 import enum
 import adpd.packaging.simple_cg as cg
-import adpd.packaging.analytic_surface as surf
+import adpd.packaging.surfaces as surf
 import numpy as np
 
 
