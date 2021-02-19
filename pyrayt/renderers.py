@@ -1,5 +1,5 @@
 from enum import Enum
-import adpd.packaging.simple_cg as cg
+import pyrayt.simple_cg as cg
 import pandas as pd
 import numpy as np
 

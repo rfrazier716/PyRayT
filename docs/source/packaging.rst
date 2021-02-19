@@ -5,7 +5,7 @@ adi_optics.surfaces module
 --------------------------
 has definitions for traceable surfaces
 
-.. automodule:: adpd.packaging.surfaces
+.. automodule:: pyrayt
    :members:
    :undoc-members:
    :show-inheritance:

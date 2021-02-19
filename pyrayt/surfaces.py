@@ -1,4 +1,4 @@
-import adpd.packaging.simple_cg as cg
+import pyrayt.simple_cg as cg
 import abc
 import numpy as np
 

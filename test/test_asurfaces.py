@@ -1,7 +1,7 @@
 import unittest
-import adpd.packaging.surfaces as asurf
+import pyrayt.surfaces as asurf
 import numpy as np
-import adpd.packaging.simple_cg as cg
+import pyrayt.simple_cg as cg
 
 class TestSphere(unittest.TestCase):
     def setUp(self) -> None:

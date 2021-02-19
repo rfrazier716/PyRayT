@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-import adpd.packaging.components.sources as sources
-import adpd.packaging.simple_cg as cg
+import pyrayt.components.sources as sources
+import pyrayt.simple_cg as cg
 
 
 class TestLineOfRays(unittest.TestCase):

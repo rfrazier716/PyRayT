@@ -1,6 +1,6 @@
 import unittest
-import adpd.packaging.designer as designer
-import adpd.packaging.simple_cg as cg
+import pyrayt.designer as designer
+import pyrayt.simple_cg as cg
 
 class TestAnalyticSystem(unittest.TestCase):
     def setUp(self):

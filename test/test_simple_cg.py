@@ -1,5 +1,5 @@
 import unittest
-import adpd.packaging.simple_cg as cg
+import pyrayt.simple_cg as cg
 import numpy as np
 
 
@@ -728,7 +728,6 @@ class TestParaboloid(unittest.TestCase):
         # check that an error is not raised when a grossly large value is passed to the intersection
         # TODO: decide a max distance to clip value at?
         hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 1000000000), cg.Vector(1.3, 0, 0)))
-        print(hit)
 
     def test_normal(self):
         normal = self.surface.normal(cg.Point(0, 0, 0))

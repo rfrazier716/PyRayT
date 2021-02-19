@@ -1,8 +1,8 @@
 import unittest
-import adpd.packaging.renderers as render
-from adpd.packaging.components.sources import LineOfRays
-from adpd.packaging.surfaces import YZPlane
-import adpd.packaging.shaders.analytic as mat
+import pyrayt.renderers as render
+from pyrayt.components.sources import LineOfRays
+from pyrayt.surfaces import YZPlane
+import pyrayt.shaders.analytic as mat
 
 
 class TestAnalyticRenderer(unittest.TestCase):
