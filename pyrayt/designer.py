@@ -1,6 +1,6 @@
 import pyrayt.simple_cg as cg
 import collections
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
 
 
@@ -28,22 +28,6 @@ def flatten(list_to_flatten):
 
 @dataclass(unsafe_hash=True)
 class AnalyticSystem(object):
-    sources: cg.ObjectGroup = cg.ObjectGroup()
-    components: cg.ObjectGroup = cg.ObjectGroup()
-    detectors: cg.ObjectGroup = cg.ObjectGroup()
-
-
-# class AnalyticSystem(collections.UserDict):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
-#
-#         # create default object groups that can be written to
-#         self.data["sources"] = cg.ObjectGroup()
-#         self.data["components"] = cg.ObjectGroup()
-#         self.data["detectors"] = cg.ObjectGroup()
-#
-#         self._flattened_system = list()  # a placeholder for the flattened optical system
-#
-#     @property
-#     def sources(self):
-#         return self.data["source"]
+    sources: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
+    components: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
+    detectors: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)

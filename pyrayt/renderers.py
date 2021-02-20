@@ -49,8 +49,8 @@ class AnalyticRenderer(object):
         self._simulation_complete = False
 
         self._system = system  # reference to the Analytical System
-        self._sources = designer.flatten(self._system['sources'])
-        self._surfaces = designer.flatten([self._system[key] for key in ('components', 'detectors')])
+        self._sources = designer.flatten(self._system.sources)
+        self._surfaces = designer.flatten((self._system.components, self._system.detectors))
         self._rays_per_source = rays_per_source
         self._generation_limit = generation_limit  # how many reflections/refractions a ray can encounter
         self._world_index = 1  # the refractive index of the world
@@ -74,6 +74,12 @@ class AnalyticRenderer(object):
         self._frame = _AnalyticDataFrame()  # reset the dataframe
         self._state = AnalyticRenderer.States.IDLE  # by default the renderer is idling
         self._generation_number = 0
+
+    def set_rays_per_source(self, n_rays: int) -> None:
+        self._rays_per_source = n_rays
+
+    def get_rays_per_source(self) -> int:
+        return self._rays_per_source
 
     def set_generation_limit(self, limit):
         self._generation_limit = limit
@@ -103,8 +109,8 @@ class AnalyticRenderer(object):
         return self._frame.data
 
     def _generate_flattened_structures(self):
-        self._sources = designer.flatten(self._system['sources'])
-        self._surfaces = designer.flatten([self._system[key] for key in ('components', 'detectors')])
+        self._sources = designer.flatten(self._system.sources)
+        self._surfaces = tuple(designer.flatten((self._system.components, self._system.detectors)))
 
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
@@ -121,7 +127,7 @@ class AnalyticRenderer(object):
         self._wavelength = np.zeros(n_rays)
 
         # fill the matrix with rays
-        for n, source in enumerate(self._surfaces):
+        for n, source in enumerate(self._sources):
             self._rays[:, :, n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.generate_rays(
                 self._rays_per_source)
             self._wavelength[n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.get_wavelength(
@@ -130,8 +136,8 @@ class AnalyticRenderer(object):
         self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
 
     def _st_propagate(self):
-        hits_matrix = np.zeros((len(self._system), self._rays.shape[-1]))
-        for n, surface in enumerate(self._system):
+        hits_matrix = np.zeros((len(self._surfaces), self._rays.shape[-1]))
+        for n, surface in enumerate(self._surfaces):
             hits_matrix[n] = surface.intersect(self._rays)
 
         hit_distances = np.min(hits_matrix, axis=0)
@@ -141,7 +147,7 @@ class AnalyticRenderer(object):
         intersection_points = self._rays[0] + np.where(np.isfinite(hit_distances), hit_distances * self._rays[1], 0)
         intersection_rays = np.array((intersection_points, self._rays[1]))  # make a list of rays where they intersect
 
-        for n, surface in enumerate(self._system):
+        for n, surface in enumerate(self._surfaces):
             new_rays, new_indices = surface.shade(
                 intersection_rays[:, :, hit_surfaces == n],
                 self._wavelength,
