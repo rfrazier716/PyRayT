@@ -75,6 +75,7 @@ class NKShader(object):
 
         elif self._material == Material.ABSORBING:
             new_directions = np.zeros(rays[1].shape)  # if the material is absorbing all rays are terminated
+            new_indices = indices
 
         else:
             raise ValueError(f"Shader does not know how to handle material {self._material}")
@@ -83,3 +84,4 @@ class NKShader(object):
 
 
 mirror = NKShader(Material.REFLECTIVE)
+absorber = NKShader(Material.ABSORBING)

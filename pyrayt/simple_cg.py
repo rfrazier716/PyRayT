@@ -654,7 +654,7 @@ class Plane(SurfacePrimitive):
         origins = padded_rays[0, :-1]  # should be a 3xn array of points
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
-        hits = np.where(directions[0] != 0, -origins[0] / (directions[0] + (directions[0]==0)), np.inf)
+        hits = np.where(np.logical_not(np.isclose(directions[0], 0)), -origins[0] / (directions[0] + (directions[0]==0)), np.inf)
         positive_hits = np.where(hits >= 0, hits, np.inf)
 
         return positive_hits
