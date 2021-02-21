@@ -166,9 +166,10 @@ class TestWorldObjectCreation(WorldObjectTestCase):
 
     def test_getting_world_coordinates(self):
         self._obj.scale_all(10)
-        local_point = cg.Point(1,1,1)
+        local_point = cg.Point(1, 1, 1)
         world_point = self._obj.to_world_coordinates(local_point)
         self.assertTrue(np.allclose(world_point, cg.Point(10, 10, 10)))
+
 
 class TestWorldObjectScaling(WorldObjectTestCase):
     def setUp(self):
@@ -785,6 +786,57 @@ class TestPlane(unittest.TestCase):
         self.assertEqual(hit.shape[0], n_rays)
         self.assertTrue(np.allclose(hit[:split], 1))
         self.assertTrue(np.allclose(hit[split:], np.inf))
+
+
+class TestCube(unittest.TestCase):
+    def setUp(self) -> None:
+        self.surface = cg.Cube()
+
+    def test_intersection_within_cube(self):
+        rays = (
+            cg.Ray(direction=cg.Vector(1, 0, 0)),
+            cg.Ray(direction=cg.Vector(0, 1, 0)),
+            cg.Ray(direction=cg.Vector(0, 0, 1))
+        )
+        for ray in rays:
+            hit = self.surface.intersect(ray)[0]
+            self.assertAlmostEqual(hit, 1)
+
+    def test_intersection_external_to_cube(self):
+        rays = (
+            cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(1, 0, 0)),
+            cg.Ray(origin=cg.Point(0, -2, 0), direction=cg.Vector(0, 1, 0)),
+            cg.Ray(origin=cg.Point(0, 0, -2), direction=cg.Vector(0, 0, 1))
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)[0]
+            self.assertAlmostEqual(hit, 1)
+
+    def test_intersection_at_angle(self):
+        ray=cg.Ray(origin=cg.Point(-2, -1, 0), direction=cg.Vector(1, 1, 0).normalize())
+
+        hit = self.surface.intersect(ray)[0]
+        self.assertAlmostEqual(hit, np.sqrt(2))
+
+    def test_skew_intersection(self):
+        ray=cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(0, 1, 0).normalize())
+        hit = self.surface.intersect(ray)[0]
+        self.assertAlmostEqual(hit, np.inf)
+
+    def test_arrayed_intersection(self):
+        # make a bunch of rays to intersect, move some s.t. they intersect teh surface at a different point
+        n_rays = 1000
+        split_index = int(n_rays / 2)
+        rays = cg.bundle_of_rays(n_rays)
+        rays[0, 0, :split_index] = -0.5 # move the ray's up to originate at the focus
+        rays[1, 0] = 1  # have the rays move towards the positive x-axis
+
+        hits = self.surface.intersect(rays)
+
+        self.assertEqual(hits.shape[0], n_rays)
+        self.assertTrue(np.allclose(hits[:split_index], 1.5))
+        self.assertTrue(np.allclose(hits[split_index:], 1.0))
 
 
 if __name__ == '__main__':

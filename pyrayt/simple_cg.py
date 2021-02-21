@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import numpy.linalg as linalg
 import copy
@@ -20,7 +21,7 @@ def smallest_positive_root(a, b, c):
     disc = b ** 2 - 4 * a * c  # find the discriminant
     root = np.sqrt(np.maximum(0, disc))  # the square root of the discriminant protected from being nan
     polyroots = np.array(((-b + root), (-b - root))) / (
-                2 * a + np.isclose(a, 0))  # the positive element of the polynomial root
+            2 * a + np.isclose(a, 0))  # the positive element of the polynomial root
 
     # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
     nearest_hit = np.where(polyroots[1] >= 0, np.amin(polyroots, axis=0), polyroots[0])
@@ -654,7 +655,8 @@ class Plane(SurfacePrimitive):
         origins = padded_rays[0, :-1]  # should be a 3xn array of points
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
-        hits = np.where(np.logical_not(np.isclose(directions[0], 0)), -origins[0] / (directions[0] + (directions[0]==0)), np.inf)
+        hits = np.where(np.logical_not(np.isclose(directions[0], 0)),
+                        -origins[0] / (directions[0] + (directions[0] == 0)), np.inf)
         positive_hits = np.where(hits >= 0, hits, np.inf)
 
         return positive_hits
@@ -665,13 +667,52 @@ class Plane(SurfacePrimitive):
         normals[0] = -1
         return normals
 
+
 class Cube(SurfacePrimitive):
     """
-    a cube with one corner at the origin and the opposite corner at (1,1,1)
+    a cube with one corner at (-1,-1,-1) and the opposite corner at (1,1,1)
     """
 
     def intersect(self, rays):
-        pass
+        # a cube is pretty much 6 plane that intersect. steps for the intersection are then:
+        # - Find the intersection distance and point for each plane that makes up the cube surface
+        # - eliminate intersection points that are not within -<1,1,1> and <1,1,1>
+        # - take the min along the axis of the 6 planes to find the nearest intersection hitting the plane
+        padded_rays = np.atleast_3d(rays)
+
+        # get the origins and directions
+        origins = padded_rays[0, :-1]  # should be a 3xn array of points
+        directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
+
+        hits = np.full((6, origins.shape[-1]), -1, dtype=np.float32)  # hit distance matrix
+        # matrix tracking xyz where each ray hits each of the 6 planes making up cube
+        plane_int_pts = np.zeros((6, 3, origins.shape[-1]), dtype=np.float32)
+
+        # project into the xz,yz, and xy planes
+        for axis in [0, 1, 2]:
+            # if the vector does not travel in that direction they won't intersect
+            is_zero = np.isclose(directions[axis], 0)
+
+            # now update the intersection point for each plane
+            hits[2 * axis] = np.where(np.logical_not(is_zero),
+                                      -(origins[axis] + 1) / (directions[axis] + is_zero), -1)
+
+            hits[2 * axis + 1] = np.where(np.logical_not(is_zero),
+                                          -(origins[axis] - 1) / (directions[axis] + is_zero), -1)
+
+        axis_intersections = np.tile(origins, (6, 1, 1)) + np.tile(hits, 3).reshape(6, 3,
+                                                                                    padded_rays.shape[-1]) * directions
+
+        # now we want to reduce it to a 2D array of points where all points lie on the unit cube,
+        # this is where the abs of every point is <1
+        cube_hits = np.all(np.abs(axis_intersections) <= 1.0, axis=1)
+        cube_hits = np.where(hits > 0, cube_hits, False)
+
+        # next need to find the smallest positive valued hits
+        nearest_hits = np.min(np.where(np.logical_and(hits > 0, cube_hits), hits, np.inf), axis=0)
+
+        # return the smallest hits
+        return nearest_hits
 
     def normal(self, intersections):
         pass
