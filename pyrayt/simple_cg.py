@@ -686,9 +686,9 @@ class Cube(SurfacePrimitive):
 
         hits = np.full((6, origins.shape[-1]), -1, dtype=np.float32)  # hit distance matrix
         # matrix tracking xyz where each ray hits each of the 6 planes making up cube
-        plane_int_pts = np.zeros((6, 3, origins.shape[-1]), dtype=np.float32)
 
         # project into the xz,yz, and xy planes
+
         for axis in [0, 1, 2]:
             # if the vector does not travel in that direction they won't intersect
             is_zero = np.isclose(directions[axis], 0)
@@ -715,4 +715,14 @@ class Cube(SurfacePrimitive):
         return nearest_hits
 
     def normal(self, intersections):
-        pass
+        # for normals you find the component of the point with the largest value, since the cube can only exist from
+        # -1 to 1
+
+        # the normal coord is the one that's closest to one
+        normal_mask = np.isclose(np.abs(intersections), 1.0)
+        normals = np.sign(intersections) * normal_mask
+        normals[-1] = 0  # wipe out the point homogenous coordinate
+        normals /= np.linalg.norm(normals, axis=0)
+
+        # if a 1d array was passed, transpose it and strip a dimension
+        return normals

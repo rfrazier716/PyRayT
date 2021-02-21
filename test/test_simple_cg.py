@@ -822,13 +822,13 @@ class TestCube(unittest.TestCase):
             self.assertAlmostEqual(hit, 1)
 
     def test_intersection_at_angle(self):
-        ray=cg.Ray(origin=cg.Point(-2, -1, 0), direction=cg.Vector(1, 1, 0).normalize())
+        ray = cg.Ray(origin=cg.Point(-2, -1, 0), direction=cg.Vector(1, 1, 0).normalize())
 
         hit = self.surface.intersect(ray)[0]
         self.assertAlmostEqual(hit, np.sqrt(2))
 
     def test_skew_intersection(self):
-        ray=cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(0, 1, 0).normalize())
+        ray = cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(0, 1, 0).normalize())
         hit = self.surface.intersect(ray)[0]
         self.assertAlmostEqual(hit, np.inf)
 
@@ -837,7 +837,7 @@ class TestCube(unittest.TestCase):
         n_rays = 1000
         split_index = int(n_rays / 2)
         rays = cg.bundle_of_rays(n_rays)
-        rays[0, 0, :split_index] = -0.5 # move the ray's up to originate at the focus
+        rays[0, 0, :split_index] = -0.5  # move the ray's up to originate at the focus
         rays[1, 0] = 1  # have the rays move towards the positive x-axis
 
         hits = self.surface.intersect(rays)
@@ -845,6 +845,59 @@ class TestCube(unittest.TestCase):
         self.assertEqual(hits.shape[0], n_rays)
         self.assertTrue(np.allclose(hits[:split_index], 1.5))
         self.assertTrue(np.allclose(hits[split_index:], 1.0))
+
+    def test_normals(self):
+        coords = (
+            cg.Point(-1, 0, 0),
+            cg.Point(1, 0, 0),
+            cg.Point(0, -1, 0),
+            cg.Point(0, 1, 0),
+            cg.Point(0, 0, -1),
+            cg.Point(0, 0, 1)
+        )
+        for coord in coords:
+            expected = cg.Vector(*coord[:-1])
+            normal = self.surface.normal(coord)
+            self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
+
+    def test_offcenter_normal(self):
+        coord = cg.Point(-1 + 1E-8, 0.3, 0.7)
+
+        expected = cg.Vector(-1, 0, 0)
+        normal = self.surface.normal(coord)
+
+        self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
+
+    def test_corner_normal(self):
+        # for a corner case any of the three normals could be picked, but need to make sure the resulting normal is
+        # in the right direction
+        coord = cg.Point(1, 1, 1)
+
+        # can be any of these and still be valid,
+        expected = cg.Vector(1,1,1).normalize()
+        normal = self.surface.normal(coord)
+
+        self.assertTrue(np.allclose(expected,normal), f"expected {expected}, got {normal}")
+
+    def test_arrayed_normals(self):
+        # make a bunch of rays to intersect, move some s.t. they intersect thh surface at a different point
+        n_rays = 1000
+        split_index = int(n_rays / 2)
+        points = np.zeros((4, n_rays))
+        points[-1] = 1  # make points!
+        points[0, :split_index] = -1
+        points[1, split_index:] = 1
+
+        normals = self.surface.normal(points)
+        self.assertEqual(normals.shape, (4, n_rays))
+
+        expected = np.zeros((4, split_index))
+        expected[0] = -1
+        self.assertTrue(np.allclose(normals[:, :split_index], expected))
+
+        expected = np.zeros((4, split_index))
+        expected[1] = 1
+        self.assertTrue(np.allclose(normals[:, split_index:], expected))
 
 
 if __name__ == '__main__':
