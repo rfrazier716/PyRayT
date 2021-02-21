@@ -88,6 +88,14 @@ class TestHomogeneousCoordinate(unittest.TestCase):
             self.assertEqual(getattr(self.coord, getter), value_to_set)
             self.assertEqual(self.coord[n], value_to_set)
 
+    def test_normalizing(self):
+        coord = cg.HomogeneousCoordinate(1,1,1,0)
+        self.assertTrue(np.allclose(coord.normalize(), np.array((1,1,1,0))/np.sqrt(3)), f" got {coord.normalize()}")
+
+        coord = cg.HomogeneousCoordinate(1, 1, 1, 1)
+        self.assertTrue(np.allclose(coord.normalize(), np.array((1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3), 1))),
+                        f" got {coord.normalize()}")
+
 
 class TestPoint(unittest.TestCase):
     def setUp(self):

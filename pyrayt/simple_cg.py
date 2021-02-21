@@ -185,7 +185,7 @@ class HomogeneousCoordinate(np.ndarray):
         self[3] = w
 
     def normalize(self):
-        self[:2] /= np.linalg.norm(self[:2])
+        self[:-1] /= np.linalg.norm(self[:-1])
         return self
 
     @property
