@@ -4,4 +4,4 @@ omit =
     */__init__.py
 
 source =
-    adpd
+    pyrayt
