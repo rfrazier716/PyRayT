@@ -85,3 +85,5 @@ class NKShader(object):
 
 mirror = NKShader(Material.REFLECTIVE)
 absorber = NKShader(Material.ABSORBING)
+
+glass = NKShader(material=Material.REFRACTIVE, n=1.5)  # basic glass model

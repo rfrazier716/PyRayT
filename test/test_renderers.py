@@ -2,12 +2,12 @@ import unittest
 import pyrayt.renderers as render
 import pyrayt.designer as designer
 from pyrayt.components.sources import LineOfRays
-from pyrayt.surfaces import YZPlane
+from pyrayt.surfaces import YZPlane, Cuboid
 import pyrayt.shaders.analytic as mat
 import numpy as np
 
 
-class TestAnalyticRenderer(unittest.TestCase):
+class TestRenderReflection(unittest.TestCase):
     def setUp(self) -> None:
         self.system = designer.AnalyticSystem()
         self.sources = (LineOfRays().rotate_y(-45), LineOfRays().rotate_y(-135))
@@ -97,6 +97,26 @@ class TestAnalyticRenderer(unittest.TestCase):
         self.assertAlmostEqual(dead_ray['x_tilt'], 0)
         self.assertAlmostEqual(dead_ray['y_tilt'], 0)
         self.assertAlmostEqual(dead_ray['z_tilt'], 1.)
+
+    def test_saving_refractive_index_info(self):
+        system = designer.AnalyticSystem()
+        sources = (LineOfRays().rotate_y(-90),)
+        surfaces = [
+            Cuboid(material=mat.NKShader(material=mat.Material.REFRACTIVE, n=1.5)),
+        ]
+        surfaces[0].invert_normals()
+
+        system.sources += sources
+        system.components += surfaces
+        renderer = render.AnalyticRenderer(system, rays_per_source=10, generation_limit=20)
+
+        results = renderer.render()
+        print(results)
+
+
+        self.assertEqual(results.shape[0], 20)
+        self.assertTrue(np.allclose(results['index'][10:],1.5))
+        # expect a single surface intersection with
 
 
 if __name__ == '__main__':
