@@ -157,12 +157,14 @@ class AnalyticRenderer(object):
         intersection_rays = np.array((intersection_points, self._rays[1]))  # make a list of rays where they intersect
 
         for n, surface in enumerate(self._surfaces):
+            ray_mask = (hit_surfaces == n)
             new_rays, new_indices = surface.shade(
-                intersection_rays[:, :, hit_surfaces == n],
-                self._wavelength,
-                self._index)
+                intersection_rays[:, :, ray_mask],
+                self._wavelength[ray_mask],
+                self._index[ray_mask])
 
-            intersection_rays[:, :, hit_surfaces == n] = new_rays
+            intersection_rays[:, :, ray_mask] = new_rays
+            self._index[ray_mask] = new_indices
 
         # advance the generation number and move to the next state
         self._next_ray_set = intersection_rays  # update the next ray set

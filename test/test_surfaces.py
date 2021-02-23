@@ -66,6 +66,15 @@ class TestSphere(unittest.TestCase):
             self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
+    def test_normal_inversion(self):
+        cube = surf.Cuboid()
+        point = cg.Point(1,0,0)
+        normals = cube.get_world_normals(point)
+        self.assertTrue(np.allclose(normals, cg.Vector(*point[:-1])), f"{normals}")
+
+        cube.invert_normals()
+        normals = cube.get_world_normals(point)
+        self.assertTrue(np.allclose(normals, -cg.Vector(*point[:-1])), f"{normals}")
 
 class TestCuboid(unittest.TestCase):
     def setUp(self) -> None:
@@ -141,6 +150,17 @@ class TestCuboid(unittest.TestCase):
 
         # all hits in the negative directions should be 1.5
         self.assertTrue(np.allclose(hits[1::2], 1 + movement), f"{hits}")
+
+    def test_normal_inversion(self):
+        cube = surf.Cuboid()
+        point = cg.Point(1,0,0)
+        normals = cube.get_world_normals(point)
+        self.assertTrue(np.allclose(normals, cg.Vector(*point[:-1])), f"{normals}")
+
+        cube.invert_normals()
+        normals = cube.get_world_normals(point)
+        self.assertTrue(np.allclose(normals, -cg.Vector(*point[:-1])), f"{normals}")
+
 
 
 if __name__ == '__main__':
