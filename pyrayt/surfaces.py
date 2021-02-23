@@ -16,6 +16,14 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         self._material = material
         self.aperture = _Aperture()  # initialize a new aperture for the surface
 
+        self._normal_scale = 1 # a multiplier used when normals are inverted
+
+    def invert_normals(self):
+        self._normal_scale = -1
+
+    def reset_normals(self):
+        self._normal_scale = 1
+
     def intersect(self, rays):
         """
         Intersect the set of rays with the surface, returns a 1d array of euclidean distances between the ray and
@@ -50,7 +58,7 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         world_normals = np.matmul(self._get_object_transform().T, local_normals)
         world_normals[-1] = 0  # wipe out any w fields caused by the transpose of the transform
         world_normals /= np.linalg.norm(world_normals, axis=0)
-        return world_normals
+        return world_normals*self._normal_scale  # return the normals, flipped if the object has them inverted
 
 
 class Sphere(TracerSurface):
