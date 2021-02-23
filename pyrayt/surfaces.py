@@ -11,10 +11,10 @@ class _Aperture(object):
 
 class TracerSurface(cg.WorldObject, abc.ABC):
     def __init__(self, surface_args, material=None, *args, **kwargs):
-        super().__init__(*args, **kwargs) # call the next constructor in the MRO
-        self._surface_primitive = type(self).surface(*surface_args) # create a surface primitive from the provided args
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+        self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
-        self.aperture = _Aperture() # initialize a new aperture for the surface
+        self.aperture = _Aperture()  # initialize a new aperture for the surface
 
     def intersect(self, rays):
         """
@@ -23,7 +23,8 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         :param rays:
         :return:
         """
-        local_ray_set = np.matmul(self._get_object_transform(), np.atleast_3d(rays)) # translate the rays into object space
+        local_ray_set = np.matmul(self._get_object_transform(),
+                                  np.atleast_3d(rays))  # translate the rays into object space
         hits = self._surface_primitive.intersect(local_ray_set)
         return hits
 
@@ -66,5 +67,26 @@ class YZPlane(TracerSurface):
         super().__init__(surface_args=(), material=material, *args, **kwargs)
 
 
+class Cuboid(TracerSurface):
+    surface = cg.Cube
 
+    def __init__(self, material=None, *args, **kwargs):
+        super().__init__(surface_args=(), material=material, *args, **kwargs)
+
+    @classmethod
+    def from_lengths(cls, x=1, y=1, z=1):
+        return cls().scale(x / 2, y / 2, z / 2)  # divide each by 2 because a regular cube extends from -1,1
+
+    @classmethod
+    def from_corners(cls, corner_0=np.array((-1,-1,-1)), corner_1=np.array((1,1,1))):
+        corner_0 = np.asarray(corner_0)
+        corner_1 = np.asarray(corner_1)
+        if np.any(corner_1<corner_0):
+            raise ValueError("Second Corner must be greater than first corner at each dimension")
+
+        center = 0.5*(corner_0 + corner_1)
+        scale_values = 0.5*(corner_1 - corner_0)
+
+        # return a cube object spanning those points
+        return cls().scale(*scale_values[:3]).move(*center[:3])
 
