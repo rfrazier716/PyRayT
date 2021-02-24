@@ -5,44 +5,47 @@ import abc
 
 class Source(cg.WorldObject, abc.ABC):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, wavelength=0.633, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._wavelength = wavelength
 
-    def generate_rays(self, n_rays):
-        local_rays = self._local_ray_generation(n_rays)
-        world_rays = np.matmul(self._world_coordinate_transform, local_rays)  # transform rays to world space
-        world_rays[1] /= np.linalg.norm(world_rays[1], axis=0)  # normalize the direction vector
-        return world_rays
-
-    @abc.abstractmethod
-    def _local_ray_generation(self, n_rays):
-        pass
+    def generate_rays(self, n_rays: int) -> cg.RaySet:
+        ray_set = self._local_ray_generation(n_rays)
+        ray_set.rays = np.matmul(self._world_coordinate_transform, ray_set.rays)  # transform rays to world space
+        ray_set.rays[1] /= np.linalg.norm(ray_set.rays[1], axis=0)  # normalize the direction vector
+        return ray_set
 
     @abc.abstractmethod
-    def get_wavelength(self, n_rays):
+    def _local_ray_generation(self, n_rays: int) -> cg.RaySet:
         pass
+
+    @property
+    def wavelength(self):
+        return self._wavelength
+
+    @wavelength.setter
+    def wavelength(self, value):
+        self._wavelength = value
 
 
 class LineOfRays(Source):
 
     def __init__(self, spacing=1, wavelength=0.633, *args, **kwargs):
+        super().__init__(wavelength, *args, **kwargs)
         self._spacing = spacing
-        self._wavelength = wavelength
-        super().__init__(*args, **kwargs)
 
-    def _local_ray_generation(self, n_rays):
+    def _local_ray_generation(self, n_rays: int) -> cg.RaySet:
         """
         creates a line of rays directed towards the positive x-axis along the y-axis
+
         :param n_rays:
         :return:
         """
-        rays = cg.bundle_of_rays(n_rays)
+        set = cg.RaySet(n_rays)
         # if we want more than one ray, linearly space them, otherwise default position is fine
         if n_rays > 1:
             ray_position = np.linspace(-self._spacing / 2, self._spacing / 2, n_rays)
-            rays[0, 1] = ray_position  # space rays along the y-axis
-        rays[1, 0] = 1  # direct rays along positive x
-        return rays
-
-    def get_wavelength(self, n_rays):
-        return self._wavelength
+            set.rays[0, 1] = ray_position  # space rays along the y-axis
+        set.rays[1, 0] = 1  # direct rays along positive x
+        set.wavelength = self._wavelength
+        return set
