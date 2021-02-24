@@ -11,23 +11,21 @@ def analytic_render(system):
 
 class _AnalyticDataFrame(object):
     def __init__(self):
-        self.df_columns = ["id", "generation", "wavelength", "index", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
-                           "y_tilt", "z_tilt", "surface"]
+        self.df_columns = cg.RaySet.fields + ("surface", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
+                                              "y_tilt", "z_tilt")
         self.data = pd.DataFrame(columns=self.df_columns, dtype='float32')
 
-    def insert(self, gen_number, ids, wavelengths, indices, ray_starts, ray_ends, surfaces):
+    def insert(self, ray_set: cg.RaySet, next_ray_set: cg.RaySet, surface_ids: np.ndarray) -> None:
         # create an array of generation numbers
-        gen_numbers = np.full(ids.shape, gen_number)
         # trim the homogeneous coordinate
-        trimmed_starts = ray_starts[:, :-1]
-        trimmed_ends = ray_ends[:-1]
+        trimmed_starts, tilts = ray_set.rays[:, :-1]  # should return a 2x3xn array
+        trimmed_ends = next_ray_set.rays[0, :-1]  # returns a 1x3xn array
 
-        # calculate tilts and normalize
-        tilts = trimmed_starts[1]
+        # normalize the tilts
         tilts /= np.linalg.norm(tilts, axis=0)
 
         new_frame = pd.DataFrame(
-            np.vstack((ids, gen_numbers, wavelengths, indices, trimmed_starts[0], trimmed_ends, tilts, surfaces)).T,
+            np.vstack((ray_set.metadata, surface_ids, trimmed_starts, trimmed_ends, tilts)).T,
             columns=self.df_columns)
 
         self.data = self.data.append(new_frame, ignore_index=True)
@@ -65,13 +63,6 @@ class AnalyticRenderer(object):
 
         self._ray_set = cg.RaySet(0)
         self._next_ray_set = cg.RaySet(0)
-
-        # TODO: DELETE THESE
-        self._ids = None  # the ray IDs, which get logged as the propagate
-        self._rays = None  # the set of rays
-        self._next_ray_set = None  # the next rays to trace with
-        self._index = None  # the refractive index of each ray
-        self._wavelength = None  # the wavelength of each ray
 
     def reset(self):
         self._simulation_complete = False
@@ -123,22 +114,8 @@ class AnalyticRenderer(object):
         self.reset()  # reset the renderer states/generation number
         self._generate_flattened_structures()
 
+        # make a ray set from the concatenated ray sets returned by the sources
         self._ray_set = cg.RaySet.concat(*[source.generate_rays(self._rays_per_source) for source in self._sources])
-        # create the ray and associated parameter matrices
-        # TODO: DELETE THIS PART IF IT WORKS
-        # n_rays = self._rays_per_source * len(self._sources)  # how many rays to create for the system
-        # self._ids = np.arange(n_rays)  # assign ids
-        # self._rays = cg.bundle_of_rays(n_rays)  # allocate the ray matrix
-        # self._index = np.full(n_rays, self._world_index)
-        # self._wavelength = np.zeros(n_rays)
-
-        # fill the matrix with rays
-        # for n, source in enumerate(self._sources):
-        #     self._rays[:, :, n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.generate_rays(
-        #         self._rays_per_source)
-        #     self._wavelength[n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.get_wavelength(
-        #         self._rays_per_source)
-
         self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
 
     def _st_propagate(self):
@@ -155,7 +132,7 @@ class AnalyticRenderer(object):
         hit_distances = np.where(np.isinf(hit_distances), -1, hit_distances)
         hit_surfaces = np.where(hit_distances >= 0, np.argmin(hits_matrix, axis=0), -1)
 
-        self._next_ray_set = cg.RaySet(self._ray_set.n_rays) # make a new rayset to hold the updated rays
+        self._next_ray_set = cg.RaySet(self._ray_set.n_rays)  # make a new rayset to hold the updated rays
         # next need to call the shader function for each surface and trim the dead rays
         intersection_points = self._ray_set.rays[0] + np.where(hit_distances > 0,
                                                                hit_distances * self._ray_set.rays[1], 0)
@@ -163,9 +140,9 @@ class AnalyticRenderer(object):
         self._next_ray_set.rays = np.array((intersection_points, self._ray_set.rays[1]))
 
         # copy the metadata from the original ray set
-        self._generation_number+=1 # increment the generation number
+        self._generation_number += 1  # increment the generation number
         self._next_ray_set.metadata = self._ray_set.metadata.copy()
-        self._next_ray_set.generation= self._generation_number
+        self._next_ray_set.generation = self._generation_number
 
         for n, surface in enumerate(self._surfaces):
             ray_mask = (hit_surfaces == n)
@@ -177,17 +154,10 @@ class AnalyticRenderer(object):
             self._next_ray_set.rays[:, :, ray_mask] = new_rays
             self._next_ray_set.index[ray_mask] = new_indices
 
-        # advance the generation number and move to the next state
-
         # insert data into the frame
-
-        # self._frame.insert(self._generation_number,
-        #                    self._ids,
-        #                    self._wavelength,
-        #                    self._index,
-        #                    self._rays,
-        #                    self._next_ray_set[0],
-        #                    hit_surfaces)
+        self._frame.insert(self._ray_set,
+                           self._next_ray_set,
+                           hit_surfaces)
 
         # trim dead rays
 
@@ -196,8 +166,8 @@ class AnalyticRenderer(object):
         living_rays = np.logical_and(unabsorbed_rays, intersected_rays)
 
         if np.any(living_rays):
-            # TODO: Find way to trim ray set
-            self._ray_set = self._next_ray_set[:, :, living_rays]  # update rays to keep the living rays
+            self._ray_set.rays = self._next_ray_set.rays[:, :, living_rays]
+            self._ray_set.metadata = self._next_ray_set.metadata[:, living_rays]
 
             # move rays slightly off the surface or they'll intersect at t=0
             step_size = 1E-8
@@ -222,4 +192,4 @@ class AnalyticRenderer(object):
 
     def _st_finish(self):
         self._simulation_complete = True
-        self._state = self.States.IDLE  # next the rays need to be trimmed
+        self._state = self.States.IDLE

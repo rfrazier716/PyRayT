@@ -54,7 +54,7 @@ class TestRenderReflection(unittest.TestCase):
         self.assertTrue(np.allclose(results['x1'][surf1], 0.5))
 
     def test_trimming_rays(self):
-        # putting a plane at a height of 1.5 with absorbing should terminat rays early
+        # putting a plane at a height of 1.5 with absorbing should terminate rays early
         self.renderer.set_rays_per_source(1)  # only want one ray per source for this test
         top_baffle = YZPlane(material=mat.absorber).rotate_y(90).move_z(1)
         self.system.components.append(top_baffle)
@@ -99,6 +99,7 @@ class TestRenderReflection(unittest.TestCase):
         self.assertAlmostEqual(dead_ray['z_tilt'], 1.)
 
     def test_saving_refractive_index_info(self):
+        # when the rays propagate into a medium the refractive index should be updated
         system = designer.AnalyticSystem()
         sources = (LineOfRays().rotate_y(-90),)
         surfaces = [
@@ -111,12 +112,8 @@ class TestRenderReflection(unittest.TestCase):
         renderer = render.AnalyticRenderer(system, rays_per_source=10, generation_limit=20)
 
         results = renderer.render()
-        print(results)
-
-
         self.assertEqual(results.shape[0], 20)
-        self.assertTrue(np.allclose(results['index'][10:],1.5))
-        # expect a single surface intersection with
+        self.assertTrue(np.allclose(results['index'][10:], 1.5))
 
 
 if __name__ == '__main__':

@@ -291,6 +291,7 @@ class RaySet(object):
         new_set.id = np.arange(new_set.rays.shape[-1]) # re allocate ids
         return new_set
 
+
     @property
     def n_rays(self) -> int:
         return self.rays.shape[-1]
