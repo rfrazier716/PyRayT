@@ -63,6 +63,10 @@ class AnalyticRenderer(object):
             AnalyticRenderer.States.FINISH: self._st_finish,
         }
 
+        self._ray_set = cg.RaySet(0)
+        self._next_ray_set = cg.RaySet(0)
+
+        # TODO: DELETE THESE
         self._ids = None  # the ray IDs, which get logged as the propagate
         self._rays = None  # the set of rays
         self._next_ray_set = None  # the next rays to trace with
@@ -112,92 +116,94 @@ class AnalyticRenderer(object):
         return self._frame.data
 
     def _generate_flattened_structures(self):
-        self._sources = designer.flatten(self._system.sources)
+        self._sources = tuple(designer.flatten(self._system.sources))
         self._surfaces = tuple(designer.flatten((self._system.components, self._system.detectors)))
 
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
         self._generate_flattened_structures()
 
-        # iterate over components in system, if they have a function to generate rays, call it
-        attr_string = 'generate_rays'
-
+        self._ray_set = cg.RaySet.concat(*[source.generate_rays(self._rays_per_source) for source in self._sources])
         # create the ray and associated parameter matrices
-        n_rays = self._rays_per_source * len(self._sources)  # how many rays to create for the system
-        self._ids = np.arange(n_rays)  # assign ids
-        self._rays = cg.bundle_of_rays(n_rays)  # allocate the ray matrix
-        self._index = np.full(n_rays, self._world_index)
-        self._wavelength = np.zeros(n_rays)
+        # TODO: DELETE THIS PART IF IT WORKS
+        # n_rays = self._rays_per_source * len(self._sources)  # how many rays to create for the system
+        # self._ids = np.arange(n_rays)  # assign ids
+        # self._rays = cg.bundle_of_rays(n_rays)  # allocate the ray matrix
+        # self._index = np.full(n_rays, self._world_index)
+        # self._wavelength = np.zeros(n_rays)
 
         # fill the matrix with rays
-        for n, source in enumerate(self._sources):
-            self._rays[:, :, n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.generate_rays(
-                self._rays_per_source)
-            self._wavelength[n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.get_wavelength(
-                self._rays_per_source)
+        # for n, source in enumerate(self._sources):
+        #     self._rays[:, :, n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.generate_rays(
+        #         self._rays_per_source)
+        #     self._wavelength[n * self._rays_per_source:(n + 1) * self._rays_per_source] = source.get_wavelength(
+        #         self._rays_per_source)
 
         self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
 
     def _st_propagate(self):
-        hits_matrix = np.zeros((len(self._surfaces), self._rays.shape[-1]))
+        # the hits matrix is an mxn matrix where you have m surfaces in the simulation and n rays being propagated
+        hits_matrix = np.zeros((len(self._surfaces), self._ray_set.n_rays))
 
         # calculate the intersection distances for every surface in the simulation
         for n, surface in enumerate(self._surfaces):
-            hits_matrix[n] = surface.intersect(self._rays)
+            hits_matrix[n] = surface.intersect(self._ray_set.rays)
 
         # take the axis min to find the closest ray
         # recasting np.inf to -1 to avoid multiplication errors when calculating distance
         hit_distances = np.min(hits_matrix, axis=0)
         hit_distances = np.where(np.isinf(hit_distances), -1, hit_distances)
-        hit_surfaces = np.where(hit_distances>=0, np.argmin(hits_matrix, axis=0), -1)
+        hit_surfaces = np.where(hit_distances >= 0, np.argmin(hits_matrix, axis=0), -1)
 
+        self._next_ray_set = cg.RaySet(self._ray_set.n_rays) # make a new rayset to hold the updated rays
         # next need to call the shader function for each surface and trim the dead rays
-        intersection_points = self._rays[0] + np.where(hit_distances > 0,
-                                                       hit_distances * self._rays[1], 0)
-        intersection_rays = np.array((intersection_points, self._rays[1]))  # make a list of rays where they intersect
+        intersection_points = self._ray_set.rays[0] + np.where(hit_distances > 0,
+                                                               hit_distances * self._ray_set.rays[1], 0)
+        # make a list of rays where they intersect
+        self._next_ray_set.rays = np.array((intersection_points, self._ray_set.rays[1]))
+
+        # copy the metadata from the original ray set
+        self._generation_number+=1 # increment the generation number
+        self._next_ray_set.metadata = self._ray_set.metadata.copy()
+        self._next_ray_set.generation= self._generation_number
 
         for n, surface in enumerate(self._surfaces):
             ray_mask = (hit_surfaces == n)
             new_rays, new_indices = surface.shade(
-                intersection_rays[:, :, ray_mask],
-                self._wavelength[ray_mask],
-                self._index[ray_mask])
+                self._next_ray_set.rays[:, :, ray_mask],
+                self._next_ray_set.wavelength[ray_mask],
+                self._next_ray_set.index[ray_mask])
 
-            intersection_rays[:, :, ray_mask] = new_rays
-            self._index[ray_mask] = new_indices
+            self._next_ray_set.rays[:, :, ray_mask] = new_rays
+            self._next_ray_set.index[ray_mask] = new_indices
 
         # advance the generation number and move to the next state
-        self._next_ray_set = intersection_rays  # update the next ray set
-        self._generation_number += 1
 
         # insert data into the frame
 
-        self._frame.insert(self._generation_number,
-                           self._ids,
-                           self._wavelength,
-                           self._index,
-                           self._rays,
-                           self._next_ray_set[0],
-                           hit_surfaces)
+        # self._frame.insert(self._generation_number,
+        #                    self._ids,
+        #                    self._wavelength,
+        #                    self._index,
+        #                    self._rays,
+        #                    self._next_ray_set[0],
+        #                    hit_surfaces)
 
         # trim dead rays
 
-        unabsorbed_rays = np.linalg.norm(self._next_ray_set[1], axis=0) != 0
+        unabsorbed_rays = np.linalg.norm(self._next_ray_set.rays[1], axis=0) != 0
         intersected_rays = hit_surfaces != -1
         living_rays = np.logical_and(unabsorbed_rays, intersected_rays)
 
         if np.any(living_rays):
-            self._rays = self._next_ray_set[:, :, living_rays]  # update rays to keep the living rays
+            # TODO: Find way to trim ray set
+            self._ray_set = self._next_ray_set[:, :, living_rays]  # update rays to keep the living rays
 
             # move rays slightly off the surface or they'll intersect at t=0
             step_size = 1E-8
-            self._rays[0] = self._rays[0] + step_size * self._rays[1]
+            self._ray_set.rays[0] += step_size * self._ray_set.rays[1]
 
             # update the index and wavelength values
-            self._ids = self._ids[living_rays]
-            self._index = self._index[living_rays]
-            self._wavelength = self._wavelength[living_rays]
-
             # if the generation limit has not been reached continue propagating
             if self._generation_number < self._generation_limit:
                 self._state = self.States.PROPAGATE
