@@ -89,11 +89,12 @@ class TestHomogeneousCoordinate(unittest.TestCase):
             self.assertEqual(self.coord[n], value_to_set)
 
     def test_normalizing(self):
-        coord = cg.HomogeneousCoordinate(1,1,1,0)
-        self.assertTrue(np.allclose(coord.normalize(), np.array((1,1,1,0))/np.sqrt(3)), f" got {coord.normalize()}")
+        coord = cg.HomogeneousCoordinate(1, 1, 1, 0)
+        self.assertTrue(np.allclose(coord.normalize(), np.array((1, 1, 1, 0)) / np.sqrt(3)),
+                        f" got {coord.normalize()}")
 
         coord = cg.HomogeneousCoordinate(1, 1, 1, 1)
-        self.assertTrue(np.allclose(coord.normalize(), np.array((1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3), 1))),
+        self.assertTrue(np.allclose(coord.normalize(), np.array((1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3), 1))),
                         f" got {coord.normalize()}")
 
 
@@ -143,6 +144,49 @@ class TestRay(unittest.TestCase):
 
         # but can be viewed as ray objects
         self.assertEqual(all_rays[0].view(cg.Ray).origin.x, 0)
+
+
+class TestRaySet(unittest.TestCase):
+    def setUp(self):
+        self.n_rays = 1000
+        self.set = cg.RaySet(self.n_rays)
+
+    def test_field_initialization(self):
+        self.assertEqual(self.set.rays.shape, (2, 4, self.n_rays))
+        self.assertEqual(self.set.metadata.shape, (len(cg.RaySet.fields), self.n_rays))
+
+    def test_field_accessing_after_modifying_metadata(self):
+        # makes sure that if you update the actual metadata contents, the fields reflect it
+        for j in range(self.set.metadata.shape[0]):
+            self.set.metadata[j] = j
+            field_value = getattr(self.set, cg.RaySet.fields[j])
+            self.assertTrue(np.allclose(field_value, j), f"Failed at index {j} with attribute {cg.RaySet.fields[j]}")
+
+    def test_metadata_accessing_after_modifying_fields(self):
+        # makes sure that if you update the actual metadata contents, the fields reflect it
+        for j in range(self.set.metadata.shape[0]):
+            field = cg.RaySet.fields[j]
+            setattr(self.set, field, j)
+            self.assertTrue(np.allclose(self.set.metadata[j], j))
+
+    def test_updating_slices_of_fields(self):
+        self.set.generation[:10] = 7
+        self.assertTrue(np.allclose(self.set.metadata[0, :10], 7))
+
+    def test_creation_from_concatenation(self):
+        set1 = cg.RaySet(10)
+        set1.wavelength = -1
+        set2 = cg.RaySet(20)
+        set2.wavelength = 2
+
+        joined_set = cg.RaySet.concat(set1, set2)
+
+        self.assertEqual(joined_set.metadata.shape[-1], 30)
+        self.assertEqual(joined_set.rays.shape, (2, 4, 30))
+
+        self.assertTrue(np.allclose(joined_set.id, np.arange(30)), f"{joined_set.id}")
+        self.assertTrue(np.allclose(joined_set.wavelength[:10], -1))
+        self.assertTrue(np.allclose(joined_set.wavelength[10:], 2))
 
 
 class TestWorldObjectCreation(WorldObjectTestCase):
@@ -874,10 +918,10 @@ class TestCube(unittest.TestCase):
         coord = cg.Point(1, 1, 1)
 
         # can be any of these and still be valid,
-        expected = cg.Vector(1,1,1).normalize()
+        expected = cg.Vector(1, 1, 1).normalize()
         normal = self.surface.normal(coord)
 
-        self.assertTrue(np.allclose(expected,normal), f"expected {expected}, got {normal}")
+        self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
 
     def test_arrayed_normals(self):
         # make a bunch of rays to intersect, move some s.t. they intersect thh surface at a different point
