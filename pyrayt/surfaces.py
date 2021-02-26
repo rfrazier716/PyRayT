@@ -27,14 +27,14 @@ class TracerSurface(cg.WorldObject, abc.ABC):
     def intersect(self, rays):
         """
         Intersect the set of rays with the surface, returns a 1d array of euclidean distances between the ray and
-        surface. if the surface does not intersect np.inf is returned instead
+        surface. if the surface does not intersect -1 is returned instead
         :param rays:
         :return:
         """
         local_ray_set = np.matmul(self._get_object_transform(),
                                   np.atleast_3d(rays))  # translate the rays into object space
         hits = self._surface_primitive.intersect(local_ray_set)
-        return hits
+        return np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
 
     def shade(self, rays, *shader_args):
         """

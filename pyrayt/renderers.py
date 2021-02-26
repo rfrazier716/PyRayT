@@ -121,16 +121,18 @@ class AnalyticRenderer(object):
     def _st_propagate(self):
         # the hits matrix is an mxn matrix where you have m surfaces in the simulation and n rays being propagated
         hits_matrix = np.zeros((len(self._surfaces), self._ray_set.n_rays))
+        hit_distances = np.full(self._ray_set.n_rays, np.inf)
+        hit_surfaces = np.full(self._ray_set.n_rays, -1)
 
         # calculate the intersection distances for every surface in the simulation
         for n, surface in enumerate(self._surfaces):
-            hits_matrix[n] = surface.intersect(self._ray_set.rays)
+            surface_hits = surface.intersect(self._ray_set.rays)
+            new_minima = np.logical_and(surface_hits >= 0, surface_hits <= hit_distances)
+            hit_distances = np.where(new_minima, surface_hits, hit_distances)
+            hit_surfaces = np.where(new_minima, n, hit_surfaces)
 
-        # take the axis min to find the closest ray
         # recasting np.inf to -1 to avoid multiplication errors when calculating distance
-        hit_distances = np.min(hits_matrix, axis=0)
         hit_distances = np.where(np.isinf(hit_distances), -1, hit_distances)
-        hit_surfaces = np.where(hit_distances >= 0, np.argmin(hits_matrix, axis=0), -1)
 
         self._next_ray_set = cg.RaySet(self._ray_set.n_rays)  # make a new rayset to hold the updated rays
         # next need to call the shader function for each surface and trim the dead rays
