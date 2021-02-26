@@ -2,6 +2,7 @@ import unittest
 import pyrayt.surfaces as surf
 import numpy as np
 import pyrayt.simple_cg as cg
+import abc
 
 
 class TestSphere(unittest.TestCase):
@@ -68,13 +69,14 @@ class TestSphere(unittest.TestCase):
 
     def test_normal_inversion(self):
         cube = surf.Cuboid()
-        point = cg.Point(1,0,0)
+        point = cg.Point(1, 0, 0)
         normals = cube.get_world_normals(point)
         self.assertTrue(np.allclose(normals, cg.Vector(*point[:-1])), f"{normals}")
 
         cube.invert_normals()
         normals = cube.get_world_normals(point)
         self.assertTrue(np.allclose(normals, -cg.Vector(*point[:-1])), f"{normals}")
+
 
 class TestCuboid(unittest.TestCase):
     def setUp(self) -> None:
@@ -153,7 +155,7 @@ class TestCuboid(unittest.TestCase):
 
     def test_normal_inversion(self):
         cube = surf.Cuboid()
-        point = cg.Point(1,0,0)
+        point = cg.Point(1, 0, 0)
         normals = cube.get_world_normals(point)
         self.assertTrue(np.allclose(normals, cg.Vector(*point[:-1])), f"{normals}")
 
@@ -161,6 +163,68 @@ class TestCuboid(unittest.TestCase):
         normals = cube.get_world_normals(point)
         self.assertTrue(np.allclose(normals, -cg.Vector(*point[:-1])), f"{normals}")
 
+
+class CommonApertureTests(object):
+    @classmethod
+    def setUpClass(cls):
+        cls.aperture_type = surf.Aperture
+        cls.default_args = tuple()
+        cls.point_in_aperture = np.ndarray()
+        cls.point_outside_aperture = np.ndarray()
+
+    def setUp(self):
+        # make a new instance of the aperture
+        self.aperture = type(self).aperture_type(*self.default_args)
+
+    def aperture_intersection(self):
+        new_points = [np.matmul(self.aperture.get_world_transform(), x) for x in
+                      (self.point_in_aperture, self.point_outside_aperture)]
+        self.assertTrue(self.aperture.points_in_aperture(new_points[0]))
+        self.assertFalse(self.aperture.points_in_aperture(new_points[1]))
+
+    def test_default_intersections(self):
+        self.aperture_intersection()
+
+    def test_scaled_intersections(self):
+        self.aperture.scale_all(0.1)  # scale the aperture smaller
+        self.aperture_intersection()
+
+        self.aperture.scale_all(1000)  # scale the aperture larger
+        self.aperture_intersection()
+
+    def test_moved_intersections(self):
+        self.aperture.move(0, 10, 3)  # move the aperture in the yz plane
+        self.aperture_intersection()
+
+        # this is a special case, make sure that moving the aperture along the x-axis has no effect
+        new_aperture = self.aperture_type(*self.default_args)
+        new_aperture.move_x(1000)
+        self.assertTrue(new_aperture.points_in_aperture(self.point_in_aperture))
+        self.assertFalse(new_aperture.points_in_aperture(self.point_outside_aperture))
+
+    def test_rotated_intersections(self):
+        self.aperture.move_y(10).rotate_x(90)
+        self.aperture_intersection()
+
+
+class TestCircularAperture(CommonApertureTests, unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # will initialize a circular aperture with radius of 1 for all tests
+        cls.aperture_type = surf.CircularAperture
+        cls.default_args = (2,)
+        cls.point_in_aperture = cg.Point(10, 1.4, 1.4)
+        cls.point_outside_aperture = cg.Point(0.7, 0.7, 10)
+
+
+class TestEllipticalAperture(CommonApertureTests, unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # will initialize a circular aperture with radius of 1 for all tests
+        cls.aperture_type = surf.EllipticalAperture
+        cls.default_args = (2,1)
+        cls.point_in_aperture = cg.Point(0, 2, 0)
+        cls.point_outside_aperture = cg.Point(0, 0, 2)
 
 
 if __name__ == '__main__':

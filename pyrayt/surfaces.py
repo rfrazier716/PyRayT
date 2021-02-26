@@ -3,10 +3,46 @@ import abc
 import numpy as np
 
 
-class _Aperture(object):
+class Aperture(cg.WorldObject):
+    _shape: cg.Shape2D
+
     def __init__(self, *args, **kwargs):
-        self.shape = 0
-        self.offset = cg.Point(0, 0, 0)
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+
+    def points_in_aperture(self, points):
+        """
+        compares if points are in the aperture
+        :return:
+        """
+        # transform points into the aperture's coordinate system
+        local_points = np.matmul(self._get_object_transform(), points)
+
+        # the default object exists in the YZ Plane, so those are the coordinates sent to check for intersection
+        return self._shape.point_in_shape(local_points[1:3])
+
+
+class CircularAperture(Aperture):
+    def __init__(self, radius, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+        self._radius = radius
+        self._shape = cg.Disk(radius)
+
+    @property
+    def radius(self):
+        return self._radius
+
+
+class EllipticalAperture(Aperture):
+    def __init__(self, major_radius, minor_radius, *args, **kwargs):
+        # an ellipse is just a disk that has had a scale matrix applied to it
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+        self._radii = (major_radius, minor_radius)
+        self._shape = cg.Disk(1)
+        self.scale(1, major_radius, minor_radius)
+
+    @property
+    def radii(self):
+        return self._radii
 
 
 class TracerSurface(cg.WorldObject, abc.ABC):
@@ -14,9 +50,9 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
-        self.aperture = _Aperture()  # initialize a new aperture for the surface
+        self.aperture = None  # initialize a new aperture for the surface
 
-        self._normal_scale = 1 # a multiplier used when normals are inverted
+        self._normal_scale = 1  # a multiplier used when normals are inverted
 
     def invert_normals(self):
         self._normal_scale = -1
@@ -58,7 +94,7 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         world_normals = np.matmul(self._get_object_transform().T, local_normals)
         world_normals[-1] = 0  # wipe out any w fields caused by the transpose of the transform
         world_normals /= np.linalg.norm(world_normals, axis=0)
-        return world_normals*self._normal_scale  # return the normals, flipped if the object has them inverted
+        return world_normals * self._normal_scale  # return the normals, flipped if the object has them inverted
 
 
 class Sphere(TracerSurface):
@@ -86,15 +122,14 @@ class Cuboid(TracerSurface):
         return cls().scale(x / 2, y / 2, z / 2)  # divide each by 2 because a regular cube extends from -1,1
 
     @classmethod
-    def from_corners(cls, corner_0=np.array((-1,-1,-1)), corner_1=np.array((1,1,1))):
+    def from_corners(cls, corner_0=np.array((-1, -1, -1)), corner_1=np.array((1, 1, 1))):
         corner_0 = np.asarray(corner_0)
         corner_1 = np.asarray(corner_1)
-        if np.any(corner_1<corner_0):
+        if np.any(corner_1 < corner_0):
             raise ValueError("Second Corner must be greater than first corner at each dimension")
 
-        center = 0.5*(corner_0 + corner_1)
-        scale_values = 0.5*(corner_1 - corner_0)
+        center = 0.5 * (corner_0 + corner_1)
+        scale_values = 0.5 * (corner_1 - corner_0)
 
         # return a cube object spanning those points
         return cls().scale(*scale_values[:3]).move(*center[:3])
-
