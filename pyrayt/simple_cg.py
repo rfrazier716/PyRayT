@@ -327,6 +327,14 @@ class RaySet(object):
     def index(self, update):
         self.metadata[3] = update
 
+    @property
+    def id(self):
+        return self.metadata[4]
+
+    @id.setter
+    def id(self, update):
+        self.metadata[4] = update
+
 
 class WorldObject(CountedObject):
     """
