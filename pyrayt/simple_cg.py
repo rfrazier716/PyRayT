@@ -278,7 +278,7 @@ class RaySet(object):
         self.index = 1
         self.generation = 0
         self.intensity = 100.  # default intensity is 100
-        self.id = np.arange(n_rays) # assign unique ids to each ray
+        self.id = np.arange(n_rays)  # assign unique ids to each ray
 
     @classmethod
     def concat(cls, *ray_sets: "RaySet") -> "RaySet":
@@ -288,9 +288,8 @@ class RaySet(object):
         new_set = cls(0)
         new_set.rays = np.dstack([this_set.rays for this_set in ray_sets])
         new_set.metadata = np.hstack([this_set.metadata for this_set in ray_sets])
-        new_set.id = np.arange(new_set.rays.shape[-1]) # re allocate ids
+        new_set.id = np.arange(new_set.rays.shape[-1])  # re allocate ids
         return new_set
-
 
     @property
     def n_rays(self) -> int:
@@ -580,6 +579,58 @@ class SurfacePrimitive(abc.ABC):
         :return: an array of vectors representing the unit normal at each point in intersection
         :rtype:  4xn numpy array of np.float32
         """
+        pass
+
+
+class Shape2D(abc.ABC):
+    """
+    A 2D shape that exist in the XY Plane
+    :param object:
+    :return:
+    """
+
+    @abc.abstractmethod
+    def point_in_shape(self, points: np.ndarray) -> np.ndarray:
+        """
+        Calculates if the points are in
+        :param points:
+        :return:
+        """
+
+
+class Disk(Shape2D):
+    def __init__(self, radius=1.0, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._radius = radius
+
+    @classmethod
+    def from_diameter(cls, diameter: float) -> "Disk":
+        """
+        Creates a disk object from the diameter
+        :param diameter:
+        :return:
+        """
+        return cls(diameter/2)
+
+    def point_in_shape(self, points: np.ndarray) -> np.ndarray:
+        # any point with a norm <1 is
+        return np.linalg.norm(points, axis=0) <= self._radius
+
+
+class Rectangle(Shape2D):
+    def __init__(self, x_length=2, y_length=2, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._x_length = x_length
+        self._y_length = y_length
+
+    def point_in_shape(self, points: np.ndarray) -> np.ndarray:
+        single_dim = points.ndim == 1
+        if single_dim:
+            points = np.atleast_2d(points).T
+
+        in_shape = np.all(np.abs(points) <= np.tile((self._x_length/2, self._y_length/2), (points.shape[-1], 1)).T, axis=0)
+
+        return in_shape[0] if single_dim else in_shape
 
 
 class Sphere(SurfacePrimitive):
