@@ -32,6 +32,8 @@ class _AnalyticDataFrame(object):
 
 
 class AnalyticRenderer(object):
+    ray_offset_value = 1E-6  # how far off the rays are moved from surfaces
+
     class States(Enum):
         PROPAGATE = 1
         RECORD = 2
@@ -146,6 +148,7 @@ class AnalyticRenderer(object):
         self._next_ray_set.metadata = self._ray_set.metadata.copy()
         self._next_ray_set.generation = self._generation_number
 
+        # call the surface shader function to get the new rays
         for n, surface in enumerate(self._surfaces):
             ray_mask = (hit_surfaces == n)
             new_rays, new_indices = surface.shade(

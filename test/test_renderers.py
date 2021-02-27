@@ -6,6 +6,7 @@ from pyrayt.surfaces import YZPlane, Cuboid
 import pyrayt.shaders.analytic as mat
 import numpy as np
 
+
 # TODO: Validate the renderer when the there' an intersection with an apertured surface before a second surface
 
 class TestRenderReflection(unittest.TestCase):
@@ -33,7 +34,7 @@ class TestRenderReflection(unittest.TestCase):
         rays_per_source = 5
         generation_limit = 10
         self.renderer.set_rays_per_source(rays_per_source)
-        self.renderer.set_generation_limit(10)
+        self.renderer.set_generation_limit(generation_limit)
         self.renderer.render()
         results = self.renderer.get_results()
 
@@ -115,6 +116,34 @@ class TestRenderReflection(unittest.TestCase):
         results = renderer.render()
         self.assertEqual(results.shape[0], 20)
         self.assertTrue(np.allclose(results['index'][10:], 1.5))
+
+
+class TestRenderRepeatedIntersection(unittest.TestCase):
+    def setUp(self) -> None:
+        self.system = designer.AnalyticSystem()
+        self.sources = (LineOfRays().rotate_x(90).rotate_y(-180),)
+        self.surfaces = (Cuboid(material=mat.mirror),)
+
+        self.system.sources += self.sources
+        self.system.components += self.surfaces
+        self.renderer = render.AnalyticRenderer(self.system, generation_limit=20)
+
+    def test_render_results(self):
+        """
+        This test is here to check the floating point offset for repeated intersections to make sure it does not
+        cascade and cause missed hits
+
+        :return:
+        """
+        rays_per_source = 5
+        generation_limit = 100
+        self.renderer.set_rays_per_source(rays_per_source)
+        self.renderer.set_generation_limit(generation_limit)
+        self.renderer.render()
+        results = self.renderer.get_results()
+
+        # rays should reflect back and forth until generation limit reached
+        self.assertEqual(results.shape[0], rays_per_source*generation_limit)
 
 
 if __name__ == '__main__':
