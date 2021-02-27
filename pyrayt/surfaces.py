@@ -45,14 +45,36 @@ class EllipticalAperture(Aperture):
         return self._radii
 
 
+class RectangularAperture(Aperture):
+    def __init__(self, y_length, z_length, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+        self._side_lengths = (y_length, z_length)
+        # the default shape is in the XY plane but aperture exist in the YZ Plane
+        self._shape = cg.Rectangle(y_length, z_length)
+
+    @property
+    def side_lengths(self):
+        return self._side_lengths
+
+
+class SquareAperture(RectangularAperture):
+    """
+    Special case of a Rectangular Aperture
+    """
+    def __init__(self, side_length, *args, **kwargs):
+        # initialize the parent constructor
+        super().__init__(side_length, side_length, *args, **kwargs)
+
+
 class TracerSurface(cg.WorldObject, abc.ABC):
+    _aperture: Aperture = None  # initialize a new aperture for the surface
+
     def __init__(self, surface_args, material=None, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
-        self.aperture = None  # initialize a new aperture for the surface
-
         self._normal_scale = 1  # a multiplier used when normals are inverted
+
 
     def invert_normals(self):
         self._normal_scale = -1
@@ -70,7 +92,15 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         local_ray_set = np.matmul(self._get_object_transform(),
                                   np.atleast_3d(rays))  # translate the rays into object space
         hits = self._surface_primitive.intersect(local_ray_set)
-        return np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
+        hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
+        if self._aperture is not None:
+            # if an aperture is composed with the object go through a second check to make sure the hits fall in that
+            # aperture
+            hit_points = local_ray_set[0] + hits*local_ray_set[1]
+            # any hits that aren't in the aperture get masked with a -1
+            hits = np.where(self._aperture.points_in_aperture(hit_points), hits, -1)
+
+        return hits
 
     def shade(self, rays, *shader_args):
         """
@@ -96,6 +126,16 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         world_normals /= np.linalg.norm(world_normals, axis=0)
         return world_normals * self._normal_scale  # return the normals, flipped if the object has them inverted
 
+    @property
+    def aperture(self):
+        return self._aperture
+
+    @aperture.setter
+    def aperture(self, value):
+        if issubclass(type(value), Aperture):
+            self._aperture = value
+        else:
+            raise ValueError("aperture type must be a subclass of 'Aperture'")
 
 class Sphere(TracerSurface):
     surface = cg.Sphere

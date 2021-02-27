@@ -164,67 +164,233 @@ class TestCuboid(unittest.TestCase):
         self.assertTrue(np.allclose(normals, -cg.Vector(*point[:-1])), f"{normals}")
 
 
-class CommonApertureTests(object):
-    @classmethod
-    def setUpClass(cls):
-        cls.aperture_type = surf.Aperture
-        cls.default_args = tuple()
-        cls.point_in_aperture = np.ndarray()
-        cls.point_outside_aperture = np.ndarray()
+class TestAperturedSurface(unittest.TestCase):
+    def setUp(self) -> None:
+        self.surface = surf.YZPlane()
+        self.surface.aperture = surf.RectangularAperture(2, 2)
+
+    def test_apertured_intersection(self):
+        # any point in the aperture should still intersect
+        ray = cg.Ray(cg.Point(), cg.Vector(1, 0, 0))
+        self.assertTrue(self.surface.intersect(ray) != -1)
+
+        # a point higher than 1 shouldn't register as a hit
+        ray = cg.Ray(cg.Point(0, 10, 0), cg.Vector(1, 0, 0))
+        self.assertTrue(self.surface.intersect(ray) == -1)
+
+    def test_moving_surface(self):
+        # the ray should no longer intersect the plane
+        ray = cg.Ray(cg.Point(1, 10, 0), cg.Vector(1, 0, 0))
+        self.assertTrue(self.surface.intersect(ray) == -1)
+
+        # but if we move the surface the aperture will follow
+        self.surface.move(2, 10)
+        self.assertTrue(self.surface.intersect(ray) != -1)
+
+        # and now a ray at the origin will no longer intersect
+        ray = cg.Ray(cg.Point(), cg.Vector(1, 0, 0))
+        self.assertTrue(self.surface.intersect(ray) == -1)
+
+    def test_moving_aperture(self):
+        # the aperture can also be moved independently of the surface
+        ray = cg.Ray(cg.Point(0, 10, 0), cg.Vector(1, 0, 0))
+        self.assertTrue(self.surface.intersect(ray) == -1)
+
+        self.surface.aperture.move(0, 10, 0)
+        self.assertTrue(self.surface.intersect(ray) != -1)
+
+    def test_combination_movement(self):
+        # you can move the aperture and then the surface again
+        ray = cg.Ray(cg.Point(1, 10, 0), cg.Vector(1, 0, 0))
+        self.assertTrue(self.surface.intersect(ray) == -1)
+
+        # this time just moving the aperture won't work because the ray is still in front of the plane
+        self.surface.aperture.move(0, 10, 0)
+        self.assertTrue(self.surface.intersect(ray) == -1)
+
+        # but if we move the whole surface it will
+        self.surface.move(10)
+        self.assertTrue(self.surface.intersect(ray) != -1)
+
+
+class ApertureTest(unittest.TestCase):
+    """
+    Using a Circular Aperture to test the rotating, scaling, and translation properties
+    """
 
     def setUp(self):
         # make a new instance of the aperture
-        self.aperture = type(self).aperture_type(*self.default_args)
+        self.aperture = surf.CircularAperture(1)
 
-    def aperture_intersection(self):
-        new_points = [np.matmul(self.aperture.get_world_transform(), x) for x in
-                      (self.point_in_aperture, self.point_outside_aperture)]
-        self.assertTrue(self.aperture.points_in_aperture(new_points[0]))
-        self.assertFalse(self.aperture.points_in_aperture(new_points[1]))
+    def aperture_intersection(self, point_in_aperture, point_out_of_aperture):
+        self.assertTrue(self.aperture.points_in_aperture(point_in_aperture), f"{point_in_aperture} is not in aperture")
+        self.assertFalse(self.aperture.points_in_aperture(point_out_of_aperture),
+                         f"{point_out_of_aperture} is not in aperture")
 
     def test_default_intersections(self):
-        self.aperture_intersection()
+        self.aperture_intersection(
+            cg.Point(100, 0.7, 0.7),  # in aperture
+            cg.Point(0, 1, 1))  # out of aperture
 
-    def test_scaled_intersections(self):
+    def test_scaled_intersections_smaller(self):
         self.aperture.scale_all(0.1)  # scale the aperture smaller
-        self.aperture_intersection()
+        self.aperture_intersection(
+            cg.Point(100, 0, 0),  # in aperture
+            cg.Point(0, 1, 1))  # out of aperture
 
-        self.aperture.scale_all(1000)  # scale the aperture larger
-        self.aperture_intersection()
+    def test_scaled_intersections_larger(self):
+        self.aperture.scale_all(1000)  # scale the aperture larger ( total scale is 1000)
+        self.aperture_intersection(
+            cg.Point(100, 500, 500),  # in aperture
+            cg.Point(0, 1000.1, 0))  # out of aperture
 
     def test_moved_intersections(self):
         self.aperture.move(0, 10, 3)  # move the aperture in the yz plane
-        self.aperture_intersection()
+        self.aperture_intersection(
+            cg.Point(0, 10, 3),
+            cg.Point(0, 0, 0)
+        )
 
-        # this is a special case, make sure that moving the aperture along the x-axis has no effect
-        new_aperture = self.aperture_type(*self.default_args)
-        new_aperture.move_x(1000)
-        self.assertTrue(new_aperture.points_in_aperture(self.point_in_aperture))
-        self.assertFalse(new_aperture.points_in_aperture(self.point_outside_aperture))
+    def test_moving_x_no_effect(self):
+        self.aperture.move_x(100)
+        self.aperture_intersection(
+            cg.Point(100, 0.7, 0.7),  # in aperture
+            cg.Point(0, 1, 1))  # out of aperture
 
     def test_rotated_intersections(self):
         self.aperture.move_y(10).rotate_x(90)
-        self.aperture_intersection()
+        self.aperture_intersection(
+            cg.Point(0, 0, 10),
+            cg.Point(0, 0, 0)
+        )
+
+    def test_arrayed_intersections(self):
+        n_pts = 1000
+        split_index = 500
+        points = np.zeros((4, n_pts))
+        points[-1] = 1
+        points[1, :split_index] = 2
+        intersections = self.aperture.points_in_aperture(points)
+        self.assertFalse(np.all(intersections[:split_index]))
+        self.assertTrue(np.all(intersections[split_index:]))
 
 
-class TestCircularAperture(CommonApertureTests, unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # will initialize a circular aperture with radius of 1 for all tests
-        cls.aperture_type = surf.CircularAperture
-        cls.default_args = (2,)
-        cls.point_in_aperture = cg.Point(10, 1.4, 1.4)
-        cls.point_outside_aperture = cg.Point(0.7, 0.7, 10)
+class TestCircularAperture(unittest.TestCase):
+    def setUp(self):
+        self.aperture = surf.CircularAperture(1)
+
+    def test_getters(self):
+        aperture = surf.CircularAperture(10)
+        self.assertEqual(aperture.radius, 10)
+
+    def test_points_in_aperture(self):
+        coords = ((0, 0),
+                  (1, 0),
+                  (-1, 0),
+                  (0, 1),
+                  (0, -1),
+                  (0.7, 0.7))
+
+        for coord in coords:
+            self.assertTrue(self.aperture.points_in_aperture(cg.Point(0, *coord)))
+
+    def test_points_outside_aperture(self):
+        coords = ((1, 1),
+                  (-1, 1),
+                  (-1, -1),
+                  (1, -1),
+                  (0, 1.001))
+
+        for coord in coords:
+            self.assertFalse(self.aperture.points_in_aperture(cg.Point(0, *coord)))
 
 
-class TestEllipticalAperture(CommonApertureTests, unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # will initialize a circular aperture with radius of 1 for all tests
-        cls.aperture_type = surf.EllipticalAperture
-        cls.default_args = (2,1)
-        cls.point_in_aperture = cg.Point(0, 2, 0)
-        cls.point_outside_aperture = cg.Point(0, 0, 2)
+class TestEllipticalAperture(unittest.TestCase):
+    def setUp(self):
+        self.aperture = surf.EllipticalAperture(2, 1)
+
+    def test_getters(self):
+        aperture = surf.EllipticalAperture(4, 8)
+        self.assertEqual(aperture.radii, (4, 8))
+
+    def test_points_in_aperture(self):
+        coords = ((0, 0),
+                  (2, 0),
+                  (-2, 0),
+                  (0, 1),
+                  (0, -1),
+                  (0.7, 0.7))
+
+        for coord in coords:
+            self.assertTrue(self.aperture.points_in_aperture(cg.Point(0, *coord)))
+
+    def test_points_outside_aperture(self):
+        coords = ((2, 1),
+                  (-2, 1),
+                  (-2, -1),
+                  (2, -1),
+                  (0, 1.001),
+                  (2.001, 0))
+
+        for coord in coords:
+            self.assertFalse(self.aperture.points_in_aperture(cg.Point(0, *coord)))
+
+
+class TestRectangularAperture(unittest.TestCase):
+    def setUp(self):
+        self.aperture = surf.RectangularAperture(4, 2)
+
+    def test_getters(self):
+        aperture = surf.RectangularAperture(10, 12)
+        self.assertEqual(aperture.side_lengths, (10, 12))
+
+    def test_points_in_aperture(self):
+        coords = ((2, 1),
+                  (-2, 1),
+                  (-2, -1),
+                  (2, -1),
+                  (0, 0),
+                  (0, 1))
+
+        for coord in coords:
+            self.assertTrue(self.aperture.points_in_aperture(cg.Point(0, *coord)))
+
+    def test_points_outside_aperture(self):
+        coords = ((2.01, 1),
+                  (3, 3),
+                  (5, 5))
+
+        for coord in coords:
+            self.assertFalse(self.aperture.points_in_aperture(cg.Point(0, *coord)))
+
+
+class TestSquare(unittest.TestCase):
+    def setUp(self):
+        self.aperture = surf.SquareAperture(2)
+
+    def test_getters(self):
+        aperture = surf.SquareAperture(20)
+        self.assertEqual(aperture.side_lengths, (20, 20))
+
+    def test_points_in_aperture(self):
+        coords = ((1, 1),
+                  (-1, 1),
+                  (-1, -1),
+                  (1, -1),
+                  (0, 0),
+                  (0, 1))
+
+        for coord in coords:
+            self.assertTrue(self.aperture.points_in_aperture(cg.Point(0, *coord)))
+
+    def test_points_outside_aperture(self):
+        coords = ((2, 1),
+                  (-2, 1),
+                  (-2, -1),
+                  (2, -1))
+
+        for coord in coords:
+            self.assertFalse(self.aperture.points_in_aperture(cg.Point(0, *coord)))
 
 
 if __name__ == '__main__':
