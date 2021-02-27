@@ -6,6 +6,7 @@ from pyrayt.surfaces import YZPlane, Cuboid
 import pyrayt.shaders.analytic as mat
 import numpy as np
 
+# TODO: Validate the renderer when the there' an intersection with an apertured surface before a second surface
 
 class TestRenderReflection(unittest.TestCase):
     def setUp(self) -> None:
