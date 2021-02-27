@@ -174,7 +174,7 @@ class CountedObject(object):
 class HomogeneousCoordinate(np.ndarray):
     def __new__(cls, *args, **kwargs):
         # creates an array with the homogeneous coordinates
-        obj = np.zeros(4, dtype=np.float32).view(cls)
+        obj = np.zeros(4, dtype=float).view(cls)
         return obj
 
     def __init__(self, x=0, y=0, z=0, w=0):
@@ -234,7 +234,7 @@ class Vector(HomogeneousCoordinate):
 class Ray(np.ndarray):
     def __new__(cls, *args, **kwargs):
         # creates an array with the homogeneous coordinates
-        obj = np.zeros((2, 4), dtype=np.float32).view(cls)
+        obj = np.zeros((2, 4), dtype=float).view(cls)
         return obj
 
     def __init__(self, origin=Point(), direction=Vector(1, 0, 0)):
@@ -387,8 +387,8 @@ class WorldObject(CountedObject):
         self._obj_transform_valid = True
 
         self._world_coordinate_transform = np.identity(4,
-                                                       dtype=np.float32)  # transform matrix from object to world space
-        self._object_coordinate_transform = np.identity(4, dtype=np.float32)
+                                                       dtype=float)  # transform matrix from object to world space
+        self._object_coordinate_transform = np.identity(4, dtype=float)
 
     def _append_world_transform(self, new_transform):
         self._world_coordinate_transform = np.matmul(new_transform, self._world_coordinate_transform)
@@ -572,7 +572,7 @@ class SurfacePrimitive(abc.ABC):
             row is the ray's origin, and the second row is the direction. Both should be represented as homogeneous
             coordinates
         :return: an array of the parameter t from the ray equation where the ray intersects the object.
-        :rtype: 1-D numpy array of np.float32
+        :rtype: 1-D numpy array of float
         """
         pass
 
@@ -583,9 +583,9 @@ class SurfacePrimitive(abc.ABC):
             on the surface of the object, as this is not verified during calculation.
 
         :param intersections: a 4xn array of homogeneous points representing a point on the sphere.
-        :type intersections: 4xn numpy of np.float32
+        :type intersections: 4xn numpy of float
         :return: an array of vectors representing the unit normal at each point in intersection
-        :rtype:  4xn numpy array of np.float32
+        :rtype:  4xn numpy array of float
         """
         pass
 
@@ -618,7 +618,7 @@ class Disk(Shape2D):
         :param diameter:
         :return:
         """
-        return cls(diameter/2)
+        return cls(diameter / 2)
 
     def point_in_shape(self, points: np.ndarray) -> np.ndarray:
         # any point with a norm <1 is
@@ -636,7 +636,8 @@ class Rectangle(Shape2D):
         if single_dim:
             points = np.atleast_2d(points).T
 
-        in_shape = np.all(np.abs(points) <= np.tile((self._x_length/2, self._y_length/2), (points.shape[-1], 1)).T, axis=0)
+        in_shape = np.all(np.abs(points) <= np.tile((self._x_length / 2, self._y_length / 2), (points.shape[-1], 1)).T,
+                          axis=0)
 
         return in_shape[0] if single_dim else in_shape
 
@@ -813,7 +814,7 @@ class Cube(SurfacePrimitive):
         origins = padded_rays[0, :-1]  # should be a 3xn array of points
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
-        hits = np.full((6, origins.shape[-1]), -1, dtype=np.float32)  # hit distance matrix
+        hits = np.full((6, origins.shape[-1]), -1, dtype=float)  # hit distance matrix
         # matrix tracking xyz where each ray hits each of the 6 planes making up cube
 
         # project into the xz,yz, and xy planes
@@ -834,7 +835,10 @@ class Cube(SurfacePrimitive):
 
         # now we want to reduce it to a 2D array of points where all points lie on the unit cube,
         # this is where the abs of every point is <1
-        cube_hits = np.all(np.abs(axis_intersections) <= 1.0, axis=1)
+        cube_hits = np.all(np.logical_or(
+            np.abs(axis_intersections) <= 1.0,
+            np.isclose(axis_intersections, 1.0)
+        ), axis=1)
         cube_hits = np.where(hits > 0, cube_hits, False)
 
         # next need to find the smallest positive valued hits
