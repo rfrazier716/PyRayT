@@ -144,6 +144,13 @@ class Sphere(TracerSurface):
         super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
 
 
+class Paraboloid(TracerSurface):
+    surface = cg.Paraboloid
+
+    def __init__(self, focus, material=None, *args, **kwargs):
+        super().__init__(surface_args=(focus,), material=material, *args, **kwargs)
+
+
 class YZPlane(TracerSurface):
     surface = cg.Plane
 
