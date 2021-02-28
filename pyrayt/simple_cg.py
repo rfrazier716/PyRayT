@@ -835,9 +835,10 @@ class Cube(SurfacePrimitive):
 
         # now we want to reduce it to a 2D array of points where all points lie on the unit cube,
         # this is where the abs of every point is <1
+        abs_intersection = np.abs(axis_intersections) # the absolute value of the intersection
         cube_hits = np.all(np.logical_or(
-            np.abs(axis_intersections) <= 1.0,
-            np.isclose(axis_intersections, 1.0)
+            abs_intersection <= 1.0,
+            np.isclose(abs_intersection, 1.0) # this last part is here for floating pointer errors being slightly >1
         ), axis=1)
         cube_hits = np.where(hits > 0, cube_hits, False)
 
