@@ -679,11 +679,9 @@ class Sphere(SurfacePrimitive):
         root = np.sqrt(np.maximum(0, disc))
         hits = np.array(((-b + root), (-b - root))) / (2 * a)  # the positive element of the polynomial root
 
-        # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
-        nearest_hit = np.where(hits[1] >= 0, np.amin(hits, axis=0), hits[0])
-        hit_array = np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
-
-        return hit_array
+        # shape should return entire hits array, but masked with np.inf for invalid discriminants
+        valid_hits = np.where(disc >= 0, hits, np.inf)
+        return valid_hits
 
     def normal(self, intersections):
         # calculates the normal of a transformed sphere at a point XYZ
@@ -835,10 +833,10 @@ class Cube(SurfacePrimitive):
 
         # now we want to reduce it to a 2D array of points where all points lie on the unit cube,
         # this is where the abs of every point is <1
-        abs_intersection = np.abs(axis_intersections) # the absolute value of the intersection
+        abs_intersection = np.abs(axis_intersections)  # the absolute value of the intersection
         cube_hits = np.all(np.logical_or(
             abs_intersection <= 1.0,
-            np.isclose(abs_intersection, 1.0) # this last part is here for floating pointer errors being slightly >1
+            np.isclose(abs_intersection, 1.0)  # this last part is here for floating pointer errors being slightly >1
         ), axis=1)
         cube_hits = np.where(hits > 0, cube_hits, False)
 

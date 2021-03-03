@@ -657,36 +657,40 @@ class TestSphere(unittest.TestCase):
 
     def test_ray_intersection_unit_sphere(self):
         hit = self.sphere.intersect(self.ray)
-        self.assertEqual(hit.shape, (1,))
-        self.assertAlmostEqual(hit[0], 1.)
+        self.assertEqual(hit.shape, (2, 1))
+
+        # want hits to be -1 and 1 but dont' care about ordering
+        self.assertTrue(1.0 in hit[:, 0])
+        self.assertTrue(-1.0 in hit[:, 0], f"-1 not in {hit[:, 0]}")
 
         # if the ray is moved out of the radius of the sphere we get inf as the hit
         new_ray = cg.Ray()
-        new_ray.origin = cg.Point(3, 0, 0)
-        self.assertEqual(self.sphere.intersect(new_ray)[0], np.inf)
+        new_ray.origin = cg.Point(0, 0, 2)
+        self.assertEqual(self.sphere.intersect(new_ray)[0, 0], np.inf)
 
     def test_intersection_sphere_behind_ray(self):
-        self.assertEqual(self.sphere.intersect(cg.Ray(cg.Point(100, 0, 0), cg.Vector(1, 0, 0)))[0], np.inf)
+        ray_offset = 100
+        ray = cg.Ray(cg.Point(ray_offset, 0, 0), cg.Vector(1, 0, 0))
+        hits = self.sphere.intersect(ray)
+        expected_hits = [-ray_offset + j * self.sphere.get_radius() for j in (-1, 1)]
+        for hit in expected_hits:
+            self.assertTrue(hit in hits[:, 0], f"{hit} was not found in {hits[:, 0]}")
 
     def test_multi_ray_intersection(self):
-        rays = cg.bundle_rays([cg.Ray() for _ in range(100)])
+        n_rays = 100
+        rays = cg.bundle_rays([cg.Ray() for _ in range(n_rays)])
         all_hits = self.sphere.intersect(rays)
-        self.assertTrue(np.allclose(all_hits[:], self.sphere.get_radius()))
+        self.assertEqual(all_hits.shape, (2, n_rays))
+        self.assertTrue(np.allclose(all_hits[0], self.sphere.get_radius()))
+        self.assertTrue(np.allclose(all_hits[1], -self.sphere.get_radius()))
 
     def test_intersection_skew_case(self):
         hit = self.sphere.intersect(cg.Ray(cg.Point(0, 0, 2 * self.sphere.get_radius()), cg.Vector(0, 0, 1)))
         self.assertAlmostEqual(hit[0], np.inf)
 
-    def test_arrayed_intersections(self):
-        # make a bunch of rays projected down the x-axis
-        n_rays = 1000
-        rays = np.zeros((2, 4, n_rays))
-        rays[0, -1] = 1
-        rays[1, 0] = 1
-        hit = self.sphere.intersect(rays)
-
-        self.assertEqual(hit.shape, (n_rays,))
-        self.assertTrue(np.all(np.isclose(hit, 1.)))
+    def test_double_intersection(self):
+        hit = self.sphere.intersect(cg.Ray(origin=cg.Point(-1, 0, 1), direction=cg.Vector(1, 0, 0)))
+        self.assertTrue(np.allclose(hit[:, 0], 1.0))
 
     def test_normals_base_sphere(self):
         # for a nontransformed sphere the normals should be vectors of the coordinates
