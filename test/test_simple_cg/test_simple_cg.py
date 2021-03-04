@@ -685,7 +685,7 @@ class TestSphere(unittest.TestCase):
         self.assertTrue(np.allclose(all_hits[1], -self.sphere.get_radius()))
 
     def test_intersection_skew_case(self):
-        hit = self.sphere.intersect(cg.Ray(cg.Point(0, 0, 2 * self.sphere.get_radius()), cg.Vector(0, 0, 1)))
+        hit = self.sphere.intersect(cg.Ray(cg.Point(0, 0, 2 * self.sphere.get_radius()), cg.Vector(1, 0, 0)))
         self.assertAlmostEqual(hit[0], np.inf)
 
     def test_double_intersection(self):
