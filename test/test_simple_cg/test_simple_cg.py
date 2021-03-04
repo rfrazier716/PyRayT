@@ -857,8 +857,8 @@ class TestCube(unittest.TestCase):
             cg.Ray(direction=cg.Vector(0, 0, 1))
         )
         for ray in rays:
-            hit = self.surface.intersect(ray)[0]
-            self.assertAlmostEqual(hit, 1)
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[-1, 1]]).T), f"{hit}")
 
     def test_intersection_external_to_cube(self):
         rays = (
@@ -868,33 +868,39 @@ class TestCube(unittest.TestCase):
         )
 
         for ray in rays:
-            hit = self.surface.intersect(ray)[0]
-            self.assertAlmostEqual(hit, 1)
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[1, 3]]).T), f"{hit}")
 
     def test_intersection_at_angle(self):
         ray = cg.Ray(origin=cg.Point(-2, -1, 0), direction=cg.Vector(1, 1, 0).normalize())
 
-        hit = self.surface.intersect(ray)[0]
-        self.assertAlmostEqual(hit, np.sqrt(2))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(np.sort(hit, axis=0), np.sqrt(2) * np.array([[1, 2]]).T), f"{hit}")
 
     def test_skew_intersection(self):
         ray = cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(0, 1, 0).normalize())
-        hit = self.surface.intersect(ray)[0]
-        self.assertAlmostEqual(hit, np.inf)
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit, np.inf))
 
     def test_arrayed_intersection(self):
         # make a bunch of rays to intersect, move some s.t. they intersect teh surface at a different point
         n_rays = 1000
         split_index = int(n_rays / 2)
         rays = cg.bundle_of_rays(n_rays)
-        rays[0, 0, :split_index] = -0.5  # move the ray's up to originate at the focus
-        rays[1, 0] = 1  # have the rays move towards the positive x-axis
+        rays[0, 0, :split_index] = -0.5  # move half the rays back
+        rays[1, 0, :split_index] = 1  # have the rays move towards the positive x-axis
+
+        # make the back half of the rays skew
+        rays[0, 0, split_index:] = -2
+        rays[1, 1, split_index:] = -1
 
         hits = self.surface.intersect(rays)
 
-        self.assertEqual(hits.shape[0], n_rays)
-        self.assertTrue(np.allclose(hits[:split_index], 1.5))
-        self.assertTrue(np.allclose(hits[split_index:], 1.0))
+        self.assertEqual(hits.shape, (2,n_rays))
+        self.assertTrue(np.allclose(hits[0, :split_index], -0.5))
+        self.assertTrue(np.allclose(hits[1, :split_index], 1.5))
+        self.assertTrue(np.allclose(hits[0, split_index:], np.inf))
+        self.assertTrue(np.allclose(hits[1, split_index:], np.inf))
 
     def test_normals(self):
         coords = (

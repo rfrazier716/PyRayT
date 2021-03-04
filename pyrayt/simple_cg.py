@@ -807,10 +807,11 @@ class Cube(SurfacePrimitive):
     """
 
     def intersect(self, rays):
-        # a cube is pretty much 6 plane that intersect. steps for the intersection are then:
-        # - Find the intersection distance and point for each plane that makes up the cube surface
-        # - eliminate intersection points that are not within -<1,1,1> and <1,1,1>
-        # - take the min along the axis of the 6 planes to find the nearest intersection hitting the plane
+        # So, if the minimum intersection of an axis exceeds the maximum intersection of a separate axis, rays do not
+        # intersect the cube. This is kinda odd, maybe draw it out in 2D to help
+        # but I'm pretty sure teh math checks out
+        # it's pretty much saying that if you project teh vector along one of the coordinate axes, you leave the line
+        # of the cube before the other axis starts the intersection
         padded_rays = np.atleast_3d(rays)
 
         # get the origins and directions
@@ -818,38 +819,39 @@ class Cube(SurfacePrimitive):
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
         hits = np.full((6, origins.shape[-1]), -1, dtype=float)  # hit distance matrix
-        # matrix tracking xyz where each ray hits each of the 6 planes making up cube
-
-        # project into the xz,yz, and xy planes
+        new_hits = np.zeros((2, origins.shape[-1]))  # a matrix to store the next hits
 
         for axis in [0, 1, 2]:
             # if the vector does not travel in that direction they won't intersect
             is_zero = np.isclose(directions[axis], 0)
+            # need a special case if the position is skew to an axis, have to know if the point is in teh projected
+            # square
+            skew_case_min = np.where(np.abs(origins[axis]) <= 1.0, -np.inf, np.inf)
 
             # now update the intersection point for each plane
-            hits[2 * axis] = np.where(np.logical_not(is_zero),
-                                      -(origins[axis] + 1) / (directions[axis] + is_zero), -1)
+            new_hits[0] = np.where(np.logical_not(is_zero),
+                                   -(origins[axis] + 1) / (directions[axis] + is_zero), skew_case_min)
 
-            hits[2 * axis + 1] = np.where(np.logical_not(is_zero),
-                                          -(origins[axis] - 1) / (directions[axis] + is_zero), -1)
+            new_hits[1] = np.where(np.logical_not(is_zero),
+                                   -(origins[axis] - 1) / (directions[axis] + is_zero), np.inf)
 
-        axis_intersections = np.tile(origins, (6, 1, 1)) + np.tile(hits, 3).reshape(6, 3,
-                                                                                    padded_rays.shape[-1]) * directions
+            # now we need to sort the new hits so 0 is the min and 1 is the max
+            new_hits = np.sort(new_hits, axis=0)
 
-        # now we want to reduce it to a 2D array of points where all points lie on the unit cube,
-        # this is where the abs of every point is <1
-        abs_intersection = np.abs(axis_intersections)  # the absolute value of the intersection
-        cube_hits = np.all(np.logical_or(
-            abs_intersection <= 1.0,
-            np.isclose(abs_intersection, 1.0)  # this last part is here for floating pointer errors being slightly >1
-        ), axis=1)
-        cube_hits = np.where(hits > 0, cube_hits, False)
+            # update the hits matrix with these new hits
+            hits[axis] = new_hits[0]
+            hits[3 + axis] = new_hits[1]
 
-        # next need to find the smallest positive valued hits
-        nearest_hits = np.min(np.where(np.logical_and(hits > 0, cube_hits), hits, np.inf), axis=0)
+        cube_hits = np.zeros(
+            new_hits.shape)  # cube hits will be a 2xn array of where the points actually intersect the cube
+        cube_hits[0] = np.max(hits[:3], axis=0)  # first hit is the max value of the minimums
+        cube_hits[1] = np.min(hits[3:], axis=0)  # second hit is the min value of the maximums
 
-        # return the smallest hits
-        return nearest_hits
+        # if the min is larger than the max the ray missed the cube and should be replaced with inf
+        cube_hits = np.where(cube_hits[0] < cube_hits[1], cube_hits, np.inf)
+
+        # return the cube hits
+        return cube_hits
 
     def normal(self, intersections):
         # for normals you find the component of the point with the largest value, since the cube can only exist from
