@@ -812,36 +812,38 @@ class TestPlane(unittest.TestCase):
 
     def test_positive_intersection(self):
         ray = cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0))
-        hit = self.surface.intersect(ray)[0]
+        hit = self.surface.intersect(ray)[0, 0]
         self.assertAlmostEqual(hit, 1)
 
         ray = cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 1, 0).normalize())
-        hit = self.surface.intersect(ray)[0]
+        hit = self.surface.intersect(ray)[0, 0]
         self.assertAlmostEqual(hit, np.sqrt(2))
 
     def test_negative_intersection(self):
         ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(1, 0, 0))
-        hit = self.surface.intersect(ray)[0]
-        self.assertAlmostEqual(hit, np.inf)
+        hit = self.surface.intersect(ray)[0, 0]
+        self.assertAlmostEqual(hit, -1)
 
     def test_parallel_intersection(self):
         ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(0, 1, 1).normalize())
-        hit = self.surface.intersect(ray)[0]
+        hit = self.surface.intersect(ray)[0, 0]
         self.assertAlmostEqual(hit, np.inf)
 
     def test_arrayed_intersection(self):
         n_rays = 1000
         split = int(n_rays / 2)
 
+        # make a bunch of rays at x=-1, half will point towards the positive x-axis and the other will
+        # point towards the positive y-axis
         rays = cg.bundle_of_rays(1000)
         rays[0, 0] = -1
         rays[1, 0, :split] = 1
         rays[1, 1] = 1
 
         hit = self.surface.intersect(rays)
-        self.assertEqual(hit.shape[0], n_rays)
-        self.assertTrue(np.allclose(hit[:split], 1))
-        self.assertTrue(np.allclose(hit[split:], np.inf))
+        self.assertEqual(hit.shape, (1, n_rays), f"Ray shape is {hit.shape}")
+        self.assertTrue(np.allclose(hit[0, :split], 1))
+        self.assertTrue(np.allclose(hit[0, split:], np.inf))
 
 
 class TestCube(unittest.TestCase):

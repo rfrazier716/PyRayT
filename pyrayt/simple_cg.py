@@ -777,6 +777,12 @@ class Plane(SurfacePrimitive):
         super().__init__(*args, **kwargs)
 
     def intersect(self, rays):
+        """
+        a plane can have at most one intersection with a ray
+
+        :param rays:
+        :return:
+        """
         padded_rays = np.atleast_3d(rays)
 
         # get the origins and directions
@@ -785,9 +791,8 @@ class Plane(SurfacePrimitive):
 
         hits = np.where(np.logical_not(np.isclose(directions[0], 0)),
                         -origins[0] / (directions[0] + (directions[0] == 0)), np.inf)
-        positive_hits = np.where(hits >= 0, hits, np.inf)
 
-        return positive_hits
+        return np.atleast_2d(hits)
 
     def normal(self, intersections):
         # a plane has a trivial normal, it's the -x axis
