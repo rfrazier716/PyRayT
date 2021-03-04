@@ -61,6 +61,7 @@ class SquareAperture(RectangularAperture):
     """
     Special case of a Rectangular Aperture
     """
+
     def __init__(self, side_length, *args, **kwargs):
         # initialize the parent constructor
         super().__init__(side_length, side_length, *args, **kwargs)
@@ -74,7 +75,6 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
         self._normal_scale = 1  # a multiplier used when normals are inverted
-
 
     def invert_normals(self):
         self._normal_scale = -1
@@ -91,14 +91,20 @@ class TracerSurface(cg.WorldObject, abc.ABC):
         """
         local_ray_set = np.matmul(self._get_object_transform(),
                                   np.atleast_3d(rays))  # translate the rays into object space
+
+        # get the hits matrix, which is mxn where n is the number of rays propagated
         hits = self._surface_primitive.intersect(local_ray_set)
-        hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
         if self._aperture is not None:
+            hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
             # if an aperture is composed with the object go through a second check to make sure the hits fall in that
             # aperture
-            hit_points = local_ray_set[0] + hits*local_ray_set[1]
+            hit_points = local_ray_set[0] + hits * local_ray_set[1]
             # any hits that aren't in the aperture get masked with a -1
             hits = np.where(self._aperture.points_in_aperture(hit_points), hits, -1)
+
+        else:
+            hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # retuce the hits to a 1xn array of minimum hits
+            hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
 
         return hits
 
@@ -136,6 +142,7 @@ class TracerSurface(cg.WorldObject, abc.ABC):
             self._aperture = value
         else:
             raise ValueError("aperture type must be a subclass of 'Aperture'")
+
 
 class Sphere(TracerSurface):
     surface = cg.Sphere
