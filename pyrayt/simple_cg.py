@@ -28,6 +28,39 @@ def smallest_positive_root(a, b, c):
     return np.where(np.logical_and(disc >= 0, nearest_hit >= 0), nearest_hit, np.inf)
 
 
+def binomial_root(a, b, c, disc=None):
+    """
+    finds the 2nd order polynomial roots given the equations a*x^2 + b*x + c = 0, returns the smallest root > 0, and
+    np.inf if a root does not satisfy that condition. Note that if a has a value of zero, it will be cast as 1 to avoid
+    a divide by zero error. it's up the user to filter out these results before/after execution (using np.where etc.).
+
+    :param a: coefficients for the second order of the polynomial
+    :param b: coefficients for the first order of the polynomial
+    :param c: coefficients for the zeroth order of the polynomial
+    :param disc: the precalculated Discriminant array, if provided the discriminant won't be recalculated
+
+    :return: an array of length n with the smallest positive root for the array
+    """
+    disc = b ** 2 - 4 * a * c if disc is None else disc  # find the discriminant, or use the provided one
+    # linear cases are where there's no expontential term, have to be handled separately
+    linear_cases = np.isclose(a, 0)
+    root = np.sqrt(np.maximum(0, disc))  # the square root of the discriminant protected from being nan
+
+    # solve for the polynomial roots
+    polyroots = np.vstack(((-b + root), (-b - root))) / (
+            2 * a + np.isclose(a, 0))
+    # Now correct for the cases that should be infinite
+    polyroots = np.where(disc >= 0, polyroots, np.inf)
+
+    # update for the linear roots case
+    polyroots = np.where(linear_cases, np.tile(-c / (b + (b == 0)), (2, 1)), polyroots)
+    # correct for cases that have neither a or b terms
+    polyroots = np.where(np.logical_and(linear_cases, np.isclose(b, 0)), np.inf, polyroots)
+
+    # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
+    return polyroots
+
+
 def element_wise_dot(mat_1, mat_2, axis=0):
     """
     calculates the row-wise/column-wise dot product two nxm matrices
@@ -728,10 +761,10 @@ class Paraboloid(SurfacePrimitive):
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
         # prebuild the hits array with np.inf, which is the default if a hit does not exist
-        hits = np.full(padded_rays.shape[-1], np.inf)
+        hits = np.full((2, padded_rays.shape[-1]), np.inf)
 
         # get the components of the polynomial root equation
-        a = element_wise_dot(directions[1:], directions[1:], 0)
+        a = element_wise_dot(directions[1:], directions[1:], axis=0)
         b = 2 * (element_wise_dot(directions[1:], origins[1:]) - 2 * directions[0] * self._focus)
 
         c = element_wise_dot(origins[1:], origins[1:], axis=0) - origins[0] * 4 * self._focus
@@ -751,8 +784,9 @@ class Paraboloid(SurfacePrimitive):
 
         # update the hits array based on the cases
         hits = np.where(trivial_cases, 0, hits)
-        # so trivial_cases is in the denominator so there's not a divide by zero error if b==0, hacky but works
+        # Update hits for linear cases, where there's no 'a' term (only intersect at one point)
         hits = np.where(linear_cases, -c / (b + (b == 0)), hits)
+        # Other cases are the double root cases
 
         hits = np.where(dbl_root_cases, smallest_positive_root(a, b, c), hits)
 

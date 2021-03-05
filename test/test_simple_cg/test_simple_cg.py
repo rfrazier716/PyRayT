@@ -499,6 +499,85 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         self.assertTrue(np.allclose(root, 2))
 
 
+class TestBinomialRoot(unittest.TestCase):
+    def test_root_dbl(self):
+        # define roots
+        a = 1
+        b = -2
+        c = 1
+        roots = cg.binomial_root(a, b, c)
+        self.assertTrue(np.allclose(roots, 1.0))
+
+        n_elements = 1000
+        a = np.full(n_elements, 1)
+        b = np.full(n_elements, -2)
+        c = np.full(n_elements, 1)
+        roots = cg.binomial_root(a, b, c)
+        self.assertEqual(roots.shape, (2, n_elements))
+        self.assertTrue(np.allclose(roots, 1))
+
+    def test_root_neg(self):
+        # define roots
+        a = 1
+        b = 2
+        c = 1
+        roots = cg.binomial_root(a, b, c)
+        self.assertTrue(np.allclose(roots, -1.0))
+
+        # arrayed case
+        n_elements = 1000
+        a = np.full(n_elements, 1)
+        b = np.full(n_elements, 2)
+        c = np.full(n_elements, 1)
+        roots = cg.binomial_root(a, b, c)
+        self.assertTrue(np.allclose(roots, -1))
+
+    def test_root_imag(self):
+        # define roots
+        a = 1
+        b = 1
+        c = 1
+        roots = cg.binomial_root(a, b, c)
+        self.assertTrue(np.allclose(roots, np.inf))
+
+    def test_root_pos_and_neg(self):
+        # define roots
+        a = 1
+        b = 0
+        c = -4
+        roots = cg.binomial_root(a, b, c)
+        self.assertTrue(np.allclose(np.sort(roots, axis=0), np.atleast_2d(np.array((-2, 2))).T), f"got {roots}")
+
+    def test_linear_roots(self):
+        # define roots
+        a = 0
+        b = 2
+        c = -4
+        roots = cg.binomial_root(a, b, c)
+        self.assertTrue(np.allclose(roots, 2))
+
+    def test_infinite_roots(self):
+        # define roots
+        a = 0
+        b = 0
+        c = -4
+        roots = cg.binomial_root(a, b, c)
+        self.assertTrue(np.allclose(roots, np.inf))
+
+    def test_mixed_roots(self):
+        n_elements = 1000
+        split = 500
+        coeffs = np.zeros((3, n_elements))
+        coeffs[:, :split] = np.tile((1, 0, -4), (split, 1)).T
+        coeffs[:, split:] = np.tile((0, 0, 1), (split, 1)).T
+
+        roots = np.sort(cg.binomial_root(*coeffs), axis=0)  # sort the roots so we can compare
+        self.assertTrue(np.allclose(roots[0, :split], -2))
+        self.assertTrue(np.allclose(roots[1, :split], 2))
+        self.assertTrue(np.allclose(roots[0, split:], np.inf))
+        self.assertTrue(np.allclose(roots[1, split:], np.inf))
+
+
 class TestReflections(unittest.TestCase):
     def test_single_vector_reflection(self):
         vect_in = cg.Vector(1, -1, 0)
@@ -896,7 +975,7 @@ class TestCube(unittest.TestCase):
 
         hits = self.surface.intersect(rays)
 
-        self.assertEqual(hits.shape, (2,n_rays))
+        self.assertEqual(hits.shape, (2, n_rays))
         self.assertTrue(np.allclose(hits[0, :split_index], -0.5))
         self.assertTrue(np.allclose(hits[1, :split_index], 1.5))
         self.assertTrue(np.allclose(hits[0, split_index:], np.inf))
