@@ -146,26 +146,5 @@ class TestRenderRepeatedIntersection(unittest.TestCase):
         # rays should reflect back and forth until generation limit reached
         self.assertEqual(results.shape[0], rays_per_source*generation_limit)
 
-    def test_paraboloid_with_bounding_box(self):
-        """
-        is a test case where an intersection with the parabola caused a ray to miss it's cube intersection
-        ultimate cause is
-        """
-        paraboloid = surf.Paraboloid(1, material=mat.mirror)
-        paraboloid.aperture = surf.CircularAperture(1)
-        paraboloid.aperture.move_z(2)
-
-        bounds = surf.Cuboid(material=mat.absorber).scale_all(5)
-        # bounds = surf.Sphere(10, material = mat.absorber)
-        rays = LineOfRays(2.5).rotate_x(90).rotate_z(180).move_x(3).move_z(2)
-
-        system = designer.AnalyticSystem()
-        system.sources.append(rays)
-        system.components += (paraboloid, bounds,)
-
-        renderer = render.AnalyticRenderer(system, rays_per_source=11, generation_limit=5)
-        results = renderer.render()
-        self.assertTrue(np.all(results['surface']!=-1))
-
 if __name__ == '__main__':
     unittest.main()
