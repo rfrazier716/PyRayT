@@ -760,37 +760,18 @@ class Paraboloid(SurfacePrimitive):
         origins = padded_rays[0, :-1]  # should be a 3xn array of points
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
-        # prebuild the hits array with np.inf, which is the default if a hit does not exist
-        hits = np.full((2, padded_rays.shape[-1]), np.inf)
-
         # get the components of the polynomial root equation
         a = element_wise_dot(directions[1:], directions[1:], axis=0)
         b = 2 * (element_wise_dot(directions[1:], origins[1:]) - 2 * directions[0] * self._focus)
 
         c = element_wise_dot(origins[1:], origins[1:], axis=0) - origins[0] * 4 * self._focus
 
-        disc = b ** 2 - 4 * a * c  # calculate the discriminant for the polynomial roots equation
-
-        # trivial cases are where c=0
         # these points are at the origin and intersect with the sphere at t=0
         trivial_cases = np.isclose(c, 0)
 
-        # linear cases are where a=0, this cannot be solved by the polyroots equation since the denominator blows up
-        # trivial cases get excluded from the linear case set
-        linear_cases = np.logical_and(np.isclose(a, 0), np.logical_not(trivial_cases))
+        hits = binomial_root(a, b, c)
+        # hits = np.where(trivial_cases, 0, hits) # replace trivial cases with zeros
 
-        # all other cases must have double roots
-        dbl_root_cases = np.logical_not(np.logical_or(trivial_cases, linear_cases))
-
-        # update the hits array based on the cases
-        hits = np.where(trivial_cases, 0, hits)
-        # Update hits for linear cases, where there's no 'a' term (only intersect at one point)
-        hits = np.where(linear_cases, -c / (b + (b == 0)), hits)
-        # Other cases are the double root cases
-
-        hits = np.where(dbl_root_cases, smallest_positive_root(a, b, c), hits)
-
-        # retun the hits array
         return hits
 
     def normal(self, intersections):

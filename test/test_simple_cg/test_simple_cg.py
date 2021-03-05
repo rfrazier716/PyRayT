@@ -799,40 +799,47 @@ class TestParaboloid(unittest.TestCase):
     def test_object_getters(self):
         self.assertEqual(self.surface.get_focus(), self.f)
 
+    def test_intersection_at_origin(self):
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 1, 0)))
+        self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 0, 1)))
+        self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
+
+        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(1, 0, 0)))
+        self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
+
     def test_intersection_linear_case(self):
         hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0)))
-        self.assertEqual(hit.shape, (1,))
-        self.assertAlmostEqual(hit[0], 1)
+        self.assertEqual(hit.shape, (2, 1))
+        self.assertTrue(np.allclose(hit, 1))
 
         hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, -2 * self.f), cg.Vector(1, 0, 0)))
-        self.assertAlmostEqual(hit[0], self.f)
+        self.assertTrue(np.allclose(hit, self.f))
 
     def test_intersection_trivial_case(self):
         hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0)))
-        self.assertAlmostEqual(hit[0], 0)
+        self.assertTrue(np.allclose(hit, 0))
 
         hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 1, 1) / np.sqrt(2)))
-        self.assertAlmostEqual(hit[0], 0)
+        self.assertTrue(np.allclose(hit, 0))
 
     def test_intersection_dbl_root_case(self):
-        hit = self.surface.intersect(cg.Ray(cg.Point(self.f, -2 * self.f, 0)))
-        self.assertAlmostEqual(hit[0], 0)
+        hit = self.surface.intersect(cg.Ray(cg.Point(self.f, -2 * self.f, 0), cg.Vector(0, 1, 0)))
+        self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((0, 4 * self.f))), f"{hit}")
 
         hit = self.surface.intersect(cg.Ray(cg.Point(self.f, 0, 0), cg.Vector(0, 1, 0)))
-        self.assertAlmostEqual(hit[0], self.f * 2)
-
-        hit = self.surface.intersect(cg.Ray(cg.Point(self.f, 0, 0), cg.Vector(0, 1, 0)))
-        self.assertAlmostEqual(hit[0], self.f * 2)
+        self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((-2, 2)) * self.f), f"{hit}")
 
     def test_intersection_skew_case(self):
         hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(0, 1, 0)))
-        self.assertEqual(hit[0], np.inf)
+        self.assertTrue(np.allclose(hit, np.inf))
 
         hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(0, 1, 1)))
-        self.assertEqual(hit[0], np.inf)
+        self.assertTrue(np.allclose(hit, np.inf))
 
         hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(0, 1, -1)))
-        self.assertEqual(hit[0], np.inf)
+        self.assertTrue(np.allclose(hit, np.inf))
 
     def test_intersection_arrayed_case(self):
         # make a bunch of rays to intersect, move some s.t. they intersect teh surface at a different point
@@ -841,24 +848,22 @@ class TestParaboloid(unittest.TestCase):
         rays = cg.bundle_of_rays(n_rays)
         rays[0, 0, :split_index] = self.f  # move the ray's up to originate at the focus
         rays[1, 1, :split_index] = 1  # have the rays move towards the positive y_axis
+        rays[1, 0, split_index:] = 1
 
         hits = self.surface.intersect(rays)
 
-        self.assertEqual(hits.shape[0], n_rays)
-        self.assertTrue(np.allclose(hits[:split_index], 2 * self.f))
-        self.assertTrue(np.allclose(hits[split_index:], 0))
+        self.assertEqual(hits.shape, (2, n_rays))
+
+        self.assertTrue(np.allclose(np.sort(hits[:, :split_index], axis=0).T, np.array((-2 * self.f, 2 * self.f))))
+        self.assertTrue(np.allclose(np.sort(hits[:, split_index:], axis=0).T, np.array((0,0))))
+
+    #  self.assertTrue(np.allclose(hits[split_index:], 0))
 
     def test_intersection_negative_focus(self):
         #  if the focus is negative the intersections should be in the -x region
         surface = cg.Paraboloid(-self.f)
         hit = surface.intersect(cg.Ray(cg.Point(-self.f, 0, 0), cg.Vector(0, 1, 0)))
-        self.assertAlmostEqual(hit[0], 2 * self.f, places=5)
-
-        hit = surface.intersect(cg.Ray(cg.Point(-self.f, 0, 0), cg.Vector(0, 1, 1) / np.sqrt(2)))
-        self.assertAlmostEqual(hit[0], 2 * self.f, places=5)
-
-        hit = surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0)))
-        self.assertAlmostEqual(hit[0], 1, places=5)
+        self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((-2, 2)) * self.f), f"{hit}")
 
     def test_intersection_far(self):
         # check that an error is not raised when a grossly large value is passed to the intersection
