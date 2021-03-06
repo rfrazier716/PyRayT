@@ -562,7 +562,7 @@ class TestBinomialRoot(unittest.TestCase):
         b = 0
         c = -4
         roots = cg.binomial_root(a, b, c)
-        self.assertTrue(np.allclose(roots, np.inf))
+        self.assertTrue(np.allclose(np.sort(roots.T), np.array((-np.inf, np.inf))))
 
     def test_mixed_roots(self):
         n_elements = 1000
