@@ -1,0 +1,34 @@
+version: 2.1
+
+jobs:
+  build:
+    docker: # use the Docker executor
+      # CircleCI node images available at: https://hub.docker.com/r/circleci/node/
+      - image: python:3.8
+        auth:
+          username: rfrazier716
+          password: $DOCKER_API_KEY
+    steps:
+      - checkout
+      - run:
+          name: build
+          command: |
+            python -m pip install poetry
+            poetry install
+
+      - run:
+          name: tox tests
+          command:
+            poetry run tox -e py38
+      - run:
+          name: coverage
+          command: | # run coverage and log it
+            poetry run tox -e coverage
+
+      - store_artifacts:
+          path: .tox/htmlcov
+
+workflows:
+  build_and_test:
+    jobs:
+      - build
