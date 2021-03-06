@@ -4,12 +4,12 @@ import numpy as np
 
 
 class Aperture(cg.WorldObject):
-    _shape: cg.Shape2D
+    _shape: cg.SurfacePrimitive
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
 
-    def points_in_aperture(self, points):
+    def intersect(self, points):
         """
         compares if points are in the aperture
         :return:
@@ -18,14 +18,15 @@ class Aperture(cg.WorldObject):
         local_points = np.matmul(self._get_object_transform(), points)
 
         # the default object exists in the YZ Plane, so those are the coordinates sent to check for intersection
-        return self._shape.point_in_shape(local_points[1:3])
+        return self._shape.intersect(local_points)
 
 
 class CircularAperture(Aperture):
     def __init__(self, radius, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._radius = radius
-        self._shape = cg.Disk(radius)
+        self._shape = cg.Cylinder(radius)
+        self.rotate_y(-90)
 
     @property
     def radius(self):
@@ -94,17 +95,22 @@ class TracerSurface(cg.WorldObject, abc.ABC):
 
         # get the hits matrix, which is mxn where n is the number of rays propagated
         hits = self._surface_primitive.intersect(local_ray_set)
-        if self._aperture is not None:
-            hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
-            # if an aperture is composed with the object go through a second check to make sure the hits fall in that
-            # aperture
-            hit_points = local_ray_set[0] + hits * local_ray_set[1]
-            # any hits that aren't in the aperture get masked with a -1
-            hits = np.where(self._aperture.points_in_aperture(hit_points), hits, -1)
 
-        else:
-            hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # retuce the hits to a 1xn array of minimum hits
-            hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
+        # if there is an aperture the hits have to be filtered
+        # any hit that is not in the aperture is eliminated
+        if self._aperture is not None:
+            # get the hits for the aperture
+            aperture_hits = self._aperture.intersect(local_ray_set)
+
+            # valid hits are anywhere that the aperture hits completely "wrap" the shape hit distances
+            # since apertures have to be convex, they should only have two hits max
+            aperture_min, aperture_max = np.sort(aperture_hits, axis=0)
+            valid_hits = np.logical_and(hits >= aperture_min, hits <= aperture_max)
+            hits = np.where(valid_hits, hits, np.inf)
+
+        # filter out any negative hits, and then return the smallest, replacing np.inf with -1
+        hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # reduce the hits to a 1xn array of minimum hits
+        hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
 
         return hits
 

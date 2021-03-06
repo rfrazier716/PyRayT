@@ -167,7 +167,7 @@ class TestCuboid(unittest.TestCase):
 class TestAperturedSurface(unittest.TestCase):
     def setUp(self) -> None:
         self.surface = surf.YZPlane()
-        self.surface.aperture = surf.RectangularAperture(2, 2)
+        self.surface.aperture = surf.CircularAperture(1)
 
     def test_apertured_intersection(self):
         # any point in the aperture should still intersect
@@ -211,6 +211,28 @@ class TestAperturedSurface(unittest.TestCase):
         # but if we move the whole surface it will
         self.surface.move(10)
         self.assertTrue(self.surface.intersect(ray) != -1)
+
+    def test_aperture_masking_intersections(self):
+        # if you intersect a surface with an aperture, even if there is a nearer intercept it will only count the
+        # aperture intersection
+
+        self.surface = surf.Sphere(1)
+        ray = cg.Ray(cg.Point(-1, 0, -2), cg.Vector(1, 0, 1))
+        self.assertEqual(self.surface.intersect(ray)[0], 1)
+
+        # if we add an aperture now the nearest intersection will be 2, because the first intersection is not within
+        # the aperture
+
+        self.surface.aperture = surf.CircularAperture(0.5)
+        ray = cg.Ray(cg.Point(-1, 0, -2), cg.Vector(1, 0, 1))
+        self.assertEqual(self.surface.intersect(ray)[0], 2)
+
+
+
+
+        #self.surface.aperture = surf.CircularAperture(1)
+
+
 
 
 class ApertureTest(unittest.TestCase):
