@@ -855,7 +855,7 @@ class TestParaboloid(unittest.TestCase):
         self.assertEqual(hits.shape, (2, n_rays))
 
         self.assertTrue(np.allclose(np.sort(hits[:, :split_index], axis=0).T, np.array((-2 * self.f, 2 * self.f))))
-        self.assertTrue(np.allclose(np.sort(hits[:, split_index:], axis=0).T, np.array((0,0))))
+        self.assertTrue(np.allclose(np.sort(hits[:, split_index:], axis=0).T, np.array((0, 0))))
 
     #  self.assertTrue(np.allclose(hits[split_index:], 0))
 
@@ -1038,6 +1038,125 @@ class TestCube(unittest.TestCase):
         expected = np.zeros((4, split_index))
         expected[1] = 1
         self.assertTrue(np.allclose(normals[:, split_index:], expected))
+
+
+class TestInfiniteCylinder(unittest.TestCase):
+    def setUp(self) -> None:
+        self.surface = cg.Cylinder(1, infinite=True)
+
+    def test_intersection_to_sidewalls(self):
+        rays = (
+            cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(1, 0, 0)),
+            cg.Ray(origin=cg.Point(-2, 0, 1), direction=cg.Vector(1, 0, 0)),
+            cg.Ray(origin=cg.Point(-2, 0, 2), direction=cg.Vector(1, 0, 0))
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[1, 3]]).T), f"{hit}")
+
+    def test_no_intersection_inside(self):
+        rays = (
+            cg.Ray(origin=cg.Point(0, 0, 0), direction=cg.Vector(0, 0, 1)),
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[-np.inf, np.inf]]).T), f"{hit}")
+
+    def test_no_intersection_outside(self):
+        """
+        if the ray origin is outside of the cylinder and it does not intersect, the returned hits should both be np.inf
+        this is so that when you eventually sort them with the cap hits you can tell there's no intersection
+        :return:
+        """
+        rays = (
+            cg.Ray(origin=cg.Point(2, 0, 0), direction=cg.Vector(0, 0, 1)),
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[np.inf, np.inf]]).T), f"{hit}")
+
+    def test_arrayed_intersection(self):
+        n_rays = 1000
+        split = int(n_rays / 2)
+
+        # make a bunch of rays at x=0, half will point towards the positive x-axis and the other will
+        # point towards the positive y-axis
+        rays = cg.bundle_of_rays(1000)
+        rays[0, 0] = 0
+        rays[1, 0, :split] = 1
+        rays[1, 2, split:] = 1
+
+        hit = self.surface.intersect(rays)
+        self.assertEqual(hit.shape, (2, n_rays), f"Ray shape is {hit.shape}")
+        self.assertTrue(np.allclose(hit[:, :split].T, np.array((-1, 1))))
+        self.assertTrue(np.allclose(hit[:, split:].T, np.array((-np.inf, np.inf))))
+
+
+class TestFiniteCylinder(unittest.TestCase):
+    def setUp(self) -> None:
+        self.surface = cg.Cylinder(1, infinite=False)
+
+    def test_intersection_to_sidewalls(self):
+        rays = (
+            cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(1, 0, 0)),
+            cg.Ray(origin=cg.Point(-2, 0, 0.5), direction=cg.Vector(1, 0, 0)),
+            cg.Ray(origin=cg.Point(-2, 0, -0.5), direction=cg.Vector(1, 0, 0))
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[1, 3]]).T), f"{hit}")
+
+    def test_intersection_to_cap(self):
+        rays = (
+            cg.Ray(origin=cg.Point(0, 0, 0), direction=cg.Vector(0, 0, 1)),
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[-1, 1]]).T), f"{hit}")
+
+    def test_wall_cap_intersection(self):
+        rays = (
+            cg.Ray(origin=cg.Point(-2, 0, -1), direction=cg.Vector(1, 0, 1)),
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[1, 2]]).T), f"{hit}")
+
+    def test_no_intersection_outside(self):
+        """
+        if the ray origin is outside of the cylinder and it does not intersect, the returned hits should both be np.inf
+        this is so that when you eventually sort them with the cap hits you can tell there's no intersection
+        :return:
+        """
+        rays = (
+            cg.Ray(origin=cg.Point(2, 0, 0), direction=cg.Vector(0, 0, 1)),
+        )
+
+        for ray in rays:
+            hit = self.surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[np.inf, np.inf]]).T), f"{hit}")
+
+    def test_arrayed_intersection(self):
+        n_rays = 1000
+        split = int(n_rays / 2)
+
+        # make a bunch of rays at x=0, half will point towards the positive x-axis and the other will
+        # point towards the positive y-axis
+        rays = cg.bundle_of_rays(1000)
+        rays[0, 0] = 0
+        rays[1, 0, :split] = 1
+        rays[1, 2, split:] = 1
+
+        hit = self.surface.intersect(rays)
+        self.assertEqual(hit.shape, (2, n_rays), f"Ray shape is {hit.shape}")
+        self.assertTrue(np.allclose(hit[:, :split].T, np.array((-1, 1))))
+        self.assertTrue(np.allclose(hit[:, split:].T, np.array((-1, 1))))
 
 
 if __name__ == '__main__':

@@ -30,9 +30,7 @@ def smallest_positive_root(a, b, c):
 
 def binomial_root(a, b, c, disc=None):
     """
-    finds the 2nd order polynomial roots given the equations a*x^2 + b*x + c = 0, returns the smallest root > 0, and
-    np.inf if a root does not satisfy that condition. Note that if a has a value of zero, it will be cast as 1 to avoid
-    a divide by zero error. it's up the user to filter out these results before/after execution (using np.where etc.).
+    finds the 2nd order polynomial roots given the equations a*x^2 + b*x + c = 0
 
     :param a: coefficients for the second order of the polynomial
     :param b: coefficients for the first order of the polynomial
@@ -54,10 +52,14 @@ def binomial_root(a, b, c, disc=None):
 
     # update for the linear roots case
     polyroots = np.where(linear_cases, np.tile(-c / (b + (b == 0)), (2, 1)), polyroots)
-    # correct for cases that have neither a or b terms
-    polyroots = np.where(np.logical_and(linear_cases, np.isclose(b, 0)), np.inf, polyroots)
 
-    # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
+    # correct for cases that have neither a or b terms
+    # if there's not a or b and the discriminant is positive, return +/-inf, otherwise just + inf
+    # this is for cylinder intersections cases
+    c_terms_only = np.logical_and(linear_cases, np.isclose(b, 0))
+    polyroots = np.where(c_terms_only, np.inf, polyroots)
+    polyroots[0] = np.where(np.logical_and(c_terms_only, c<=0), -np.inf, polyroots[0])
+
     return polyroots
 
 
@@ -880,3 +882,83 @@ class Cube(SurfacePrimitive):
 
         # if a 1d array was passed, transpose it and strip a dimension
         return normals
+
+
+class Cylinder(SurfacePrimitive):
+    """
+    A cylinder with a radius of 1 in the ZY plane, extending from +1 to -1
+    """
+
+    def __init__(self, radius=1, infinite=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._radius = radius  # this is the sphere's radius in object space, it can be manipulated in world space with
+        # scale and transform operations
+        self._infinite = infinite  # whether or not the cylinder has end caps
+
+    def get_radius(self):
+        """
+        Get the sphere's radius in object space. The apparent radius in world space may be different due to object
+            transforms
+
+        :return: the sphere's object space radius
+        :rtype: float
+        """
+
+        return self._radius
+
+    def intersect(self, rays):
+        """
+        For Cylinder intersections first find the intersection point with an infinite cylinder, than check if
+            the caps are intersected before or after the cylinder
+        :param rays:
+        :return:
+        """
+        padded_rays = np.atleast_3d(rays)
+        origins = padded_rays[0, :-1]  # should be a 3xn array of points
+        directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
+
+        # use the ray projected into the XY plane for the side of the cylinder intersection
+        origins_2d = origins[:-1]
+        directions_2d = directions[:-1]
+
+        # calculate the a,b, and c of the polynomial roots equation
+        a = element_wise_dot(directions_2d, directions_2d,
+                             axis=0)  # a must be positive because it's the squared magnitude
+        b = 2 * element_wise_dot(directions_2d, origins_2d, axis=0)  # be can be positive or negative
+        c = element_wise_dot(origins_2d, origins_2d, axis=0) - self._radius ** 2  # c can be positive or negative
+
+        # calculate the sidewall hits
+        hits = np.zeros((4, directions.shape[-1]))
+        sidewall_hits = np.sort(binomial_root(a, b, c), axis=0)  # have to sort the roots for intersections
+
+        # calculate where the cap is hit
+        if not self._infinite:
+            cap_hits = np.tile((-np.inf, np.inf), (origins.shape[-1], 1)).T  # by default assume the cap hits as +/- inf
+
+            # if the vector does not travel in the z-direction they'll never intersect
+            is_zero = np.isclose(directions[2], 0)
+
+            # need a special case if the position is skew to an axis, have to know if the point is in the projected
+            # square
+            skew_case_min = np.full((2, directions.shape[-1]), np.inf)
+            skew_case_min[0] = np.where(np.abs(origins[2]) <= 1, -np.inf, np.inf)
+
+            cap_hits = -np.vstack(((origins[2] + 1), origins[2] - 1)) / (directions[2] + is_zero)
+            cap_hits = np.where(np.logical_not(is_zero), cap_hits, skew_case_min)
+            cap_hits = np.sort(cap_hits, axis=0)
+
+            all_hits = np.vstack((sidewall_hits[0], cap_hits[0], sidewall_hits[1], cap_hits[1]))
+            # now calculate the max of the nearest hits, and min of the furthest hits to find where we intersect
+            # the cylinder
+
+            cylinder_hits = np.vstack((
+                np.max(all_hits[:2], axis=0),
+                np.min(all_hits[2:], axis=0))
+            )
+            cylinder_hits = np.where(cylinder_hits[0] < cylinder_hits[1], cylinder_hits, np.inf)
+            return cylinder_hits
+        else:
+            return sidewall_hits
+
+    def normal(self, intersections):
+        pass
