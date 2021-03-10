@@ -77,7 +77,7 @@ class OrthoGraphicCamera(cg.WorldObject):
 
     def _local_ray_generation(self) -> cg.RaySet:
         h_steps = np.linspace(-self._h_width / 2, self._h_width / 2, self._h_pixels)
-        v_steps = np.linspace(-self._v_width / 2, self._v_width / 2, self._v_pixels)
+        v_steps = np.linspace(self._v_width / 2, -self._v_width / 2, self._v_pixels)
 
         set = cg.RaySet(self._h_pixels * self._v_pixels)
         ys, zs = np.meshgrid(h_steps, v_steps)

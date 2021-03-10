@@ -88,7 +88,7 @@ class TestOrthographicCamera(unittest.TestCase):
         self.assertTrue(np.allclose(x_spans, np.linspace(-0.5, 0.5, 10)))
 
         y_spans = ray_set.rays[0,2].reshape(5,10).T
-        self.assertTrue(np.allclose(y_spans, np.linspace(-0.25, 0.25, 5)))
-
+        self.assertTrue(np.allclose(y_spans, np.linspace(0.25, -0.25, 5)))
+        print(ray_set.rays[0])
         if __name__ == '__main__':
             unittest.main()
