@@ -1,7 +1,10 @@
 import pyrayt.simple_cg as cg
+import pyrayt.surfaces as surf
+import pyrayt.components.sources as sources
+import pyrayt.renderers as renderers
 import collections
 from dataclasses import dataclass, field
-import re
+import numpy as np
 
 
 def flatten(list_to_flatten):
@@ -31,3 +34,10 @@ class AnalyticSystem(object):
     sources: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
     components: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
     detectors: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
+    boundary: surf.TracerSurface = field(
+        default_factory=lambda: surf.Cuboid.from_corners((-100, -100, -100), (100, 100, 100)))
+
+
+
+
+
