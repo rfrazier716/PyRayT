@@ -1,6 +1,6 @@
 import enum
-import pyrayt.simple_cg as cg
-import pyrayt.surfaces as surf
+
+import tinygfx.g3d as cg
 import numpy as np
 
 
@@ -52,7 +52,7 @@ class NKShader(object):
         else:
             return self._k
 
-    def shade(self, surface: surf.TracerSurface, rays, wavelengths, indices):
+    def shade(self, surface: cg.TracerSurface, rays, wavelengths, indices):
         """
         propagate the rays through the surface, returning a new set of rays and refractive indices
 

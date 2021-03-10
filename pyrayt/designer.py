@@ -1,9 +1,6 @@
-import pyrayt.simple_cg as cg
-import pyrayt.surfaces as surf
-import pyrayt.components.sources as sources
-import collections
+from tinygfx.g3d.primitives import ObjectGroup
+import tinygfx.g3d as cg
 from dataclasses import dataclass, field
-import numpy as np
 
 
 def flatten(list_to_flatten):
@@ -29,12 +26,12 @@ def flatten(list_to_flatten):
 
 
 @dataclass(unsafe_hash=True)
-class AnalyticSystem(object):
-    sources: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
-    components: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
-    detectors: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
-    boundary: surf.TracerSurface = field(
-        default_factory=lambda: surf.Cuboid.from_corners((-100, -100, -100), (100, 100, 100)))
+class OpticalSystem(object):
+    sources: ObjectGroup = field(default_factory=ObjectGroup)
+    components: ObjectGroup = field(default_factory=ObjectGroup)
+    detectors: ObjectGroup = field(default_factory=ObjectGroup)
+    boundary: cg.TracerSurface = field(
+        default_factory=lambda: cg.Cuboid.from_corners((-100, -100, -100), (100, 100, 100)))
 
 
 

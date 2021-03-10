@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import pyrayt.components.sources as sources
-import pyrayt.simple_cg as cg
+import tinygfx.g3d.primitives as primitives
 
 
 class TestSource(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestSource(unittest.TestCase):
         self.source.rotate_y(-90)
         rays = self.source.generate_rays(1)
 
-        expected_dir = np.atleast_2d(cg.Vector(0, 0, 1))
+        expected_dir = np.atleast_2d(primitives.Vector(0, 0, 1))
         self.assertTrue(np.allclose(rays.rays[1], expected_dir.T))
 
     def test_translated_ray_generation(self):
@@ -22,10 +22,10 @@ class TestSource(unittest.TestCase):
         self.source.move_z(5)
         rays = self.source.generate_rays(1)
 
-        expected_pos = np.atleast_2d(cg.Point(0, 0, 5))
+        expected_pos = np.atleast_2d(primitives.Point(0, 0, 5))
         self.assertTrue(np.allclose(rays.rays[0], expected_pos.T))
 
-        expected_dir = np.atleast_2d(cg.Vector(1, 0, 0))
+        expected_dir = np.atleast_2d(primitives.Vector(1, 0, 0))
         self.assertTrue(np.allclose(rays.rays[1], expected_dir.T))
 
 
@@ -38,10 +38,10 @@ class TestLineOfRays(unittest.TestCase):
         t_rays = self.source.generate_rays(1)
         self.assertEqual(t_rays.rays.shape, (2, 4, 1))
 
-        expected_pos = np.atleast_2d(cg.Point())
+        expected_pos = np.atleast_2d(primitives.Point())
         self.assertTrue(np.allclose(t_rays.rays[0], expected_pos.T))
 
-        expected_dir = np.atleast_2d(cg.Vector(1, 0, 0))
+        expected_dir = np.atleast_2d(primitives.Vector(1, 0, 0))
         self.assertTrue(np.allclose(t_rays.rays[1], expected_dir.T))
 
     def test_multi_ray_generation(self):
@@ -89,6 +89,5 @@ class TestOrthographicCamera(unittest.TestCase):
 
         y_spans = ray_set.rays[0,2].reshape(5,10).T
         self.assertTrue(np.allclose(y_spans, np.linspace(0.25, -0.25, 5)))
-        print(ray_set.rays[0])
         if __name__ == '__main__':
             unittest.main()

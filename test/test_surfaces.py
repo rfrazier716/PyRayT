@@ -1,18 +1,17 @@
 import unittest
-import pyrayt.surfaces as surf
+import tinygfx.g3d as cg
 import numpy as np
-import pyrayt.simple_cg as cg
-import abc
+import tinygfx.g3d.primitives as primitives
 
 
 class TestSphere(unittest.TestCase):
     def setUp(self) -> None:
         self.radius = 3
-        self.sphere = surf.Sphere(self.radius)
-        self.ray = cg.Ray(direction=cg.Vector(1, 0, 0))
+        self.sphere = cg.Sphere(self.radius)
+        self.ray = primitives.Ray(direction=primitives.Vector(1, 0, 0))
 
         self.intersection_points = ((0, 0, -1), (0, 0, 1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0))
-        self.intersections = [cg.Point(*intersection) for intersection in self.intersection_points]
+        self.intersections = [primitives.Point(*intersection) for intersection in self.intersection_points]
 
     def test_intersection_scaled_sphere(self):
         # if the sphere is scaled, the intersection should grow with the scaling
@@ -32,11 +31,11 @@ class TestSphere(unittest.TestCase):
         scaling = 5
         self.sphere.scale_all(scaling)
         scaled_intersection_points = ((0, 0, -5), (0, 0, 5), (0, 5, 0), (0, -5, 0), (5, 0, 0), (-5, 0, 0))
-        self.intersections = [cg.Point(*intersection) for intersection in scaled_intersection_points]
+        self.intersections = [primitives.Point(*intersection) for intersection in scaled_intersection_points]
         # for a nontransformed sphere the normals should be vectors of the coordinates
         normals = [self.sphere.get_world_normals(intersection) for intersection in self.intersections]
         for normal, intersection in zip(normals, scaled_intersection_points):
-            expected = cg.Vector(*intersection) / scaling
+            expected = primitives.Vector(*intersection) / scaling
             self.assertTrue(np.allclose(normal, expected))
             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
@@ -50,7 +49,7 @@ class TestSphere(unittest.TestCase):
 
         normals = [self.sphere.get_world_normals(intersection) for intersection in self.intersections]
         for normal, intersection in zip(normals, self.intersection_points):
-            expected = cg.Vector(*intersection)
+            expected = primitives.Vector(*intersection)
             self.assertTrue(np.allclose(normal, expected), f"Expected {normal}, got {expected}")
             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
@@ -63,31 +62,31 @@ class TestSphere(unittest.TestCase):
                                     self.intersections]
         normals = [self.sphere.get_world_normals(intersection) for intersection in translated_intersections]
         for normal, intersection in zip(normals, self.intersection_points):
-            expected = cg.Vector(*intersection)
+            expected = primitives.Vector(*intersection)
             self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
     def test_normal_inversion(self):
-        cube = surf.Cuboid()
-        point = cg.Point(1, 0, 0)
+        cube = cg.Cuboid()
+        point = primitives.Point(1, 0, 0)
         normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, cg.Vector(*point[:-1])), f"{normals}")
+        self.assertTrue(np.allclose(normals, primitives.Vector(*point[:-1])), f"{normals}")
 
         cube.invert_normals()
         normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, -cg.Vector(*point[:-1])), f"{normals}")
+        self.assertTrue(np.allclose(normals, -primitives.Vector(*point[:-1])), f"{normals}")
 
 
 class TestCuboid(unittest.TestCase):
     def setUp(self) -> None:
-        self.cube = surf.Cuboid()
+        self.cube = cg.Cuboid()
         self.rays = (
-            cg.Ray(direction=cg.Vector(-1, 0, 0)),
-            cg.Ray(direction=cg.Vector(1, 0, 0)),
-            cg.Ray(direction=cg.Vector(0, -1, 0)),
-            cg.Ray(direction=cg.Vector(0, 1, 0)),
-            cg.Ray(direction=cg.Vector(0, 0, -1)),
-            cg.Ray(direction=cg.Vector(0, 0, 1))
+            primitives.Ray(direction=primitives.Vector(-1, 0, 0)),
+            primitives.Ray(direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(direction=primitives.Vector(0, -1, 0)),
+            primitives.Ray(direction=primitives.Vector(0, 1, 0)),
+            primitives.Ray(direction=primitives.Vector(0, 0, -1)),
+            primitives.Ray(direction=primitives.Vector(0, 0, 1))
         )
 
     def test_default_constructor(self):
@@ -97,7 +96,7 @@ class TestCuboid(unittest.TestCase):
 
     def test_from_length_constructor(self):
         lengths = (2, 3, 4)
-        cube = surf.Cuboid.from_lengths(*lengths)
+        cube = cg.Cuboid.from_lengths(*lengths)
         expected_hits = np.array((2, 2, 3, 3, 4, 4)) / 2
         hits = np.asarray([cube.intersect(ray)[0] for ray in self.rays])
 
@@ -107,7 +106,7 @@ class TestCuboid(unittest.TestCase):
         corner0 = (-1, -2, -3)
         corner1 = (4, 5, 6)
 
-        cube = surf.Cuboid.from_corners(corner0, corner1)
+        cube = cg.Cuboid.from_corners(corner0, corner1)
         hits = np.asarray([cube.intersect(ray)[0] for ray in self.rays])
 
         # the hits in the negative direction should be the same as the first corner
@@ -117,10 +116,10 @@ class TestCuboid(unittest.TestCase):
         self.assertTrue(np.allclose(hits[1::2], np.abs(corner1)), f"{hits}")
 
     def test_from_corner_constructor_point(self):
-        corner0 = cg.Point(*(-1, -2, -3))
-        corner1 = cg.Point(*(4, 5, 6))
+        corner0 = primitives.Point(*(-1, -2, -3))
+        corner1 = primitives.Point(*(4, 5, 6))
 
-        cube = surf.Cuboid.from_corners(corner0, corner1)
+        cube = cg.Cuboid.from_corners(corner0, corner1)
         hits = np.asarray([cube.intersect(ray)[0] for ray in self.rays])
 
         # the hits in the negative direction should be the same as the first corner
@@ -131,9 +130,9 @@ class TestCuboid(unittest.TestCase):
 
     def test_from_corner_constructor_error(self):
         with self.assertRaises(ValueError):
-            corner0 = cg.Point(*(-1, -2, -3))
-            corner1 = cg.Point(*(4, 5, 6))
-            cube = surf.Cuboid.from_corners(corner1, corner0)
+            corner0 = primitives.Point(*(-1, -2, -3))
+            corner1 = primitives.Point(*(4, 5, 6))
+            cube = cg.Cuboid.from_corners(corner1, corner0)
 
     def test_scaling(self):
         scaling = 5
@@ -154,33 +153,33 @@ class TestCuboid(unittest.TestCase):
         self.assertTrue(np.allclose(hits[1::2], 1 + movement), f"{hits}")
 
     def test_normal_inversion(self):
-        cube = surf.Cuboid()
-        point = cg.Point(1, 0, 0)
+        cube = cg.Cuboid()
+        point = primitives.Point(1, 0, 0)
         normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, cg.Vector(*point[:-1])), f"{normals}")
+        self.assertTrue(np.allclose(normals, primitives.Vector(*point[:-1])), f"{normals}")
 
         cube.invert_normals()
         normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, -cg.Vector(*point[:-1])), f"{normals}")
+        self.assertTrue(np.allclose(normals, -primitives.Vector(*point[:-1])), f"{normals}")
 
 
 class TestAperturedSurface(unittest.TestCase):
     def setUp(self) -> None:
-        self.surface = surf.YZPlane()
-        self.surface.aperture = surf.CircularAperture(1)
+        self.surface = cg.YZPlane()
+        self.surface.aperture = cg.CircularAperture(1)
 
     def test_apertured_intersection(self):
         # any point in the aperture should still intersect
-        ray = cg.Ray(cg.Point(), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(), primitives.Vector(1, 0, 0))
         self.assertTrue(self.surface.intersect(ray) != -1)
 
         # a point higher than 1 shouldn't register as a hit
-        ray = cg.Ray(cg.Point(0, 10, 0), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(0, 10, 0), primitives.Vector(1, 0, 0))
         self.assertTrue(self.surface.intersect(ray) == -1)
 
     def test_moving_surface(self):
         # the ray should no longer intersect the plane
-        ray = cg.Ray(cg.Point(1, 10, 0), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(1, 10, 0), primitives.Vector(1, 0, 0))
         self.assertTrue(self.surface.intersect(ray) == -1)
 
         # but if we move the surface the aperture will follow
@@ -188,12 +187,12 @@ class TestAperturedSurface(unittest.TestCase):
         self.assertTrue(self.surface.intersect(ray) != -1)
 
         # and now a ray at the origin will no longer intersect
-        ray = cg.Ray(cg.Point(), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(), primitives.Vector(1, 0, 0))
         self.assertTrue(self.surface.intersect(ray) == -1)
 
     def test_moving_aperture(self):
         # the aperture can also be moved independently of the surface
-        ray = cg.Ray(cg.Point(0, 10, 0), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(0, 10, 0), primitives.Vector(1, 0, 0))
         self.assertTrue(self.surface.intersect(ray) == -1)
 
         self.surface.aperture.move(0, 10, 0)
@@ -201,7 +200,7 @@ class TestAperturedSurface(unittest.TestCase):
 
     def test_combination_movement(self):
         # you can move the aperture and then the surface again
-        ray = cg.Ray(cg.Point(1, 10, 0), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(1, 10, 0), primitives.Vector(1, 0, 0))
         self.assertTrue(self.surface.intersect(ray) == -1)
 
         # this time just moving the aperture won't work because the ray is still in front of the plane
@@ -216,15 +215,15 @@ class TestAperturedSurface(unittest.TestCase):
         # if you intersect a surface with an aperture, even if there is a nearer intercept it will only count the
         # aperture intersection
 
-        self.surface = surf.Sphere(1)
-        ray = cg.Ray(cg.Point(-1, 0, -2), cg.Vector(1, 0, 1))
+        self.surface = cg.Sphere(1)
+        ray = primitives.Ray(primitives.Point(-1, 0, -2), primitives.Vector(1, 0, 1))
         self.assertEqual(self.surface.intersect(ray)[0], 1)
 
         # if we add an aperture now the nearest intersection will be 2, because the first intersection is not within
         # the aperture
 
-        self.surface.aperture = surf.CircularAperture(0.5)
-        ray = cg.Ray(cg.Point(-1, 0, -2), cg.Vector(1, 0, 1))
+        self.surface.aperture = cg.CircularAperture(0.5)
+        ray = primitives.Ray(primitives.Point(-1, 0, -2), primitives.Vector(1, 0, 1))
         self.assertEqual(self.surface.intersect(ray)[0], 2)
 
 

@@ -2,8 +2,7 @@ import unittest
 import pyrayt.renderers as render
 import pyrayt.designer as designer
 from pyrayt.components.sources import LineOfRays, OrthoGraphicCamera
-from pyrayt.surfaces import YZPlane, Cuboid
-import pyrayt.surfaces as surf
+import tinygfx.g3d.surfaces as cg
 import pyrayt.shaders.analytic as mat
 import numpy as np
 
@@ -12,11 +11,11 @@ import numpy as np
 
 class TestRenderReflection(unittest.TestCase):
     def setUp(self) -> None:
-        self.system = designer.AnalyticSystem()
+        self.system = designer.OpticalSystem()
         self.sources = (LineOfRays().rotate_y(-45), LineOfRays().rotate_y(-135))
-        self.surfaces = (YZPlane(material=mat.mirror).move_x(-0.5),
-                         YZPlane(material=mat.mirror).move_x(0.5),
-                         YZPlane(material=mat.mirror).move_x(1))
+        self.surfaces = (cg.YZPlane(material=mat.mirror).move_x(-0.5),
+                         cg.YZPlane(material=mat.mirror).move_x(0.5),
+                         cg.YZPlane(material=mat.mirror).move_x(1))
 
         self.system.sources += self.sources
         self.system.components += self.surfaces
@@ -26,7 +25,7 @@ class TestRenderReflection(unittest.TestCase):
         self.renderer.set_generation_limit(1000)
         self.assertEqual(self.renderer.get_generation_limit(), 1000)
 
-        new_system = designer.AnalyticSystem()
+        new_system = designer.OpticalSystem()
         new_system.sources.append("Hello World")
         self.renderer.load_system(new_system)
         self.assertEqual(self.renderer.get_system().sources[0], "Hello World")
@@ -59,7 +58,7 @@ class TestRenderReflection(unittest.TestCase):
     def test_trimming_rays(self):
         # putting a plane at a height of 1.5 with absorbing should terminate rays early
         self.renderer.set_rays_per_source(1)  # only want one ray per source for this test
-        top_baffle = YZPlane(material=mat.absorber).rotate_y(90).move_z(1)
+        top_baffle = cg.YZPlane(material=mat.absorber).rotate_y(90).move_z(1)
         self.system.components.append(top_baffle)
         results = self.renderer.render()
 
@@ -75,7 +74,7 @@ class TestRenderReflection(unittest.TestCase):
         self.renderer.set_rays_per_source(1)  # only want one ray per source for this test
         self.renderer.set_generation_limit(10)
 
-        top_baffle = YZPlane(material=mat.absorber).rotate_y(90).move_z(1)
+        top_baffle = cg.YZPlane(material=mat.absorber).rotate_y(90).move_z(1)
         self.system.components.append(top_baffle)
         results = self.renderer.render()
 
@@ -103,10 +102,10 @@ class TestRenderReflection(unittest.TestCase):
 
     def test_saving_refractive_index_info(self):
         # when the rays propagate into a medium the refractive index should be updated
-        system = designer.AnalyticSystem()
+        system = designer.OpticalSystem()
         sources = (LineOfRays().rotate_y(-90),)
         surfaces = [
-            Cuboid(material=mat.NKShader(material=mat.Material.REFRACTIVE, n=1.5)),
+            cg.Cuboid(material=mat.NKShader(material=mat.Material.REFRACTIVE, n=1.5)),
         ]
         surfaces[0].invert_normals()
 
@@ -121,9 +120,9 @@ class TestRenderReflection(unittest.TestCase):
 
 class TestRenderRepeatedIntersection(unittest.TestCase):
     def setUp(self) -> None:
-        self.system = designer.AnalyticSystem()
+        self.system = designer.OpticalSystem()
         self.sources = (LineOfRays().rotate_x(90).rotate_y(-180),)
-        self.surfaces = (Cuboid(material=mat.mirror),)
+        self.surfaces = (cg.Cuboid(material=mat.mirror),)
 
         self.system.sources += self.sources
         self.system.components += self.surfaces
@@ -149,7 +148,7 @@ class TestRenderRepeatedIntersection(unittest.TestCase):
 
 class TestEdgeRenderer(unittest.TestCase):
     def setUp(self) -> None:
-        self.surfaces = (surf.Sphere(1).move_x(3).move_y(0.5), surf.Sphere(1).move_x(3).move_y(-0.5))
+        self.surfaces = (cg.Sphere(1).move_x(3).move_y(0.5), cg.Sphere(1).move_x(3).move_y(-0.5))
         self.camera = OrthoGraphicCamera(10, 10, 1)
         self.renderer = render.EdgeRender(self.camera, self.surfaces)
 

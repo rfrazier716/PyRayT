@@ -1,5 +1,5 @@
 from enum import Enum
-import pyrayt.simple_cg as cg
+from tinygfx.g3d.primitives import RaySet
 import pyrayt.components.sources as sources
 import pyrayt.designer as designer
 import pandas as pd
@@ -13,11 +13,11 @@ def analytic_render(system):
 
 class _AnalyticDataFrame(object):
     def __init__(self):
-        self.df_columns = cg.RaySet.fields + ("surface", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
+        self.df_columns = RaySet.fields + ("surface", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
                                               "y_tilt", "z_tilt")
         self.data = pd.DataFrame(columns=self.df_columns, dtype='float32')
 
-    def insert(self, ray_set: cg.RaySet, next_ray_set: cg.RaySet, surface_ids: np.ndarray) -> None:
+    def insert(self, ray_set: RaySet, next_ray_set: RaySet, surface_ids: np.ndarray) -> None:
         # create an array of generation numbers
         # trim the homogeneous coordinate
         trimmed_starts, tilts = ray_set.rays[:, :-1]  # should return a 2x3xn array
@@ -44,7 +44,7 @@ class AnalyticRenderer(object):
         INITIALIZE = 5
         TRIM = 6
 
-    def __init__(self, system=designer.AnalyticSystem(), rays_per_source=10, generation_limit=10):
+    def __init__(self, system=designer.OpticalSystem(), rays_per_source=10, generation_limit=10):
         self._frame = _AnalyticDataFrame()  # make a new dataframe to hold results
         self._state = AnalyticRenderer.States.IDLE  # by default the renderer is idling
         self._generation_number = 0
@@ -65,8 +65,8 @@ class AnalyticRenderer(object):
             AnalyticRenderer.States.FINISH: self._st_finish,
         }
 
-        self._ray_set = cg.RaySet(0)
-        self._next_ray_set = cg.RaySet(0)
+        self._ray_set = RaySet(0)
+        self._next_ray_set = RaySet(0)
 
     def reset(self):
         self._simulation_complete = False
@@ -119,7 +119,7 @@ class AnalyticRenderer(object):
         self._generate_flattened_structures()
 
         # make a ray set from the concatenated ray sets returned by the sources
-        self._ray_set = cg.RaySet.concat(*[source.generate_rays(self._rays_per_source) for source in self._sources])
+        self._ray_set = RaySet.concat(*[source.generate_rays(self._rays_per_source) for source in self._sources])
         self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
 
     def _st_propagate(self):
@@ -138,7 +138,7 @@ class AnalyticRenderer(object):
         # recasting np.inf to -1 to avoid multiplication errors when calculating distance
         hit_distances = np.where(np.isinf(hit_distances), -1, hit_distances)
 
-        self._next_ray_set = cg.RaySet(self._ray_set.n_rays)  # make a new rayset to hold the updated rays
+        self._next_ray_set = RaySet(self._ray_set.n_rays)  # make a new rayset to hold the updated rays
         # next need to call the shader function for each surface and trim the dead rays
         intersection_points = self._ray_set.rays[0] + np.where(hit_distances > 0,
                                                                hit_distances * self._ray_set.rays[1], 0)

@@ -1,5 +1,7 @@
 import unittest
-import pyrayt.simple_cg as cg
+
+import tinygfx.g3d.operations
+import tinygfx.g3d.primitives as primitives
 import numpy as np
 
 
@@ -9,20 +11,20 @@ class WorldObjectTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self._obj = cg.WorldObject()
+        self._obj = primitives.WorldObject()
 
 
 class TestCountedObject(unittest.TestCase):
     def setUp(self):
-        self.obj = cg.CountedObject()
+        self.obj = primitives.CountedObject()
 
     def test_count_incrementing(self):
         obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
+        initial_count = primitives.CountedObject.get_count()
+        test_objects = [primitives.CountedObject() for _ in range(obj_to_create)]
 
         # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
+        self.assertEqual(primitives.CountedObject.get_count(), obj_to_create + initial_count)
 
         # none of the objects should have the same count_id
         obj_ids = set([test_object.get_id() for test_object in test_objects])
@@ -33,34 +35,34 @@ class TestCountedObject(unittest.TestCase):
 
     def test_decrementing_object_count(self):
         obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
+        initial_count = primitives.CountedObject.get_count()
+        test_objects = [primitives.CountedObject() for _ in range(obj_to_create)]
 
         # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
+        self.assertEqual(primitives.CountedObject.get_count(), obj_to_create + initial_count)
 
         # deleting objects should reduce the count
         for n in range(len(test_objects)):
             test_objects.pop(-1)
-            self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count - n - 1)
+            self.assertEqual(primitives.CountedObject.get_count(), obj_to_create + initial_count - n - 1)
 
     def test_creating_obj_after_deletion(self):
         # create a list of objects then delete them all
 
         obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
+        initial_count = primitives.CountedObject.get_count()
+        test_objects = [primitives.CountedObject() for _ in range(obj_to_create)]
         max_id = test_objects[-1].get_id()
         del test_objects
 
         # make sure that a new object indexes up and does not reuse any of the deleted IDs
-        new_object = cg.CountedObject()
+        new_object = primitives.CountedObject()
         self.assertEqual(new_object.get_id(), max_id + 1)
 
 
 class TestHomogeneousCoordinate(unittest.TestCase):
     def setUp(self):
-        self.coord = cg.HomogeneousCoordinate(3, 4, 5, 6)
+        self.coord = primitives.HomogeneousCoordinate(3, 4, 5, 6)
 
     def test_getting_object_values(self):
         getters = [getattr(self.coord, getter) for getter in "xyzw"]
@@ -89,18 +91,18 @@ class TestHomogeneousCoordinate(unittest.TestCase):
             self.assertEqual(self.coord[n], value_to_set)
 
     def test_normalizing(self):
-        coord = cg.HomogeneousCoordinate(1, 1, 1, 0)
+        coord = primitives.HomogeneousCoordinate(1, 1, 1, 0)
         self.assertTrue(np.allclose(coord.normalize(), np.array((1, 1, 1, 0)) / np.sqrt(3)),
                         f" got {coord.normalize()}")
 
-        coord = cg.HomogeneousCoordinate(1, 1, 1, 1)
+        coord = primitives.HomogeneousCoordinate(1, 1, 1, 1)
         self.assertTrue(np.allclose(coord.normalize(), np.array((1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3), 1))),
                         f" got {coord.normalize()}")
 
 
 class TestPoint(unittest.TestCase):
     def setUp(self):
-        self.coord = cg.Point(3, 4, 5)
+        self.coord = primitives.Point(3, 4, 5)
 
     def test_fields_accessable(self):
         self.assertEqual(self.coord.w, 1)
@@ -108,7 +110,7 @@ class TestPoint(unittest.TestCase):
 
 class TestVector(unittest.TestCase):
     def setUp(self):
-        self.coord = cg.Vector(3, 4, 5)
+        self.coord = primitives.Vector(3, 4, 5)
 
     def test_fields_accessable(self):
         self.assertEqual(self.coord.w, 0)
@@ -116,17 +118,17 @@ class TestVector(unittest.TestCase):
 
 class TestRay(unittest.TestCase):
     def test_ray_setters(self):
-        ray = cg.Ray()
-        ray.direction = cg.Vector(3, 2, 1)
-        self.assertTrue(np.allclose(ray.direction, cg.Vector(3, 2, 1)))
+        ray = primitives.Ray()
+        ray.direction = primitives.Vector(3, 2, 1)
+        self.assertTrue(np.allclose(ray.direction, primitives.Vector(3, 2, 1)))
 
-        ray.origin = cg.Point(1, 2, 3)
-        self.assertTrue(np.allclose(ray.origin, cg.Point(1, 2, 3)))
+        ray.origin = primitives.Point(1, 2, 3)
+        self.assertTrue(np.allclose(ray.origin, primitives.Point(1, 2, 3)))
 
     def test_ray_initialization(self):
-        ray = cg.Ray()
-        self.assertTrue(np.allclose(ray.origin, cg.Point()))
-        self.assertTrue(np.allclose(ray.direction, cg.Vector(1, 0, 0)))
+        ray = primitives.Ray()
+        self.assertTrue(np.allclose(ray.origin, primitives.Point()))
+        self.assertTrue(np.allclose(ray.direction, primitives.Vector(1, 0, 0)))
 
         # the ray elements can be assigned
         ray.origin.x = 3
@@ -134,7 +136,7 @@ class TestRay(unittest.TestCase):
 
     def test_ray_bundling(self):
         n_rays = 100
-        all_rays = cg.bundle_rays([cg.Ray() for _ in range(n_rays)])
+        all_rays = primitives.bundle_rays([primitives.Ray() for _ in range(n_rays)])
         self.assertTrue(all_rays.shape, (2, 4, n_rays))
 
         # rays lose their view when stacked
@@ -143,29 +145,29 @@ class TestRay(unittest.TestCase):
             all_rays[0].direction
 
         # but can be viewed as ray objects
-        self.assertEqual(all_rays[0].view(cg.Ray).origin.x, 0)
+        self.assertEqual(all_rays[0].view(primitives.Ray).origin.x, 0)
 
 
 class TestRaySet(unittest.TestCase):
     def setUp(self):
         self.n_rays = 1000
-        self.set = cg.RaySet(self.n_rays)
+        self.set = primitives.RaySet(self.n_rays)
 
     def test_field_initialization(self):
         self.assertEqual(self.set.rays.shape, (2, 4, self.n_rays))
-        self.assertEqual(self.set.metadata.shape, (len(cg.RaySet.fields), self.n_rays))
+        self.assertEqual(self.set.metadata.shape, (len(primitives.RaySet.fields), self.n_rays))
 
     def test_field_accessing_after_modifying_metadata(self):
         # makes sure that if you update the actual metadata contents, the fields reflect it
         for j in range(self.set.metadata.shape[0]):
             self.set.metadata[j] = j
-            field_value = getattr(self.set, cg.RaySet.fields[j])
-            self.assertTrue(np.allclose(field_value, j), f"Failed at index {j} with attribute {cg.RaySet.fields[j]}")
+            field_value = getattr(self.set, primitives.RaySet.fields[j])
+            self.assertTrue(np.allclose(field_value, j), f"Failed at index {j} with attribute {primitives.RaySet.fields[j]}")
 
     def test_metadata_accessing_after_modifying_fields(self):
         # makes sure that if you update the actual metadata contents, the fields reflect it
         for j in range(self.set.metadata.shape[0]):
-            field = cg.RaySet.fields[j]
+            field = primitives.RaySet.fields[j]
             setattr(self.set, field, j)
             self.assertTrue(np.allclose(self.set.metadata[j], j))
 
@@ -174,12 +176,12 @@ class TestRaySet(unittest.TestCase):
         self.assertTrue(np.allclose(self.set.metadata[0, :10], 7))
 
     def test_creation_from_concatenation(self):
-        set1 = cg.RaySet(10)
+        set1 = primitives.RaySet(10)
         set1.wavelength = -1
-        set2 = cg.RaySet(20)
+        set2 = primitives.RaySet(20)
         set2.wavelength = 2
 
-        joined_set = cg.RaySet.concat(set1, set2)
+        joined_set = primitives.RaySet.concat(set1, set2)
 
         self.assertEqual(joined_set.metadata.shape[-1], 30)
         self.assertEqual(joined_set.rays.shape, (2, 4, 30))
@@ -192,8 +194,8 @@ class TestRaySet(unittest.TestCase):
 class TestWorldObjectCreation(WorldObjectTestCase):
     def test_object_creation(self):
         # the object should be centered at the origin facing the positive z-axis
-        self.assertTrue(np.array_equal(self._obj.get_position(), cg.Point(0, 0, 0)))
-        self.assertTrue(np.array_equal(self._obj.get_orientation(), cg.Vector(0, 0, 1)))
+        self.assertTrue(np.array_equal(self._obj.get_position(), primitives.Point(0, 0, 0)))
+        self.assertTrue(np.array_equal(self._obj.get_orientation(), primitives.Vector(0, 0, 1)))
 
     def test_modifying_transform_matrix(self):
         # transforming a returned value should not be copied
@@ -218,9 +220,9 @@ class TestWorldObjectCreation(WorldObjectTestCase):
 
     def test_getting_world_coordinates(self):
         self._obj.scale_all(10)
-        local_point = cg.Point(1, 1, 1)
+        local_point = primitives.Point(1, 1, 1)
         world_point = self._obj.to_world_coordinates(local_point)
-        self.assertTrue(np.allclose(world_point, cg.Point(10, 10, 10)))
+        self.assertTrue(np.allclose(world_point, primitives.Point(10, 10, 10)))
 
 
 class TestWorldObjectScaling(WorldObjectTestCase):
@@ -230,7 +232,7 @@ class TestWorldObjectScaling(WorldObjectTestCase):
 
     def test_orientation_does_not_scale(self):
         self._obj.scale(100, 100, 100)
-        self.assertTrue(np.allclose(self._obj.get_orientation(), cg.Vector(0, 0, 1.)))
+        self.assertTrue(np.allclose(self._obj.get_orientation(), primitives.Vector(0, 0, 1.)))
 
     def test_single_axis_scale(self):
         # move the object to 1,1,1 so that the scale effects it
@@ -239,23 +241,23 @@ class TestWorldObjectScaling(WorldObjectTestCase):
         scale_values = [3, 4, 5]
         for fn, scale in zip(scale_fns, scale_values):
             fn(scale)
-        self.assertTrue(np.allclose(self._obj.get_position(), cg.Point(*scale_values)), f"{self._obj.get_position()}")
+        self.assertTrue(np.allclose(self._obj.get_position(), primitives.Point(*scale_values)), f"{self._obj.get_position()}")
 
     def test_3axis_scale(self):
         scale_values = (3, 4, 5)
         self._obj.scale(*scale_values)
-        self.assertTrue(np.allclose(self._obj.get_position(), cg.Point(*scale_values)), f"{self._obj.get_position()}")
+        self.assertTrue(np.allclose(self._obj.get_position(), primitives.Point(*scale_values)), f"{self._obj.get_position()}")
 
     def test_chained_scale(self):
         scale_values = (3, 4, 5)
         self._obj.scale_x(scale_values[0]).scale_y(scale_values[1]).scale_z(scale_values[2])
-        self.assertTrue(np.allclose(self._obj.get_position(), cg.Point(*scale_values)), f"{self._obj.get_position()}")
+        self.assertTrue(np.allclose(self._obj.get_position(), primitives.Point(*scale_values)), f"{self._obj.get_position()}")
 
     def test_scale_all(self):
         scale_factor = 1000
         expected_pos = scale_factor * np.ones(3)
         self._obj.scale_all(scale_factor)
-        self.assertTrue(np.allclose(self._obj.get_position(), cg.Point(*expected_pos)), f"{self._obj.get_position()}")
+        self.assertTrue(np.allclose(self._obj.get_position(), primitives.Point(*expected_pos)), f"{self._obj.get_position()}")
 
     def test_negative_scaling(self):
         # negative values should raise an exception
@@ -274,16 +276,16 @@ class TestWorldObjectScaling(WorldObjectTestCase):
 
 class TestWorldObjectTranslation(WorldObjectTestCase):
     def test_3axis_movement(self):
-        my_obj = cg.WorldObject()
+        my_obj = primitives.WorldObject()
 
         # We should be able to move the object multiple times and the position will move but not direction
         move_vector = np.array((1, 2, -5))
         my_obj.move(*move_vector)  # move the object in space
-        self.assertTrue(np.array_equal(my_obj.get_position(), cg.Point(*move_vector)))
+        self.assertTrue(np.array_equal(my_obj.get_position(), primitives.Point(*move_vector)))
 
         # reversing the move gets you back to the origin
         my_obj.move(*(-move_vector))  # move the object in space
-        self.assertTrue(np.array_equal(my_obj.get_position(), cg.Point()))
+        self.assertTrue(np.array_equal(my_obj.get_position(), primitives.Point()))
 
     def test_single_axis_movement(self):
         # individual move functions execute properly
@@ -297,7 +299,7 @@ class TestWorldObjectTranslation(WorldObjectTestCase):
     def test_chained_movement(self):
         movement = 3
         self._obj.move_x(movement).move_y(movement).move_z(movement)
-        self.assertTrue(np.array_equal(self._obj.get_position(), cg.Point(movement, movement, movement)))
+        self.assertTrue(np.array_equal(self._obj.get_position(), primitives.Point(movement, movement, movement)))
 
 
 class TestWorldObjectRotation(WorldObjectTestCase):
@@ -306,20 +308,20 @@ class TestWorldObjectRotation(WorldObjectTestCase):
 
         # rotation about the y-axis by 90 degree should change the direction vector to x
         my_obj.rotate_y(90, units="deg")
-        self.assertTrue(np.allclose(my_obj.get_orientation(), cg.Vector(1., 0, 0)))
+        self.assertTrue(np.allclose(my_obj.get_orientation(), primitives.Vector(1., 0, 0)))
 
         # now rotation it about the z-axis 90 degree should have it point to positive y
         my_obj.rotate_z(90, units="deg")
-        self.assertTrue(np.allclose(my_obj.get_orientation(), cg.Vector(0, 1., 0)))
+        self.assertTrue(np.allclose(my_obj.get_orientation(), primitives.Vector(0, 1., 0)))
 
         # rotation 90 degree about the x-axis should reset it to positive z
         my_obj.rotate_x(90, units="deg")
-        self.assertTrue(np.allclose(my_obj.get_orientation(), cg.Vector(0, 0, 1.)))
+        self.assertTrue(np.allclose(my_obj.get_orientation(), primitives.Vector(0, 0, 1.)))
 
     def test_rotation_chain(self):
         # rotations should be able to be cascaded
         self._obj.rotate_y(90, units="deg").rotate_z(90, units="deg").rotate_x(90, units="deg")
-        self.assertTrue(np.allclose(self._obj.get_orientation(), cg.Vector(0, 0, 1.)))
+        self.assertTrue(np.allclose(self._obj.get_orientation(), primitives.Vector(0, 0, 1.)))
 
     def test_rotation_units(self):
         # rotations should work for radians and degrees
@@ -327,7 +329,7 @@ class TestWorldObjectRotation(WorldObjectTestCase):
         rotation_units = ["deg", "rad"]
         for angle, unit in zip(rotation_angles, rotation_units):
             self._obj.rotate_y(angle, units=unit).rotate_z(angle, units=unit).rotate_x(angle, units=unit)
-            self.assertTrue(np.allclose(self._obj.get_orientation(), cg.Vector(0, 0, 1.)),
+            self.assertTrue(np.allclose(self._obj.get_orientation(), primitives.Vector(0, 0, 1.)),
                             f"Test Failed for unit {unit}, has orientation {self._obj.get_orientation()}")
 
         # make sure that an invalid rotaiton option raises an error
@@ -353,10 +355,10 @@ class TestWorldObjectQuaternion(WorldObjectTestCase):
 
 class TestObjectGroup(unittest.TestCase):
     def setUp(self):
-        self.group = cg.ObjectGroup()
+        self.group = primitives.ObjectGroup()
 
-        self.obj1 = cg.WorldObject()
-        self.obj2 = cg.WorldObject()
+        self.obj1 = primitives.WorldObject()
+        self.obj2 = primitives.WorldObject()
 
         self.group.append(self.obj1)
         self.group.append(self.obj2)
@@ -379,19 +381,19 @@ class TestObjectGroup(unittest.TestCase):
 
         scale = 2
         self.group.scale_all(scale)  # now scale the group by 2
-        self.assertTrue(np.allclose(self.obj1.get_position(), cg.Point(scale, 0, 0)))
-        self.assertTrue(np.allclose(self.obj2.get_position(), cg.Point(-scale, 0, 0)))
+        self.assertTrue(np.allclose(self.obj1.get_position(), primitives.Point(scale, 0, 0)))
+        self.assertTrue(np.allclose(self.obj2.get_position(), primitives.Point(-scale, 0, 0)))
 
         # rotation also applies
         self.group.rotate_z(90)
-        self.assertTrue(np.allclose(self.obj1.get_position(), cg.Point(0, scale, 0)))
-        self.assertTrue(np.allclose(self.obj2.get_position(), cg.Point(0, -scale, 0)))
+        self.assertTrue(np.allclose(self.obj1.get_position(), primitives.Point(0, scale, 0)))
+        self.assertTrue(np.allclose(self.obj2.get_position(), primitives.Point(0, -scale, 0)))
 
     def test_nesting_object_group(self):
         # make a subgroup and append it to the top level group
-        subgroup = cg.ObjectGroup()
+        subgroup = primitives.ObjectGroup()
 
-        sub_object = cg.WorldObject()
+        sub_object = primitives.WorldObject()
         sub_object.move(1, 0, 0)
         subgroup.append(sub_object)
 
@@ -400,8 +402,8 @@ class TestObjectGroup(unittest.TestCase):
         x_movement = 3
         self.group.move_x(x_movement)  # move the top level group
 
-        self.assertTrue(np.allclose(subgroup.get_position(), cg.Point(x_movement, 0, 0)))
-        self.assertTrue(np.allclose(sub_object.get_position(), cg.Point(x_movement + 1, 0, 0)))
+        self.assertTrue(np.allclose(subgroup.get_position(), primitives.Point(x_movement, 0, 0)))
+        self.assertTrue(np.allclose(sub_object.get_position(), primitives.Point(x_movement + 1, 0, 0)))
 
 
 class TestElementWiseDotProduct(unittest.TestCase):
@@ -411,18 +413,18 @@ class TestElementWiseDotProduct(unittest.TestCase):
         self.test_matrix = np.arange(self.n_elements).reshape(self.major_axis_length, -1)
 
     def test_simple_dot_product(self):
-        dot = cg.element_wise_dot(np.arange(4), np.arange(4))
+        dot = tinygfx.g3d.operations.element_wise_dot(np.arange(4), np.arange(4))
         self.assertEqual(dot, 14)
 
     def test_axis_zero_dot(self):
-        dot = cg.element_wise_dot(self.test_matrix, self.test_matrix, axis=0)
+        dot = tinygfx.g3d.operations.element_wise_dot(self.test_matrix, self.test_matrix, axis=0)
         self.assertEqual(dot.shape[0], (self.test_matrix.shape[-1]))
         for n, element in enumerate(dot):
             expected = np.sum(np.arange(n, self.n_elements, self.n_elements / self.major_axis_length) ** 2)
             self.assertEqual(expected, element)
 
     def test_axis_one_dot(self):
-        dot = cg.element_wise_dot(self.test_matrix, self.test_matrix, axis=1)
+        dot = tinygfx.g3d.operations.element_wise_dot(self.test_matrix, self.test_matrix, axis=1)
         self.assertEqual(dot.shape[0], (self.test_matrix.shape[0]))
         minor_axis = self.test_matrix.shape[-1]
         for n, element in enumerate(dot):
@@ -436,14 +438,14 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         a = 1
         b = -2
         c = 1
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertEqual(root, 1)
 
         n_elements = 1000
         a = np.full(n_elements, 1)
         b = np.full(n_elements, -2)
         c = np.full(n_elements, 1)
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertTrue(root.shape[0], n_elements)
         self.assertTrue(np.allclose(root, 1))
 
@@ -452,7 +454,7 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         a = 1
         b = 2
         c = 1
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertEqual(root, np.inf)
 
         # arrayed case
@@ -460,7 +462,7 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         a = np.full(n_elements, 1)
         b = np.full(n_elements, 2)
         c = np.full(n_elements, 1)
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertTrue(root.shape[0], n_elements)
         self.assertTrue(np.allclose(root, np.inf))
 
@@ -469,7 +471,7 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         a = 1
         b = 1
         c = 1
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertEqual(root, np.inf)
 
         # arrayed case
@@ -477,7 +479,7 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         a = np.full(n_elements, 1)
         b = np.full(n_elements, 1)
         c = np.full(n_elements, 1)
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertTrue(root.shape[0], n_elements)
         self.assertTrue(np.allclose(root, np.inf))
 
@@ -486,7 +488,7 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         a = 1
         b = 0
         c = -4
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertEqual(root, 2)
 
         # arrayed case
@@ -494,7 +496,7 @@ class TestSmallestPositiveRoot(unittest.TestCase):
         a = np.full(n_elements, 1)
         b = np.full(n_elements, 0)
         c = np.full(n_elements, -4)
-        root = cg.smallest_positive_root(a, b, c)
+        root = tinygfx.g3d.operations.smallest_positive_root(a, b, c)
         self.assertTrue(root.shape[0], n_elements)
         self.assertTrue(np.allclose(root, 2))
 
@@ -505,14 +507,14 @@ class TestBinomialRoot(unittest.TestCase):
         a = 1
         b = -2
         c = 1
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertTrue(np.allclose(roots, 1.0))
 
         n_elements = 1000
         a = np.full(n_elements, 1)
         b = np.full(n_elements, -2)
         c = np.full(n_elements, 1)
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertEqual(roots.shape, (2, n_elements))
         self.assertTrue(np.allclose(roots, 1))
 
@@ -521,7 +523,7 @@ class TestBinomialRoot(unittest.TestCase):
         a = 1
         b = 2
         c = 1
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertTrue(np.allclose(roots, -1.0))
 
         # arrayed case
@@ -529,7 +531,7 @@ class TestBinomialRoot(unittest.TestCase):
         a = np.full(n_elements, 1)
         b = np.full(n_elements, 2)
         c = np.full(n_elements, 1)
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertTrue(np.allclose(roots, -1))
 
     def test_root_imag(self):
@@ -537,7 +539,7 @@ class TestBinomialRoot(unittest.TestCase):
         a = 1
         b = 1
         c = 1
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertTrue(np.allclose(roots, np.inf))
 
     def test_root_pos_and_neg(self):
@@ -545,7 +547,7 @@ class TestBinomialRoot(unittest.TestCase):
         a = 1
         b = 0
         c = -4
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertTrue(np.allclose(np.sort(roots, axis=0), np.atleast_2d(np.array((-2, 2))).T), f"got {roots}")
 
     def test_linear_roots(self):
@@ -553,7 +555,7 @@ class TestBinomialRoot(unittest.TestCase):
         a = 0
         b = 2
         c = -4
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertTrue(np.allclose(roots, 2))
 
     def test_infinite_roots(self):
@@ -561,7 +563,7 @@ class TestBinomialRoot(unittest.TestCase):
         a = 0
         b = 0
         c = -4
-        roots = cg.binomial_root(a, b, c)
+        roots = tinygfx.g3d.operations.binomial_root(a, b, c)
         self.assertTrue(np.allclose(np.sort(roots.T), np.array((-np.inf, np.inf))))
 
     def test_mixed_roots(self):
@@ -571,7 +573,7 @@ class TestBinomialRoot(unittest.TestCase):
         coeffs[:, :split] = np.tile((1, 0, -4), (split, 1)).T
         coeffs[:, split:] = np.tile((0, 0, 1), (split, 1)).T
 
-        roots = np.sort(cg.binomial_root(*coeffs), axis=0)  # sort the roots so we can compare
+        roots = np.sort(tinygfx.g3d.operations.binomial_root(*coeffs), axis=0)  # sort the roots so we can compare
         self.assertTrue(np.allclose(roots[0, :split], -2))
         self.assertTrue(np.allclose(roots[1, :split], 2))
         self.assertTrue(np.allclose(roots[0, split:], np.inf))
@@ -580,15 +582,15 @@ class TestBinomialRoot(unittest.TestCase):
 
 class TestReflections(unittest.TestCase):
     def test_single_vector_reflection(self):
-        vect_in = cg.Vector(1, -1, 0)
-        normal = cg.Vector(0, 1, 0)
-        reflection = cg.reflect(vect_in, normal)
-        self.assertTrue(np.allclose(reflection, cg.Vector(1, 1, 0)), f"expected (1,1,0), got {reflection}")
+        vect_in = primitives.Vector(1, -1, 0)
+        normal = primitives.Vector(0, 1, 0)
+        reflection = tinygfx.g3d.operations.reflect(vect_in, normal)
+        self.assertTrue(np.allclose(reflection, primitives.Vector(1, 1, 0)), f"expected (1,1,0), got {reflection}")
 
-        vect_in = cg.Vector(0, -1, 0)
-        normal = cg.Vector(1, 1, 0) / np.sqrt(2)
-        reflection = cg.reflect(vect_in, normal)
-        self.assertTrue(np.allclose(reflection, cg.Vector(1, 0, 0), atol=1E-5), f"expected (1,0,0), got {reflection}")
+        vect_in = primitives.Vector(0, -1, 0)
+        normal = primitives.Vector(1, 1, 0) / np.sqrt(2)
+        reflection = tinygfx.g3d.operations.reflect(vect_in, normal)
+        self.assertTrue(np.allclose(reflection, primitives.Vector(1, 0, 0), atol=1E-5), f"expected (1,0,0), got {reflection}")
 
     def test_single_normal_reflection(self):
         # make an array of a bunch of identical elements
@@ -597,9 +599,9 @@ class TestReflections(unittest.TestCase):
         vect_in[0] = 1
         vect_in[1] = -1
 
-        normal = cg.Vector(0, 1, 0)
-        reflection = cg.reflect(vect_in, normal)
-        self.assertTrue(np.allclose(reflection, np.tile(cg.Vector(1, 1, 0), (n_vects, 1)).T),
+        normal = primitives.Vector(0, 1, 0)
+        reflection = tinygfx.g3d.operations.reflect(vect_in, normal)
+        self.assertTrue(np.allclose(reflection, np.tile(primitives.Vector(1, 1, 0), (n_vects, 1)).T),
                         f"expected (1,1,0), got {reflection}")
 
     def test_multi_normal_reflection(self):
@@ -609,41 +611,41 @@ class TestReflections(unittest.TestCase):
         vect_in[0] = 1
         vect_in[1] = -1
 
-        normals = np.tile(cg.Vector(0, 1, 0), (n_vects, 1)).T
-        reflection = cg.reflect(vect_in, normals)
-        self.assertTrue(np.allclose(reflection, np.tile(cg.Vector(1, 1, 0), (n_vects, 1)).T),
+        normals = np.tile(primitives.Vector(0, 1, 0), (n_vects, 1)).T
+        reflection = tinygfx.g3d.operations.reflect(vect_in, normals)
+        self.assertTrue(np.allclose(reflection, np.tile(primitives.Vector(1, 1, 0), (n_vects, 1)).T),
                         f"expected (1,1,0), got {reflection}")
 
 
 class TestRefraction(unittest.TestCase):
     def setUp(self) -> None:
-        self.vector = cg.Vector(1, 1, 0).normalize()
-        self.normal = cg.Vector(-1, 0, 0).normalize()
+        self.vector = primitives.Vector(1, 1, 0).normalize()
+        self.normal = primitives.Vector(-1, 0, 0).normalize()
 
     def test_refraction_into_higher(self):
         n1 = 1
         n2 = 1.5
-        refracted, index = cg.refract(self.vector, self.normal, n1, n2)
+        refracted, index = tinygfx.g3d.operations.refract(self.vector, self.normal, n1, n2)
 
         # the ray should have refracted into the higher index
         self.assertEqual(index, n2)
 
         # the refracted vector should be closer to the normal and defined by snells law
         theta_2 = np.arcsin(n1 * np.sqrt(2) / (2 * n2))
-        expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
+        expected_vector = primitives.Vector(np.cos(theta_2), np.sin(theta_2))
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
     def test_refraction_into_lower(self):
         n1 = 1.1
         n2 = 1.0
-        refracted, index = cg.refract(self.vector, self.normal, n1, n2)
+        refracted, index = tinygfx.g3d.operations.refract(self.vector, self.normal, n1, n2)
 
         # the ray should have refracted into the higher index
         self.assertEqual(index, n2)
 
         # the refracted vector should be closer to the normal and defined by snells law
         theta_2 = np.arcsin(n1 * np.sqrt(2) / (2 * n2))
-        expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
+        expected_vector = primitives.Vector(np.cos(theta_2), np.sin(theta_2))
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
     def test_refraction_into_world(self):
@@ -651,14 +653,14 @@ class TestRefraction(unittest.TestCase):
         n2 = 1.5
         n_world = 1.4
 
-        refracted, index = cg.refract(self.vector, -self.normal, n1, n2, n_world)
+        refracted, index = tinygfx.g3d.operations.refract(self.vector, -self.normal, n1, n2, n_world)
 
         # the ray should have refracted into the world index
         self.assertEqual(index, n_world)
 
         # the refracted vector should be closer to the normal and defined by snells law
         theta_2 = np.arcsin(n1 * np.sqrt(2) / (2 * n_world))
-        expected_vector = cg.Vector(np.cos(theta_2), np.sin(theta_2))
+        expected_vector = primitives.Vector(np.cos(theta_2), np.sin(theta_2))
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
     def test_total_internal_reflection(self):
@@ -667,22 +669,22 @@ class TestRefraction(unittest.TestCase):
         n2 = 1.5
         n_world = 1.0
 
-        refracted, index = cg.refract(self.vector, -self.normal, n1, n2, n_world)
+        refracted, index = tinygfx.g3d.operations.refract(self.vector, -self.normal, n1, n2, n_world)
         # the ray should have refracted into the world index
         self.assertEqual(index, n1)
 
-        expected_vector = cg.Vector(-1, 1).normalize()
+        expected_vector = primitives.Vector(-1, 1).normalize()
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
         # testing case where ray exits surface but is TIR'd back into surface
         n1 = 1.5
         n2 = 1.0
 
-        refracted, index = cg.refract(self.vector, self.normal, n1, n2, n_world)
+        refracted, index = tinygfx.g3d.operations.refract(self.vector, self.normal, n1, n2, n_world)
         # the ray should have refracted into the world index
         self.assertEqual(index, n1)
 
-        expected_vector = cg.Vector(-1, 1).normalize()
+        expected_vector = primitives.Vector(-1, 1).normalize()
         self.assertTrue(np.allclose(refracted, expected_vector), f"Expected {expected_vector}, got {refracted}")
 
     def test_arrayed_refraction(self):
@@ -701,7 +703,7 @@ class TestRefraction(unittest.TestCase):
         normals = np.zeros((4, n_elements))
         normals[0] = -1
 
-        refracted, index = cg.refract(vectors, normals, n1, n2)
+        refracted, index = tinygfx.g3d.operations.refract(vectors, normals, n1, n2)
         self.assertTrue(np.allclose(index[:split], n1_element))  # first bundle reflect
         self.assertTrue(np.allclose(index[split:], n2_element))  # second bundle refract
 
@@ -721,18 +723,18 @@ class TestRefraction(unittest.TestCase):
 
 class TestSphere(unittest.TestCase):
     def setUp(self) -> None:
-        self.sphere = cg.Sphere()
-        self.ray = cg.Ray()
+        self.sphere = primitives.Sphere()
+        self.ray = primitives.Ray()
 
         self.intersection_points = ((0, 0, -1), (0, 0, 1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0))
-        self.intersections = [cg.Point(*intersection) for intersection in self.intersection_points]
+        self.intersections = [primitives.Point(*intersection) for intersection in self.intersection_points]
 
     def test_getting_radius(self):
         # default constructor should assign a radius of 1
         self.assertEqual(self.sphere.get_radius(), 1)
 
         # a new sphere can have the radius assigned
-        self.assertEqual(cg.Sphere(3).get_radius(), 3)
+        self.assertEqual(primitives.Sphere(3).get_radius(), 3)
 
     def test_ray_intersection_unit_sphere(self):
         hit = self.sphere.intersect(self.ray)
@@ -743,13 +745,13 @@ class TestSphere(unittest.TestCase):
         self.assertTrue(-1.0 in hit[:, 0], f"-1 not in {hit[:, 0]}")
 
         # if the ray is moved out of the radius of the sphere we get inf as the hit
-        new_ray = cg.Ray()
-        new_ray.origin = cg.Point(0, 0, 2)
+        new_ray = primitives.Ray()
+        new_ray.origin = primitives.Point(0, 0, 2)
         self.assertEqual(self.sphere.intersect(new_ray)[0, 0], np.inf)
 
     def test_intersection_sphere_behind_ray(self):
         ray_offset = 100
-        ray = cg.Ray(cg.Point(ray_offset, 0, 0), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(ray_offset, 0, 0), primitives.Vector(1, 0, 0))
         hits = self.sphere.intersect(ray)
         expected_hits = [-ray_offset + j * self.sphere.get_radius() for j in (-1, 1)]
         for hit in expected_hits:
@@ -757,25 +759,25 @@ class TestSphere(unittest.TestCase):
 
     def test_multi_ray_intersection(self):
         n_rays = 100
-        rays = cg.bundle_rays([cg.Ray() for _ in range(n_rays)])
+        rays = primitives.bundle_rays([primitives.Ray() for _ in range(n_rays)])
         all_hits = self.sphere.intersect(rays)
         self.assertEqual(all_hits.shape, (2, n_rays))
         self.assertTrue(np.allclose(all_hits[0], self.sphere.get_radius()))
         self.assertTrue(np.allclose(all_hits[1], -self.sphere.get_radius()))
 
     def test_intersection_skew_case(self):
-        hit = self.sphere.intersect(cg.Ray(cg.Point(0, 0, 2 * self.sphere.get_radius()), cg.Vector(1, 0, 0)))
+        hit = self.sphere.intersect(primitives.Ray(primitives.Point(0, 0, 2 * self.sphere.get_radius()), primitives.Vector(1, 0, 0)))
         self.assertAlmostEqual(hit[0], np.inf)
 
     def test_double_intersection(self):
-        hit = self.sphere.intersect(cg.Ray(origin=cg.Point(-1, 0, 1), direction=cg.Vector(1, 0, 0)))
+        hit = self.sphere.intersect(primitives.Ray(origin=primitives.Point(-1, 0, 1), direction=primitives.Vector(1, 0, 0)))
         self.assertTrue(np.allclose(hit[:, 0], 1.0))
 
     def test_normals_base_sphere(self):
         # for a nontransformed sphere the normals should be vectors of the coordinates
         normals = [self.sphere.normal(intersection) for intersection in self.intersections]
         for normal, intersection in zip(normals, self.intersection_points):
-            expected = cg.Vector(*intersection)
+            expected = primitives.Vector(*intersection)
             self.assertTrue(np.allclose(normal, expected))
             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
 
@@ -794,58 +796,58 @@ class TestSphere(unittest.TestCase):
 class TestParaboloid(unittest.TestCase):
     def setUp(self) -> None:
         self.f = 5
-        self.surface = cg.Paraboloid(self.f)
+        self.surface = primitives.Paraboloid(self.f)
 
     def test_object_getters(self):
         self.assertEqual(self.surface.get_focus(), self.f)
 
     def test_intersection_at_origin(self):
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 1, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 0, 1)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0), primitives.Vector(0, 0, 1)))
         self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(1, 0, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0), primitives.Vector(1, 0, 0)))
         self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
 
     def test_intersection_linear_case(self):
-        hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(1, 0, 0)))
         self.assertEqual(hit.shape, (2, 1))
         self.assertTrue(np.allclose(hit, 1))
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, -2 * self.f), cg.Vector(1, 0, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, -2 * self.f), primitives.Vector(1, 0, 0)))
         self.assertTrue(np.allclose(hit, self.f))
 
     def test_intersection_trivial_case(self):
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0)))
         self.assertTrue(np.allclose(hit, 0))
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 0), cg.Vector(0, 1, 1) / np.sqrt(2)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0), primitives.Vector(0, 1, 1) / np.sqrt(2)))
         self.assertTrue(np.allclose(hit, 0))
 
     def test_intersection_dbl_root_case(self):
-        hit = self.surface.intersect(cg.Ray(cg.Point(self.f, -2 * self.f, 0), cg.Vector(0, 1, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(self.f, -2 * self.f, 0), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((0, 4 * self.f))), f"{hit}")
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(self.f, 0, 0), cg.Vector(0, 1, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(self.f, 0, 0), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((-2, 2)) * self.f), f"{hit}")
 
     def test_intersection_skew_case(self):
-        hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(0, 1, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(hit, np.inf))
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(0, 1, 1)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(0, 1, 1)))
         self.assertTrue(np.allclose(hit, np.inf))
 
-        hit = self.surface.intersect(cg.Ray(cg.Point(-1, 0, 0), cg.Vector(0, 1, -1)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(0, 1, -1)))
         self.assertTrue(np.allclose(hit, np.inf))
 
     def test_intersection_arrayed_case(self):
         # make a bunch of rays to intersect, move some s.t. they intersect teh surface at a different point
         n_rays = 1000
         split_index = int(n_rays / 2)
-        rays = cg.bundle_of_rays(n_rays)
+        rays = primitives.bundle_of_rays(n_rays)
         rays[0, 0, :split_index] = self.f  # move the ray's up to originate at the focus
         rays[1, 1, :split_index] = 1  # have the rays move towards the positive y_axis
         rays[1, 0, split_index:] = 1
@@ -861,21 +863,21 @@ class TestParaboloid(unittest.TestCase):
 
     def test_intersection_negative_focus(self):
         #  if the focus is negative the intersections should be in the -x region
-        surface = cg.Paraboloid(-self.f)
-        hit = surface.intersect(cg.Ray(cg.Point(-self.f, 0, 0), cg.Vector(0, 1, 0)))
+        surface = primitives.Paraboloid(-self.f)
+        hit = surface.intersect(primitives.Ray(primitives.Point(-self.f, 0, 0), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((-2, 2)) * self.f), f"{hit}")
 
     def test_intersection_far(self):
         # check that an error is not raised when a grossly large value is passed to the intersection
         # TODO: decide a max distance to clip value at?
-        hit = self.surface.intersect(cg.Ray(cg.Point(0, 0, 1000000000), cg.Vector(1.3, 0, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 1000000000), primitives.Vector(1.3, 0, 0)))
 
     def test_normal(self):
-        normal = self.surface.normal(cg.Point(0, 0, 0))
-        self.assertTrue(np.allclose(normal, cg.Vector(-1, 0, 0)))
+        normal = self.surface.normal(primitives.Point(0, 0, 0))
+        self.assertTrue(np.allclose(normal, primitives.Vector(-1, 0, 0)))
 
-        normal = self.surface.normal(cg.Point(self.f, 2 * self.f, 0))
-        self.assertTrue(np.allclose(normal, cg.Vector(-1, 1, 0) / np.sqrt(2)))
+        normal = self.surface.normal(primitives.Point(self.f, 2 * self.f, 0))
+        self.assertTrue(np.allclose(normal, primitives.Vector(-1, 1, 0) / np.sqrt(2)))
 
     def test_arrayed_normals(self):
         n_pts = 1000
@@ -892,24 +894,24 @@ class TestParaboloid(unittest.TestCase):
 
 class TestPlane(unittest.TestCase):
     def setUp(self):
-        self.surface = cg.Plane()
+        self.surface = primitives.Plane()
 
     def test_positive_intersection(self):
-        ray = cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(1, 0, 0))
         hit = self.surface.intersect(ray)[0, 0]
         self.assertAlmostEqual(hit, 1)
 
-        ray = cg.Ray(cg.Point(-1, 0, 0), cg.Vector(1, 1, 0).normalize())
+        ray = primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(1, 1, 0).normalize())
         hit = self.surface.intersect(ray)[0, 0]
         self.assertAlmostEqual(hit, np.sqrt(2))
 
     def test_negative_intersection(self):
-        ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(1, 0, 0))
+        ray = primitives.Ray(primitives.Point(1, 0, 0), primitives.Vector(1, 0, 0))
         hit = self.surface.intersect(ray)[0, 0]
         self.assertAlmostEqual(hit, -1)
 
     def test_parallel_intersection(self):
-        ray = cg.Ray(cg.Point(1, 0, 0), cg.Vector(0, 1, 1).normalize())
+        ray = primitives.Ray(primitives.Point(1, 0, 0), primitives.Vector(0, 1, 1).normalize())
         hit = self.surface.intersect(ray)[0, 0]
         self.assertAlmostEqual(hit, np.inf)
 
@@ -919,7 +921,7 @@ class TestPlane(unittest.TestCase):
 
         # make a bunch of rays at x=-1, half will point towards the positive x-axis and the other will
         # point towards the positive y-axis
-        rays = cg.bundle_of_rays(1000)
+        rays = primitives.bundle_of_rays(1000)
         rays[0, 0] = -1
         rays[1, 0, :split] = 1
         rays[1, 1] = 1
@@ -932,13 +934,13 @@ class TestPlane(unittest.TestCase):
 
 class TestCube(unittest.TestCase):
     def setUp(self) -> None:
-        self.surface = cg.Cube()
+        self.surface = primitives.Cube()
 
     def test_intersection_within_cube(self):
         rays = (
-            cg.Ray(direction=cg.Vector(1, 0, 0)),
-            cg.Ray(direction=cg.Vector(0, 1, 0)),
-            cg.Ray(direction=cg.Vector(0, 0, 1))
+            primitives.Ray(direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(direction=primitives.Vector(0, 1, 0)),
+            primitives.Ray(direction=primitives.Vector(0, 0, 1))
         )
         for ray in rays:
             hit = self.surface.intersect(ray)
@@ -946,9 +948,9 @@ class TestCube(unittest.TestCase):
 
     def test_intersection_external_to_cube(self):
         rays = (
-            cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(1, 0, 0)),
-            cg.Ray(origin=cg.Point(0, -2, 0), direction=cg.Vector(0, 1, 0)),
-            cg.Ray(origin=cg.Point(0, 0, -2), direction=cg.Vector(0, 0, 1))
+            primitives.Ray(origin=primitives.Point(-2, 0, 0), direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(origin=primitives.Point(0, -2, 0), direction=primitives.Vector(0, 1, 0)),
+            primitives.Ray(origin=primitives.Point(0, 0, -2), direction=primitives.Vector(0, 0, 1))
         )
 
         for ray in rays:
@@ -956,13 +958,13 @@ class TestCube(unittest.TestCase):
             self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[1, 3]]).T), f"{hit}")
 
     def test_intersection_at_angle(self):
-        ray = cg.Ray(origin=cg.Point(-2, -1, 0), direction=cg.Vector(1, 1, 0).normalize())
+        ray = primitives.Ray(origin=primitives.Point(-2, -1, 0), direction=primitives.Vector(1, 1, 0).normalize())
 
         hit = self.surface.intersect(ray)
         self.assertTrue(np.allclose(np.sort(hit, axis=0), np.sqrt(2) * np.array([[1, 2]]).T), f"{hit}")
 
     def test_skew_intersection(self):
-        ray = cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(0, 1, 0).normalize())
+        ray = primitives.Ray(origin=primitives.Point(-2, 0, 0), direction=primitives.Vector(0, 1, 0).normalize())
         hit = self.surface.intersect(ray)
         self.assertTrue(np.allclose(hit, np.inf))
 
@@ -970,7 +972,7 @@ class TestCube(unittest.TestCase):
         # make a bunch of rays to intersect, move some s.t. they intersect teh surface at a different point
         n_rays = 1000
         split_index = int(n_rays / 2)
-        rays = cg.bundle_of_rays(n_rays)
+        rays = primitives.bundle_of_rays(n_rays)
         rays[0, 0, :split_index] = -0.5  # move half the rays back
         rays[1, 0, :split_index] = 1  # have the rays move towards the positive x-axis
 
@@ -988,22 +990,22 @@ class TestCube(unittest.TestCase):
 
     def test_normals(self):
         coords = (
-            cg.Point(-1, 0, 0),
-            cg.Point(1, 0, 0),
-            cg.Point(0, -1, 0),
-            cg.Point(0, 1, 0),
-            cg.Point(0, 0, -1),
-            cg.Point(0, 0, 1)
+            primitives.Point(-1, 0, 0),
+            primitives.Point(1, 0, 0),
+            primitives.Point(0, -1, 0),
+            primitives.Point(0, 1, 0),
+            primitives.Point(0, 0, -1),
+            primitives.Point(0, 0, 1)
         )
         for coord in coords:
-            expected = cg.Vector(*coord[:-1])
+            expected = primitives.Vector(*coord[:-1])
             normal = self.surface.normal(coord)
             self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
 
     def test_offcenter_normal(self):
-        coord = cg.Point(-1 + 1E-8, 0.3, 0.7)
+        coord = primitives.Point(-1 + 1E-8, 0.3, 0.7)
 
-        expected = cg.Vector(-1, 0, 0)
+        expected = primitives.Vector(-1, 0, 0)
         normal = self.surface.normal(coord)
 
         self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
@@ -1011,10 +1013,10 @@ class TestCube(unittest.TestCase):
     def test_corner_normal(self):
         # for a corner case any of the three normals could be picked, but need to make sure the resulting normal is
         # in the right direction
-        coord = cg.Point(1, 1, 1)
+        coord = primitives.Point(1, 1, 1)
 
         # can be any of these and still be valid,
-        expected = cg.Vector(1, 1, 1).normalize()
+        expected = primitives.Vector(1, 1, 1).normalize()
         normal = self.surface.normal(coord)
 
         self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
@@ -1042,13 +1044,13 @@ class TestCube(unittest.TestCase):
 
 class TestInfiniteCylinder(unittest.TestCase):
     def setUp(self) -> None:
-        self.surface = cg.Cylinder(1, infinite=True)
+        self.surface = primitives.Cylinder(1, infinite=True)
 
     def test_intersection_to_sidewalls(self):
         rays = (
-            cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(1, 0, 0)),
-            cg.Ray(origin=cg.Point(-2, 0, 1), direction=cg.Vector(1, 0, 0)),
-            cg.Ray(origin=cg.Point(-2, 0, 2), direction=cg.Vector(1, 0, 0))
+            primitives.Ray(origin=primitives.Point(-2, 0, 0), direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(origin=primitives.Point(-2, 0, 1), direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(origin=primitives.Point(-2, 0, 2), direction=primitives.Vector(1, 0, 0))
         )
 
         for ray in rays:
@@ -1057,7 +1059,7 @@ class TestInfiniteCylinder(unittest.TestCase):
 
     def test_no_intersection_inside(self):
         rays = (
-            cg.Ray(origin=cg.Point(0, 0, 0), direction=cg.Vector(0, 0, 1)),
+            primitives.Ray(origin=primitives.Point(0, 0, 0), direction=primitives.Vector(0, 0, 1)),
         )
 
         for ray in rays:
@@ -1071,7 +1073,7 @@ class TestInfiniteCylinder(unittest.TestCase):
         :return:
         """
         rays = (
-            cg.Ray(origin=cg.Point(2, 0, 0), direction=cg.Vector(0, 0, 1)),
+            primitives.Ray(origin=primitives.Point(2, 0, 0), direction=primitives.Vector(0, 0, 1)),
         )
 
         for ray in rays:
@@ -1084,7 +1086,7 @@ class TestInfiniteCylinder(unittest.TestCase):
 
         # make a bunch of rays at x=0, half will point towards the positive x-axis and the other will
         # point towards the positive y-axis
-        rays = cg.bundle_of_rays(1000)
+        rays = primitives.bundle_of_rays(1000)
         rays[0, 0] = 0
         rays[1, 0, :split] = 1
         rays[1, 2, split:] = 1
@@ -1097,13 +1099,13 @@ class TestInfiniteCylinder(unittest.TestCase):
 
 class TestFiniteCylinder(unittest.TestCase):
     def setUp(self) -> None:
-        self.surface = cg.Cylinder(1, infinite=False)
+        self.surface = primitives.Cylinder(1, infinite=False)
 
     def test_intersection_to_sidewalls(self):
         rays = (
-            cg.Ray(origin=cg.Point(-2, 0, 0), direction=cg.Vector(1, 0, 0)),
-            cg.Ray(origin=cg.Point(-2, 0, 0.5), direction=cg.Vector(1, 0, 0)),
-            cg.Ray(origin=cg.Point(-2, 0, -0.5), direction=cg.Vector(1, 0, 0))
+            primitives.Ray(origin=primitives.Point(-2, 0, 0), direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(origin=primitives.Point(-2, 0, 0.5), direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(origin=primitives.Point(-2, 0, -0.5), direction=primitives.Vector(1, 0, 0))
         )
 
         for ray in rays:
@@ -1112,7 +1114,7 @@ class TestFiniteCylinder(unittest.TestCase):
 
     def test_intersection_to_cap(self):
         rays = (
-            cg.Ray(origin=cg.Point(0, 0, 0), direction=cg.Vector(0, 0, 1)),
+            primitives.Ray(origin=primitives.Point(0, 0, 0), direction=primitives.Vector(0, 0, 1)),
         )
 
         for ray in rays:
@@ -1121,7 +1123,7 @@ class TestFiniteCylinder(unittest.TestCase):
 
     def test_wall_cap_intersection(self):
         rays = (
-            cg.Ray(origin=cg.Point(-2, 0, -1), direction=cg.Vector(1, 0, 1)),
+            primitives.Ray(origin=primitives.Point(-2, 0, -1), direction=primitives.Vector(1, 0, 1)),
         )
 
         for ray in rays:
@@ -1135,7 +1137,7 @@ class TestFiniteCylinder(unittest.TestCase):
         :return:
         """
         rays = (
-            cg.Ray(origin=cg.Point(2, 0, 0), direction=cg.Vector(0, 0, 1)),
+            primitives.Ray(origin=primitives.Point(2, 0, 0), direction=primitives.Vector(0, 0, 1)),
         )
 
         for ray in rays:
@@ -1148,7 +1150,7 @@ class TestFiniteCylinder(unittest.TestCase):
 
         # make a bunch of rays at x=0, half will point towards the positive x-axis and the other will
         # point towards the positive y-axis
-        rays = cg.bundle_of_rays(1000)
+        rays = primitives.bundle_of_rays(1000)
         rays[0, 0] = 0
         rays[1, 0, :split] = 1
         rays[1, 2, split:] = 1

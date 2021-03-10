@@ -1,10 +1,10 @@
-import pyrayt.simple_cg as cg
+import tinygfx.g3d.primitives as primitives
 import abc
 import numpy as np
 
 
-class Aperture(cg.WorldObject):
-    _shape: cg.SurfacePrimitive
+class Aperture(primitives.WorldObject):
+    _shape: primitives.SurfacePrimitive
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
@@ -25,7 +25,7 @@ class CircularAperture(Aperture):
     def __init__(self, radius, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._radius = radius
-        self._shape = cg.Cylinder(radius)
+        self._shape = primitives.Cylinder(radius)
         self.rotate_y(-90)
 
     @property
@@ -38,7 +38,7 @@ class EllipticalAperture(Aperture):
         # an ellipse is just a disk that has had a scale matrix applied to it
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._radii = (major_radius, minor_radius)
-        self._shape = cg.Disk(1)
+        self._shape = primitives.Disk(1)
         self.scale(1, major_radius, minor_radius)
 
     @property
@@ -51,7 +51,7 @@ class RectangularAperture(Aperture):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._side_lengths = (y_length, z_length)
         # the default shape is in the XY plane but aperture exist in the YZ Plane
-        self._shape = cg.Rectangle(y_length, z_length)
+        self._shape = primitives.Rectangle(y_length, z_length)
 
     @property
     def side_lengths(self):
@@ -68,7 +68,7 @@ class SquareAperture(RectangularAperture):
         super().__init__(side_length, side_length, *args, **kwargs)
 
 
-class TracerSurface(cg.WorldObject, abc.ABC):
+class TracerSurface(primitives.WorldObject, abc.ABC):
     _aperture: Aperture = None  # initialize a new aperture for the surface
 
     def __init__(self, surface_args, material=None, *args, **kwargs):
@@ -151,28 +151,28 @@ class TracerSurface(cg.WorldObject, abc.ABC):
 
 
 class Sphere(TracerSurface):
-    surface = cg.Sphere
+    surface = primitives.Sphere
 
     def __init__(self, radius, material=None, *args, **kwargs):
         super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
 
 
 class Paraboloid(TracerSurface):
-    surface = cg.Paraboloid
+    surface = primitives.Paraboloid
 
     def __init__(self, focus, material=None, *args, **kwargs):
         super().__init__(surface_args=(focus,), material=material, *args, **kwargs)
 
 
 class YZPlane(TracerSurface):
-    surface = cg.Plane
+    surface = primitives.Plane
 
     def __init__(self, material=None, *args, **kwargs):
         super().__init__(surface_args=(), material=material, *args, **kwargs)
 
 
 class Cuboid(TracerSurface):
-    surface = cg.Cube
+    surface = primitives.Cube
 
     def __init__(self, material=None, *args, **kwargs):
         super().__init__(surface_args=(), material=material, *args, **kwargs)
