@@ -49,3 +49,34 @@ class LineOfRays(Source):
         set.rays[1, 0] = 1  # direct rays along positive x
         set.wavelength = self._wavelength
         return set
+
+
+class OrthoGraphicCamera(cg.WorldObject):
+    """
+    A camera oriented along the z-axis pointing along the x-axis
+    """
+
+    def __init__(self, h_pixel_count: int, h_width: float, aspect_ratio: float, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs) # call the next constructor in the MRO
+        self._h_pixels = h_pixel_count
+        self._h_width = h_width
+        self._v_width = aspect_ratio * h_width
+        self._v_pixels = int(aspect_ratio * self._h_pixels)
+
+    def generate_rays(self) -> cg.RaySet:
+        ray_set = self._local_ray_generation()
+        ray_set.rays = np.matmul(self._world_coordinate_transform, ray_set.rays)  # transform rays to world space
+        ray_set.rays[1] /= np.linalg.norm(ray_set.rays[1], axis=0)  # normalize the direction vector
+        return ray_set
+
+    def _local_ray_generation(self) -> cg.RaySet:
+        h_steps = np.linspace(-self._h_width / 2, self._h_width / 2, self._h_pixels)
+        v_steps = np.linspace(-self._v_width / 2, self._v_width / 2, self._v_pixels)
+
+        set = cg.RaySet(self._h_pixels * self._v_pixels)
+        ys, zs = np.meshgrid(h_steps, v_steps)
+        set.rays[0, 1] = ys.reshape(-1)
+        set.rays[0, 2] = zs.reshape(-1)
+        set.rays[1, 0] = 1  # position rays along positive z axis
+
+        return set
