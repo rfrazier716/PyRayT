@@ -155,7 +155,6 @@ class TestEdgeRenderer(unittest.TestCase):
 
     def test_render_results(self):
         results = self.renderer.render()
-
         self.assertEqual(results.shape, self.camera.get_resolution()[::-1])
 
 
