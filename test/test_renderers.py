@@ -1,7 +1,7 @@
 import unittest
 import pyrayt.renderers as render
 import pyrayt.designer as designer
-from pyrayt.components.sources import LineOfRays
+from pyrayt.components.sources import LineOfRays, OrthoGraphicCamera
 from pyrayt.surfaces import YZPlane, Cuboid
 import pyrayt.surfaces as surf
 import pyrayt.shaders.analytic as mat
@@ -144,7 +144,20 @@ class TestRenderRepeatedIntersection(unittest.TestCase):
         results = self.renderer.get_results()
 
         # rays should reflect back and forth until generation limit reached
-        self.assertEqual(results.shape[0], rays_per_source*generation_limit)
+        self.assertEqual(results.shape[0], rays_per_source * generation_limit)
+
+
+class TestEdgeRenderer(unittest.TestCase):
+    def setUp(self) -> None:
+        self.surfaces = (surf.Sphere(1).move_x(3).move_y(0.5), surf.Sphere(1).move_x(3).move_y(-0.5))
+        self.camera = OrthoGraphicCamera(10, 10, 1)
+        self.renderer = render.EdgeRender(self.camera, self.surfaces)
+
+    def test_render_results(self):
+        results = self.renderer.render()
+
+        self.assertEqual(results.shape, self.camera.get_resolution()[::-1])
+
 
 if __name__ == '__main__':
     unittest.main()

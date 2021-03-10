@@ -63,6 +63,12 @@ class OrthoGraphicCamera(cg.WorldObject):
         self._v_width = aspect_ratio * h_width
         self._v_pixels = int(aspect_ratio * self._h_pixels)
 
+    def get_resolution(self):
+        return (self._h_pixels, self._v_pixels)
+
+    def get_span(self):
+        return (self._h_width, self._v_width)
+
     def generate_rays(self) -> cg.RaySet:
         ray_set = self._local_ray_generation()
         ray_set.rays = np.matmul(self._world_coordinate_transform, ray_set.rays)  # transform rays to world space
