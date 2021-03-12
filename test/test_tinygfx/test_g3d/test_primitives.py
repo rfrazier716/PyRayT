@@ -91,50 +91,6 @@ class TestRay(unittest.TestCase):
         self.assertEqual(all_rays[0].view(primitives.Ray).origin.x, 0)
 
 
-class TestRaySet(unittest.TestCase):
-    def setUp(self):
-        self.n_rays = 1000
-        self.set = primitives.RaySet(self.n_rays)
-
-    def test_field_initialization(self):
-        self.assertEqual(self.set.rays.shape, (2, 4, self.n_rays))
-        self.assertEqual(self.set.metadata.shape, (len(primitives.RaySet.fields), self.n_rays))
-
-    def test_field_accessing_after_modifying_metadata(self):
-        # makes sure that if you update the actual metadata contents, the fields reflect it
-        for j in range(self.set.metadata.shape[0]):
-            self.set.metadata[j] = j
-            field_value = getattr(self.set, primitives.RaySet.fields[j])
-            self.assertTrue(np.allclose(field_value, j),
-                            f"Failed at index {j} with attribute {primitives.RaySet.fields[j]}")
-
-    def test_metadata_accessing_after_modifying_fields(self):
-        # makes sure that if you update the actual metadata contents, the fields reflect it
-        for j in range(self.set.metadata.shape[0]):
-            field = primitives.RaySet.fields[j]
-            setattr(self.set, field, j)
-            self.assertTrue(np.allclose(self.set.metadata[j], j))
-
-    def test_updating_slices_of_fields(self):
-        self.set.generation[:10] = 7
-        self.assertTrue(np.allclose(self.set.metadata[0, :10], 7))
-
-    def test_creation_from_concatenation(self):
-        set1 = primitives.RaySet(10)
-        set1.wavelength = -1
-        set2 = primitives.RaySet(20)
-        set2.wavelength = 2
-
-        joined_set = primitives.RaySet.concat(set1, set2)
-
-        self.assertEqual(joined_set.metadata.shape[-1], 30)
-        self.assertEqual(joined_set.rays.shape, (2, 4, 30))
-
-        self.assertTrue(np.allclose(joined_set.id, np.arange(30)), f"{joined_set.id}")
-        self.assertTrue(np.allclose(joined_set.wavelength[:10], -1))
-        self.assertTrue(np.allclose(joined_set.wavelength[10:], 2))
-
-
 class TestSphere(unittest.TestCase):
     def setUp(self) -> None:
         self.sphere = primitives.Sphere()

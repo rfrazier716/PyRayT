@@ -1,4 +1,6 @@
 import unittest
+
+import pyrayt
 import pyrayt.designer as designer
 from tinygfx.g3d import WorldObject, ObjectGroup
 import tinygfx.g3d as cg
@@ -11,14 +13,14 @@ class TestFlattenFn(unittest.TestCase):
         system.append((1, (2, 3)))
         system.append((4, 5, 6))
         system.append(7)
-        flattened = designer.flatten(system)
+        flattened = pyrayt.flatten(system)
         for n, field in enumerate(flattened):
             self.assertEqual(n, field)
 
 
 class TestAnalyticSystem(unittest.TestCase):
     def setUp(self):
-        self.system = designer.OpticalSystem()
+        self.system = pyrayt.OpticalSystem()
 
     def test_calling_fields(self):
         group_fields = ("sources", "components", "detectors")
@@ -38,8 +40,8 @@ class TestAnalyticSystem(unittest.TestCase):
         self.assertEqual(self.system.components[0], my_object)
 
     def test_default_values_unique(self):
-        system1 = designer.OpticalSystem()
-        system2 = designer.OpticalSystem()
+        system1 = pyrayt.OpticalSystem()
+        system2 = pyrayt.OpticalSystem()
 
         system1.boundary.move_x(3)
         self.assertEqual(system2.boundary.get_position()[0], 0)

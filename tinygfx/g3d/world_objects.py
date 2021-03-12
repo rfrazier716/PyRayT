@@ -479,20 +479,20 @@ class OrthographicCamera(WorldObject):
     def get_span(self):
         return (self._h_width, self._v_width)
 
-    def generate_rays(self) -> primitives.RaySet:
-        ray_set = self._local_ray_generation()
-        ray_set.rays = np.matmul(self._world_coordinate_transform, ray_set.rays)  # transform rays to world space
-        ray_set.rays[1] /= np.linalg.norm(ray_set.rays[1], axis=0)  # normalize the direction vector
-        return ray_set
+    def generate_rays(self) -> np.ndarray:
+        rays = self._local_ray_generation()
+        rays = np.matmul(self._world_coordinate_transform, rays)  # transform rays to world space
+        rays[1] /= np.linalg.norm(rays[1], axis=0)  # normalize the direction vector
+        return rays
 
-    def _local_ray_generation(self) -> primitives.RaySet:
+    def _local_ray_generation(self) -> np.ndarray:
         h_steps = np.linspace(-self._h_width / 2, self._h_width / 2, self._h_pixels)
         v_steps = np.linspace(self._v_width / 2, -self._v_width / 2, self._v_pixels)
 
-        set = primitives.RaySet(self._h_pixels * self._v_pixels)
+        rays = primitives.bundle_of_rays(self._h_pixels*self._v_pixels)
         ys, zs = np.meshgrid(h_steps, v_steps)
-        set.rays[0, 1] = ys.reshape(-1)
-        set.rays[0, 2] = zs.reshape(-1)
-        set.rays[1, 0] = 1  # position rays along positive z axis
+        rays[0, 1] = ys.reshape(-1)
+        rays[0, 2] = zs.reshape(-1)
+        rays[1, 0] = 1  # orient rays to face the positive x-axis
 
-        return set
+        return rays

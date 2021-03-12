@@ -1,6 +1,6 @@
 import unittest
-import pyrayt.renderers as render
-import pyrayt.designer as designer
+
+import pyrayt
 from pyrayt.components.sources import LineOfRays
 import tinygfx.g3d.world_objects as cg
 import pyrayt.shaders.analytic as mat
@@ -11,7 +11,7 @@ import numpy as np
 
 class TestRenderReflection(unittest.TestCase):
     def setUp(self) -> None:
-        self.system = designer.OpticalSystem()
+        self.system = pyrayt.OpticalSystem()
         self.sources = (LineOfRays().rotate_y(-45), LineOfRays().rotate_y(-135))
         self.surfaces = (cg.YZPlane(material=mat.mirror).move_x(-0.5),
                          cg.YZPlane(material=mat.mirror).move_x(0.5),
@@ -19,13 +19,13 @@ class TestRenderReflection(unittest.TestCase):
 
         self.system.sources += self.sources
         self.system.components += self.surfaces
-        self.renderer = render.AnalyticRenderer(self.system, generation_limit=20)
+        self.renderer = pyrayt.AnalyticRenderer(self.system, generation_limit=20)
 
     def test_getters(self):
         self.renderer.set_generation_limit(1000)
         self.assertEqual(self.renderer.get_generation_limit(), 1000)
 
-        new_system = designer.OpticalSystem()
+        new_system = pyrayt.OpticalSystem()
         new_system.sources.append("Hello World")
         self.renderer.load_system(new_system)
         self.assertEqual(self.renderer.get_system().sources[0], "Hello World")
@@ -102,7 +102,7 @@ class TestRenderReflection(unittest.TestCase):
 
     def test_saving_refractive_index_info(self):
         # when the rays propagate into a medium the refractive index should be updated
-        system = designer.OpticalSystem()
+        system = pyrayt.OpticalSystem()
         sources = (LineOfRays().rotate_y(-90),)
         surfaces = [
             cg.Cuboid(material=mat.NKShader(material=mat.Material.REFRACTIVE, n=1.5)),
@@ -111,7 +111,7 @@ class TestRenderReflection(unittest.TestCase):
 
         system.sources += sources
         system.components += surfaces
-        renderer = render.AnalyticRenderer(system, rays_per_source=10, generation_limit=20)
+        renderer = pyrayt.AnalyticRenderer(system, rays_per_source=10, generation_limit=20)
 
         results = renderer.render()
         self.assertEqual(results.shape[0], 20)
@@ -120,13 +120,13 @@ class TestRenderReflection(unittest.TestCase):
 
 class TestRenderRepeatedIntersection(unittest.TestCase):
     def setUp(self) -> None:
-        self.system = designer.OpticalSystem()
+        self.system = pyrayt.OpticalSystem()
         self.sources = (LineOfRays().rotate_x(90).rotate_y(-180),)
         self.surfaces = (cg.Cuboid(material=mat.mirror),)
 
         self.system.sources += self.sources
         self.system.components += self.surfaces
-        self.renderer = render.AnalyticRenderer(self.system, generation_limit=20)
+        self.renderer = pyrayt.AnalyticRenderer(self.system, generation_limit=20)
 
     def test_render_results(self):
         """

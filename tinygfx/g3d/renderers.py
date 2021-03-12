@@ -59,17 +59,17 @@ class EdgeRender(object):
         self.reset()  # reset the renderer states/generation number
 
         # make a ray set from the concatenated ray sets returned by the sources
-        self._ray_set = self._camera.generate_rays()
+        self._rays = self._camera.generate_rays()
         self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
 
     def _st_propagate(self):
         # the hits matrix is an mxn matrix where you have m surfaces in the simulation and n rays being propagated
-        hit_distances = np.full(self._ray_set.n_rays, np.inf)
-        hit_surfaces = np.full(self._ray_set.n_rays, -1)
+        hit_distances = np.full(self._rays.shape[-1], np.inf)
+        hit_surfaces = np.full(self._rays.shape[-1], -1)
 
         # calculate the intersection distances for every surface in the simulation
         for n, surface in enumerate(self._surfaces):
-            surface_hits = surface.intersect(self._ray_set.rays)
+            surface_hits = surface.intersect(self._rays)
             new_minima = np.logical_and(surface_hits >= 0, surface_hits <= hit_distances)
             hit_distances = np.where(new_minima, surface_hits, hit_distances)
             hit_surfaces = np.where(new_minima, n, hit_surfaces)
