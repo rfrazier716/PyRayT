@@ -8,3 +8,4 @@ from .surfaces import *
 
 # import primitives but don't pull into namespace
 from . import primitives
+from . import renderers
