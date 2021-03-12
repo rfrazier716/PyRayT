@@ -461,7 +461,7 @@ class Cuboid(TracerSurface):
         return cls().scale(*scale_values[:3]).move(*center[:3])
 
 
-class OrthoGraphicCamera(WorldObject):
+class OrthographicCamera(WorldObject):
     """
     A camera oriented along the z-axis pointing along the x-axis
     """

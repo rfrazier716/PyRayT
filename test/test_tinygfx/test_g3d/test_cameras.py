@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
 class TestOrthographicCamera(unittest.TestCase):
     def setUp(self) -> None:
-        self.camera = tinygfx.g3d.world_objects.OrthoGraphicCamera(10, 1, 0.5)
+        self.camera = tinygfx.g3d.world_objects.OrthographicCamera(10, 1, 0.5)
 
     def test_number_of_rays_created(self):
         rays = self.camera.generate_rays()
