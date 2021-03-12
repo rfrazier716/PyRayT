@@ -2,7 +2,7 @@ from enum import Enum
 
 import numpy as np
 from scipy import ndimage as ndimage
-import tinygfx.g3d as cg
+from tinygfx.g3d.world_objects import OrthographicCamera
 
 
 class EdgeRender(object):
@@ -16,7 +16,7 @@ class EdgeRender(object):
         INITIALIZE = 5
         TRIM = 6
 
-    def __init__(self, camera: cg.OrthographicCamera, surfaces: list):
+    def __init__(self, camera: OrthographicCamera, surfaces: list):
         self._state = self.States.IDLE  # by default the renderer is idling
         self._simulation_complete = False
         self._results = None
