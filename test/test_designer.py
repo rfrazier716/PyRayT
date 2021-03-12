@@ -1,6 +1,6 @@
 import unittest
 import pyrayt.designer as designer
-from tinygfx.g3d.primitives import WorldObject, ObjectGroup
+from tinygfx.g3d import WorldObject, ObjectGroup
 import tinygfx.g3d as cg
 
 

@@ -2,6 +2,8 @@ import tinygfx.g3d.primitives as primitives
 import numpy as np
 import unittest
 
+import tinygfx.g3d as cg
+
 
 class WorldObjectTestCase(unittest.TestCase):
     """
@@ -9,20 +11,20 @@ class WorldObjectTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        self._obj = primitives.WorldObject()
+        self._obj = cg.WorldObject()
 
 
 class TestCountedObject(unittest.TestCase):
     def setUp(self):
-        self.obj = primitives.CountedObject()
+        self.obj = cg.CountedObject()
 
     def test_count_incrementing(self):
         obj_to_create = 20
-        initial_count = primitives.CountedObject.get_count()
-        test_objects = [primitives.CountedObject() for _ in range(obj_to_create)]
+        initial_count = cg.CountedObject.get_count()
+        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
 
         # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(primitives.CountedObject.get_count(), obj_to_create + initial_count)
+        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
 
         # none of the objects should have the same count_id
         obj_ids = set([test_object.get_id() for test_object in test_objects])
@@ -33,28 +35,28 @@ class TestCountedObject(unittest.TestCase):
 
     def test_decrementing_object_count(self):
         obj_to_create = 20
-        initial_count = primitives.CountedObject.get_count()
-        test_objects = [primitives.CountedObject() for _ in range(obj_to_create)]
+        initial_count = cg.CountedObject.get_count()
+        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
 
         # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(primitives.CountedObject.get_count(), obj_to_create + initial_count)
+        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
 
         # deleting objects should reduce the count
         for n in range(len(test_objects)):
             test_objects.pop(-1)
-            self.assertEqual(primitives.CountedObject.get_count(), obj_to_create + initial_count - n - 1)
+            self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count - n - 1)
 
     def test_creating_obj_after_deletion(self):
         # create a list of objects then delete them all
 
         obj_to_create = 20
-        initial_count = primitives.CountedObject.get_count()
-        test_objects = [primitives.CountedObject() for _ in range(obj_to_create)]
+        initial_count = cg.CountedObject.get_count()
+        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
         max_id = test_objects[-1].get_id()
         del test_objects
 
         # make sure that a new object indexes up and does not reuse any of the deleted IDs
-        new_object = primitives.CountedObject()
+        new_object = cg.CountedObject()
         self.assertEqual(new_object.get_id(), max_id + 1)
 
 
@@ -279,7 +281,7 @@ class TestWorldObjectScaling(WorldObjectTestCase):
 
 class TestWorldObjectTranslation(WorldObjectTestCase):
     def test_3axis_movement(self):
-        my_obj = primitives.WorldObject()
+        my_obj = cg.WorldObject()
 
         # We should be able to move the object multiple times and the position will move but not direction
         move_vector = np.array((1, 2, -5))
@@ -358,10 +360,10 @@ class TestWorldObjectQuaternion(WorldObjectTestCase):
 
 class TestObjectGroup(unittest.TestCase):
     def setUp(self):
-        self.group = primitives.ObjectGroup()
+        self.group = cg.ObjectGroup()
 
-        self.obj1 = primitives.WorldObject()
-        self.obj2 = primitives.WorldObject()
+        self.obj1 = cg.WorldObject()
+        self.obj2 = cg.WorldObject()
 
         self.group.append(self.obj1)
         self.group.append(self.obj2)
@@ -394,9 +396,9 @@ class TestObjectGroup(unittest.TestCase):
 
     def test_nesting_object_group(self):
         # make a subgroup and append it to the top level group
-        subgroup = primitives.ObjectGroup()
+        subgroup = cg.ObjectGroup()
 
-        sub_object = primitives.WorldObject()
+        sub_object = cg.WorldObject()
         sub_object.move(1, 0, 0)
         subgroup.append(sub_object)
 

@@ -1,4 +1,4 @@
-from tinygfx.g3d.primitives import ObjectGroup
+from tinygfx.g3d import ObjectGroup
 import tinygfx.g3d as cg
 from dataclasses import dataclass, field
 

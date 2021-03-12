@@ -2,9 +2,7 @@ from enum import Enum
 
 import numpy as np
 from scipy import ndimage as ndimage
-
-from pyrayt import designer as designer
-from pyrayt.components import sources as sources
+import tinygfx.g3d as cg
 
 
 class EdgeRender(object):
@@ -18,7 +16,7 @@ class EdgeRender(object):
         INITIALIZE = 5
         TRIM = 6
 
-    def __init__(self, camera: sources.OrthoGraphicCamera, surfaces: list):
+    def __init__(self, camera: cg.OrthoGraphicCamera, surfaces: list):
         self._state = self.States.IDLE  # by default the renderer is idling
         self._simulation_complete = False
         self._results = None
@@ -56,10 +54,6 @@ class EdgeRender(object):
         :return: pandas dataframe
         """
         return self._frame.data
-
-    def _generate_flattened_structures(self):
-        self._sources = tuple(designer.flatten(self._system.sources))
-        self._surfaces = tuple(designer.flatten((self._system.components, self._system.detectors)))
 
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
