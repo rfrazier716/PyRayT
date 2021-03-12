@@ -7,9 +7,7 @@ from scipy.spatial import transform as transform
 import abc
 import numpy as np
 
-from tinygfx.g3d import primitives as primitives
-
-from tinygfx.g3d.primitives import Point, Vector
+import tinygfx.g3d.primitives as primitives
 
 
 class CountedObject(object):
@@ -93,11 +91,11 @@ class WorldObject(CountedObject):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._obj_origin = Point(0, 0, 0)  # position in object space
-        self._obj_direction = Vector(0, 0, 1)  # direction in object space
+        self._obj_origin = primitives.Point(0, 0, 0)  # position in object space
+        self._obj_direction = primitives.Vector(0, 0, 1)  # direction in object space
 
-        self._world_position = Point(0, 0, 0)  # the objects position in world space
-        self._world_direction = Vector(0, 0, 1)  # the objects direction in world space
+        self._world_position = primitives.Point(0, 0, 0)  # the objects position in world space
+        self._world_direction = primitives.Vector(0, 0, 1)  # the objects direction in world space
 
         # Flags that get set to false whenever the transform matrix has been updated
         self._dir_valid = True
@@ -127,7 +125,7 @@ class WorldObject(CountedObject):
             world_dir = np.matmul(self._world_coordinate_transform, self._obj_direction)
             norm = linalg.norm(world_dir)
             if norm < 1E-7:
-                raise ValueError(f"Measured Norm of World Vector below tolerance: {norm}")
+                raise ValueError(f"Measured Norm of World primitives.Vector below tolerance: {norm}")
             else:
                 self._world_direction = world_dir / norm
 
