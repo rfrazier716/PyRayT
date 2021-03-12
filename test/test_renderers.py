@@ -2,7 +2,7 @@ import unittest
 import pyrayt.renderers as render
 import pyrayt.designer as designer
 from pyrayt.components.sources import LineOfRays
-import tinygfx.g3d.surfaces as cg
+import tinygfx.g3d.world_objects as cg
 import pyrayt.shaders.analytic as mat
 import numpy as np
 

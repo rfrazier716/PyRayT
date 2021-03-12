@@ -4,7 +4,6 @@ import tinygfx.g3d as cg
 from pyrayt.components.sources import OrthoGraphicCamera
 
 
-
 class TestEdgeRenderer(unittest.TestCase):
     def setUp(self) -> None:
         self.surfaces = (cg.Sphere(1).move_x(3).move_y(0.5), cg.Sphere(1).move_x(3).move_y(-0.5))
