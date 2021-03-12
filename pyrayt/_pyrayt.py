@@ -1,23 +1,127 @@
+from dataclasses import dataclass, field
 from enum import Enum
-import pyrayt.simple_cg as cg
-import pyrayt.components.sources as sources
-import pyrayt.designer as designer
-import pandas as pd
+
 import numpy as np
-import scipy.ndimage as ndimage
+import pandas as pd
+
+from tinygfx import g3d as cg
 
 
-def analytic_render(system):
-    pass
+def flatten(list_to_flatten):
+    def _flatten_helper(iterable, flattened_list):
+        """
+        a helper method to walk through a nested list and return the flattened list in order
+
+        :param iterable:
+        :param flattened_list:
+        :return:
+        """
+        for item in iterable:
+            # if the item is itself iterable, recursively enter the function
+            if not isinstance(item, str) and hasattr(item, '__iter__'):
+                _flatten_helper(item, flattened_list)
+            else:
+                flattened_list.append(item)
+
+    # reset the flattened_system
+    flattened_list = []
+    _flatten_helper(list_to_flatten, flattened_list)
+    return flattened_list
+
+
+class RaySet(object):
+    fields = (
+        "generation",
+        "intensity",
+        "wavelength",
+        "index",
+        'id'
+    )
+
+    def __init__(self, n_rays, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+        self.rays = cg.bundle_of_rays(n_rays)
+        self.metadata = np.zeros((len(RaySet.fields), n_rays))
+
+        # set default values
+        self.wavelength = 0.633  # by default assume 633nm light
+        self.index = 1
+        self.generation = 0
+        self.intensity = 100.  # default intensity is 100
+        self.id = np.arange(n_rays)  # assign unique ids to each ray
+
+    @classmethod
+    def concat(cls, *ray_sets: "RaySet") -> "RaySet":
+        """
+        Creates a new RaySet by concatenating n number of existing sets
+        """
+        new_set = cls(0)
+        new_set.rays = np.dstack([this_set.rays for this_set in ray_sets])
+        new_set.metadata = np.hstack([this_set.metadata for this_set in ray_sets])
+        new_set.id = np.arange(new_set.rays.shape[-1])  # re allocate ids
+        return new_set
+
+    @property
+    def n_rays(self) -> int:
+        return self.rays.shape[-1]
+
+    @property
+    def generation(self):
+        return self.metadata[0]
+
+    @generation.setter
+    def generation(self, update):
+        self.metadata[0] = update
+
+    @property
+    def intensity(self):
+        return self.metadata[1]
+
+    @intensity.setter
+    def intensity(self, update):
+        self.metadata[1] = update
+
+    @property
+    def wavelength(self):
+        return self.metadata[2]
+
+    @wavelength.setter
+    def wavelength(self, update):
+        self.metadata[2] = update
+
+    @property
+    def index(self):
+        return self.metadata[3]
+
+    @index.setter
+    def index(self, update):
+        self.metadata[3] = update
+
+    @property
+    def id(self):
+        return self.metadata[4]
+
+    @id.setter
+    def id(self, update):
+        self.metadata[4] = update
+
+
+@dataclass(unsafe_hash=True)
+class OpticalSystem(object):
+    sources: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
+    components: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
+    detectors: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
+    boundary: cg.TracerSurface = field(
+        default_factory=lambda: cg.Cuboid.from_corners((-100, -100, -100), (100, 100, 100)))
 
 
 class _AnalyticDataFrame(object):
     def __init__(self):
-        self.df_columns = cg.RaySet.fields + ("surface", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
-                                              "y_tilt", "z_tilt")
+        self.df_columns = RaySet.fields + ("surface", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
+                                           "y_tilt", "z_tilt")
         self.data = pd.DataFrame(columns=self.df_columns, dtype='float32')
 
-    def insert(self, ray_set: cg.RaySet, next_ray_set: cg.RaySet, surface_ids: np.ndarray) -> None:
+    def insert(self, ray_set: RaySet, next_ray_set: RaySet, surface_ids: np.ndarray) -> None:
         # create an array of generation numbers
         # trim the homogeneous coordinate
         trimmed_starts, tilts = ray_set.rays[:, :-1]  # should return a 2x3xn array
@@ -44,15 +148,15 @@ class AnalyticRenderer(object):
         INITIALIZE = 5
         TRIM = 6
 
-    def __init__(self, system=designer.AnalyticSystem(), rays_per_source=10, generation_limit=10):
+    def __init__(self, system=OpticalSystem(), rays_per_source=10, generation_limit=10):
         self._frame = _AnalyticDataFrame()  # make a new dataframe to hold results
         self._state = AnalyticRenderer.States.IDLE  # by default the renderer is idling
         self._generation_number = 0
         self._simulation_complete = False
 
         self._system = system  # reference to the Analytical System
-        self._sources = designer.flatten(self._system.sources)
-        self._surfaces = designer.flatten((self._system.components, self._system.detectors))
+        self._sources = flatten(self._system.sources)
+        self._surfaces = flatten((self._system.components, self._system.detectors))
         self._rays_per_source = rays_per_source
         self._generation_limit = generation_limit  # how many reflections/refractions a ray can encounter
         self._world_index = 1  # the refractive index of the world
@@ -65,8 +169,8 @@ class AnalyticRenderer(object):
             AnalyticRenderer.States.FINISH: self._st_finish,
         }
 
-        self._ray_set = cg.RaySet(0)
-        self._next_ray_set = cg.RaySet(0)
+        self._ray_set = RaySet(0)
+        self._next_ray_set = RaySet(0)
 
     def reset(self):
         self._simulation_complete = False
@@ -111,15 +215,15 @@ class AnalyticRenderer(object):
         return self._frame.data
 
     def _generate_flattened_structures(self):
-        self._sources = tuple(designer.flatten(self._system.sources))
-        self._surfaces = tuple(designer.flatten((self._system.components, self._system.detectors)))
+        self._sources = tuple(flatten(self._system.sources))
+        self._surfaces = tuple(flatten((self._system.components, self._system.detectors)))
 
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
         self._generate_flattened_structures()
 
         # make a ray set from the concatenated ray sets returned by the sources
-        self._ray_set = cg.RaySet.concat(*[source.generate_rays(self._rays_per_source) for source in self._sources])
+        self._ray_set = RaySet.concat(*[source.generate_rays(self._rays_per_source) for source in self._sources])
         self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
 
     def _st_propagate(self):
@@ -138,7 +242,7 @@ class AnalyticRenderer(object):
         # recasting np.inf to -1 to avoid multiplication errors when calculating distance
         hit_distances = np.where(np.isinf(hit_distances), -1, hit_distances)
 
-        self._next_ray_set = cg.RaySet(self._ray_set.n_rays)  # make a new rayset to hold the updated rays
+        self._next_ray_set = RaySet(self._ray_set.n_rays)  # make a new rayset to hold the updated rays
         # next need to call the shader function for each surface and trim the dead rays
         intersection_points = self._ray_set.rays[0] + np.where(hit_distances > 0,
                                                                hit_distances * self._ray_set.rays[1], 0)
@@ -190,108 +294,6 @@ class AnalyticRenderer(object):
         else:
             # if there's no rays left finish the trace
             self._state = self.States.FINISH
-
-    def _st_record(self):
-        pass
-
-    def _st_trim(self):
-        pass
-
-    def _st_finish(self):
-        self._simulation_complete = True
-        self._state = self.States.IDLE
-
-
-class EdgeRender(object):
-    ray_offset_value = 1E-6  # how far off the rays are moved from surfaces
-
-    class States(Enum):
-        PROPAGATE = 1
-        INTERACT = 2
-        FINISH = 3
-        IDLE = 4
-        INITIALIZE = 5
-        TRIM = 6
-
-    def __init__(self, camera: sources.OrthoGraphicCamera, surfaces: list):
-        self._state = self.States.IDLE  # by default the renderer is idling
-        self._simulation_complete = False
-        self._results = None
-
-        self._camera = camera  # make a new dataframe to hold results
-        self._surfaces = surfaces
-
-        self._state_machine = {
-            self.States.INITIALIZE: self._st_initialize,
-            self.States.PROPAGATE: self._st_propagate,
-            self.States.INTERACT: self._st_interact,
-            self.States.TRIM: self._st_trim,
-            self.States.FINISH: self._st_finish,
-        }
-
-    def reset(self):
-        self._simulation_complete = False
-        self._results = None
-        self._state = self.States.IDLE  # by default the renderer is idling
-
-    def render(self):
-        self._state = self.States.INITIALIZE  # kick off the state machine
-
-        # run the state machine to completion
-        while self._state != self.States.IDLE:
-            self._state_machine[self._state]()  # execute the state function for that state
-
-        # return the rendered data
-        return self._results
-
-    def get_results(self):
-        """
-        Returns a dataframe of the Ray Trace Results
-
-        :return: pandas dataframe
-        """
-        return self._frame.data
-
-    def _generate_flattened_structures(self):
-        self._sources = tuple(designer.flatten(self._system.sources))
-        self._surfaces = tuple(designer.flatten((self._system.components, self._system.detectors)))
-
-    def _st_initialize(self):
-        self.reset()  # reset the renderer states/generation number
-
-        # make a ray set from the concatenated ray sets returned by the sources
-        self._ray_set = self._camera.generate_rays()
-        self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
-
-    def _st_propagate(self):
-        # the hits matrix is an mxn matrix where you have m surfaces in the simulation and n rays being propagated
-        hit_distances = np.full(self._ray_set.n_rays, np.inf)
-        hit_surfaces = np.full(self._ray_set.n_rays, -1)
-
-        # calculate the intersection distances for every surface in the simulation
-        for n, surface in enumerate(self._surfaces):
-            surface_hits = surface.intersect(self._ray_set.rays)
-            new_minima = np.logical_and(surface_hits >= 0, surface_hits <= hit_distances)
-            hit_distances = np.where(new_minima, surface_hits, hit_distances)
-            hit_surfaces = np.where(new_minima, n, hit_surfaces)
-
-        # assign the hit distances and surfaces to an instance variable so they can be called in the next state
-        self._hit_distances = hit_distances
-        self._hit_surfaces = hit_surfaces
-
-        self._state = self.States.INTERACT
-
-    def _st_interact(self):
-        # find the edges of the surfaces using np diff functions
-        # convert the hit_surfaces array into a matrix
-        hit_matrix = self._hit_surfaces.reshape(self._camera.get_resolution()[-1], -1)
-        h_diffs = np.abs(np.diff(hit_matrix, axis=-1, prepend=0))
-        v_diffs = np.abs(np.diff(hit_matrix, axis=0, prepend=0))
-
-        # now do a binary dilation to make the lines a bit thicker
-        edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2, 2))
-        self._results = edges
-        self._state = self.States.FINISH
 
     def _st_record(self):
         pass

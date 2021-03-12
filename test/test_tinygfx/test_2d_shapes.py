@@ -1,7 +1,6 @@
 import unittest
-import pyrayt.simple_cg as cg
+import tinygfx.g3d.primitives as primitives
 import numpy as np
-import abc
 
 
 class BaseShape(object):
@@ -24,14 +23,14 @@ class BaseShape(object):
 
 class TestDisk(BaseShape, unittest.TestCase):
     def setUp(self):
-        self.surface = cg.Disk()
+        self.surface = primitives.Disk()
         self.points_in_surface = np.array([[0, 0], [0.7, 0.7], [0, -1], [-0.5, 0.7]])
         self.points_not_in_surface = np.array([[10, 10], [-20, 20], [0, 1.01], [2, 2]])
         
 
 class TestRectangle(BaseShape, unittest.TestCase):
     def setUp(self):
-        self.surface = cg.Rectangle()
+        self.surface = primitives.Rectangle()
         self.points_in_surface = np.array([[0, 0], [0.7, 0.7], [1, 1], [-0.5, 0.7]])
         self.points_not_in_surface = np.array([[1.01, 1], [-20, 20], [0, 1.01], [2, 2]])
 
