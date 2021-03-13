@@ -1,8 +1,9 @@
 from enum import Enum
 
 import numpy as np
-from scipy import ndimage as ndimage
-from tinygfx.g3d.world_objects import OrthographicCamera
+from scipy import ndimage
+import matplotlib.pyplot as plt
+from tinygfx.g3d.world_objects import OrthographicCamera, TracerSurface
 
 
 class EdgeRender(object):
@@ -101,3 +102,31 @@ class EdgeRender(object):
     def _st_finish(self):
         self._simulation_complete = True
         self._state = self.States.IDLE
+
+
+def draw(surface: TracerSurface):
+    # draw a surface for a given projection
+    bounding_box = surface.bounding_volume.bounding_points[:4] * 1.5
+    mins = np.min(bounding_box, axis=1)
+    maxes = np.max(bounding_box, axis=1)
+
+    print(mins, maxes)
+
+    # this case is for a "top" projection in the xy plane
+    # the camera origin should be above the object centered over it
+    camera_origin = (maxes + mins) / 2
+    camera_origin[2] = maxes[2]
+    h_span, v_span = maxes[:2] - mins[:2]  # the camera spans
+
+    print(camera_origin)
+    # make the camera and move it into position
+    camera = OrthographicCamera(640, h_span, v_span / h_span)
+    camera.rotate_y(90).rotate_z(90).move(*camera_origin[:3])
+
+    renderer = EdgeRender(camera, (surface,))
+    image = renderer.render()
+    axis = plt.gca()
+    axis.imshow(1 - image, extent=[-h_span / 2, h_span / 2, -v_span / 2, v_span / 2], cmap='gray')
+    axis.set_axisbelow(True)
+    axis.grid(color='gray', linestyle='dashed')
+    return image

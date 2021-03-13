@@ -441,7 +441,7 @@ class OrthographicCamera(WorldObject):
         return rays
 
     def _local_ray_generation(self) -> np.ndarray:
-        h_steps = np.linspace(-self._h_width / 2, self._h_width / 2, self._h_pixels)
+        h_steps = np.linspace(self._h_width / 2, -self._h_width / 2, self._h_pixels)
         v_steps = np.linspace(self._v_width / 2, -self._v_width / 2, self._v_pixels)
 
         rays = primitives.bundle_of_rays(self._h_pixels * self._v_pixels)
