@@ -299,73 +299,7 @@ class ObjectGroup(WorldObject, collections.UserList):
             surface.transform(new_transform)
 
 
-class Aperture(WorldObject):
-    _shape: primitives.SurfacePrimitive
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
-
-    def intersect(self, points):
-        """
-        compares if points are in the aperture
-        :return:
-        """
-        # transform points into the aperture's coordinate system
-        local_points = np.matmul(self._get_object_transform(), points)
-
-        # the default object exists in the YZ Plane, so those are the coordinates sent to check for intersection
-        return self._shape.intersect(local_points)
-
-
-class CircularAperture(Aperture):
-    def __init__(self, radius, *args, **kwargs):
-        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
-        self._radius = radius
-        self._shape = primitives.Cylinder(radius)
-        self.rotate_y(-90)
-
-    @property
-    def radius(self):
-        return self._radius
-
-
-class EllipticalAperture(Aperture):
-    def __init__(self, major_radius, minor_radius, *args, **kwargs):
-        # an ellipse is just a disk that has had a scale matrix applied to it
-        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
-        self._radii = (major_radius, minor_radius)
-        self._shape = primitives.Disk(1)
-        self.scale(1, major_radius, minor_radius)
-
-    @property
-    def radii(self):
-        return self._radii
-
-
-class RectangularAperture(Aperture):
-    def __init__(self, y_length, z_length, *args, **kwargs):
-        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
-        self._side_lengths = (y_length, z_length)
-        # the default shape is in the XY plane but aperture exist in the YZ Plane
-        self._shape = primitives.Rectangle(y_length, z_length)
-
-    @property
-    def side_lengths(self):
-        return self._side_lengths
-
-
-class SquareAperture(RectangularAperture):
-    """
-    Special case of a Rectangular Aperture
-    """
-
-    def __init__(self, side_length, *args, **kwargs):
-        # initialize the parent constructor
-        super().__init__(side_length, side_length, *args, **kwargs)
-
-
 class TracerSurface(WorldObject, abc.ABC):
-    _aperture: Aperture = None  # initialize a new aperture for the surface
     surface: primitives.SurfacePrimitive
 
     def __init__(self, surface_args, material=None, *args, **kwargs):
@@ -402,15 +336,6 @@ class TracerSurface(WorldObject, abc.ABC):
 
         # if there is an aperture the hits have to be filtered
         # any hit that is not in the aperture is eliminated
-        if self._aperture is not None:
-            # get the hits for the aperture
-            aperture_hits = self._aperture.intersect(local_ray_set)
-
-            # valid hits are anywhere that the aperture hits completely "wrap" the shape hit distances
-            # since apertures have to be convex, they should only have two hits max
-            aperture_min, aperture_max = np.sort(aperture_hits, axis=0)
-            valid_hits = np.logical_and(hits >= aperture_min, hits <= aperture_max)
-            hits = np.where(valid_hits, hits, np.inf)
 
         # filter out any negative hits, and then return the smallest, replacing np.inf with -1
         hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # reduce the hits to a 1xn array of minimum hits
@@ -441,17 +366,6 @@ class TracerSurface(WorldObject, abc.ABC):
         world_normals[-1] = 0  # wipe out any w fields caused by the transpose of the transform
         world_normals /= np.linalg.norm(world_normals, axis=0)
         return world_normals * self._normal_scale  # return the normals, flipped if the object has them inverted
-
-    @property
-    def aperture(self):
-        return self._aperture
-
-    @aperture.setter
-    def aperture(self, value):
-        if issubclass(type(value), Aperture):
-            self._aperture = value
-        else:
-            raise ValueError("aperture type must be a subclass of 'Aperture'")
 
 
 class Sphere(TracerSurface):
