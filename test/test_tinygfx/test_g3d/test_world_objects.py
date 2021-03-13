@@ -277,6 +277,88 @@ class TestObjectGroup(unittest.TestCase):
         self.assertTrue(np.allclose(sub_object.get_position(), primitives.Point(x_movement + 1, 0, 0)))
 
 
+class TestTracerSurfaceBoundingBox(unittest.TestCase):
+    def setUp(self) -> None:
+        self.surface = cg.Sphere(1)
+        
+    def test_default_bounding_box(self):
+        """
+        The Default bounding box should be a regular cube
+        :return: 
+        """
+        corners = self.surface.bounding_volume.bounding_points
+        expected_corners = {
+            (-1, -1, -1),
+            (-1, -1, 1),
+            (-1, 1, -1),
+            (-1, 1, 1),
+            (1, -1, -1),
+            (1, -1, 1),
+            (1, 1, -1),
+            (1, 1, 1),
+        }
+        self.assertEqual(expected_corners, set(map(tuple, corners[:3].T)))
+
+    def test_scaling_bounding_box(self):
+        """
+        Scaling the object should scale the bounding box
+        :return:
+        """
+        self.surface.scale_z(3)
+        corners = self.surface.bounding_volume.bounding_points
+        expected_corners = {
+            (-1, -1, -3),
+            (-1, -1, 3),
+            (-1, 1, -3),
+            (-1, 1, 3),
+            (1, -1, -3),
+            (1, -1, 3),
+            (1, 1, -3),
+            (1, 1, 3),
+        }
+        self.assertEqual(expected_corners, set(map(tuple, corners[:3].T)))
+
+    def test_moving_bounding_box(self):
+        """
+        Scaling the object should scale the bounding box
+        :return:
+        """
+        self.surface.move_x(1)
+        corners = self.surface.bounding_volume.bounding_points
+        expected_corners = {
+            (0, -1, -1),
+            (0, -1, 1),
+            (0, 1, -1),
+            (0, 1, 1),
+            (2, -1, -1),
+            (2, -1, 1),
+            (2, 1, -1),
+            (2, 1, 1),
+        }
+        self.assertEqual(expected_corners, set(map(tuple, corners[:3].T)))
+
+    def test_rotating_bounding_box(self):
+        """
+        Can rotate the object which will rotate the bounding box
+        :return:
+        """
+        self.surface.scale_z(2)
+        self.surface.move_z(1)
+        self.surface.rotate_y(90)
+        corners = self.surface.bounding_volume.bounding_points
+        expected_corners = {
+            (-1, -1, -1),
+            (-1, -1, 1),
+            (-1, 1, -1),
+            (-1, 1, 1),
+            (3, -1, -1),
+            (3, -1, 1),
+            (3, 1, -1),
+            (3, 1, 1),
+        }
+        actual =  set(map(tuple, corners[:3].astype(int).T))
+        self.assertAlmostEqual(expected_corners,actual, f"Expected:\n {expected_corners}\n\ngot:\n{actual}")
+    
 class TestSphere(unittest.TestCase):
     def setUp(self) -> None:
         self.radius = 3

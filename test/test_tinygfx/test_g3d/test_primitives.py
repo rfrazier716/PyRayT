@@ -326,7 +326,7 @@ class TestCube(unittest.TestCase):
 
     def test_getting_corner_points(self):
         # make sure you get the correct list of corners from the cube
-        corners = primitives.Cube((-1, -1, -1), (1, 2, 3)).corner_points
+        corners = primitives.Cube((-1, -1, -1), (1, 2, 3)).bounding_points
         expected_corners = {
             (-1, -1, -1),
             (-1, -1, 3),

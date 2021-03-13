@@ -283,6 +283,7 @@ class Paraboloid(SurfacePrimitive):
     def __init__(self, focus=1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._focus = focus
+        self.bounding_points = _corners_to_cube_points((0, -np.inf, -np.inf), (np.inf, np.inf, np.inf))
 
     def get_focus(self):
         return self._focus
@@ -325,6 +326,7 @@ class Plane(SurfacePrimitive):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.bounding_points = _corners_to_cube_points((0, -np.inf, -np.inf), (0, np.inf, np.inf))
 
     def intersect(self, rays):
         """

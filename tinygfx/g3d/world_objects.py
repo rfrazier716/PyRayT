@@ -367,6 +367,9 @@ class TracerSurface(WorldObject, abc.ABC):
         world_normals /= np.linalg.norm(world_normals, axis=0)
         return world_normals * self._normal_scale  # return the normals, flipped if the object has them inverted
 
+    @property
+    def bounding_volume(self):
+        return self._aobb
 
 class Sphere(TracerSurface):
     surface = primitives.Sphere
