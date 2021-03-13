@@ -1,9 +1,16 @@
-
 import numpy as np
 import numpy.linalg as linalg
+import itertools
 import abc
 
 from tinygfx.g3d.operations import binomial_root, element_wise_dot
+
+
+def _corners_to_cube_points(min_corner, max_corner):
+    axis_spans = np.sort(np.vstack((min_corner[:3], max_corner[:3])), axis=0).T
+    # the corner points are 8 points that make up the span of the cube
+    corner_points = np.vstack([Point(x, y, z) for x, y, z in itertools.product(*axis_spans)]).T
+    return corner_points
 
 
 def bundle_of_rays(n_rays):
@@ -118,6 +125,7 @@ class SurfacePrimitive(abc.ABC):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
+        self.bounding_points = None  # set of points that fully enclose the surface
 
     @abc.abstractmethod
     def intersect(self, rays):
@@ -204,6 +212,8 @@ class Sphere(SurfacePrimitive):
     def __init__(self, radius=1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._radius = radius  # this is the sphere's radius in object space, it can be manipulated in world space with
+        # bounding points make up a cube with a side length of 2*radius
+        self.bounding_points = _corners_to_cube_points((-radius, -radius, -radius), (radius, radius, radius))
         # scale and transform operations
 
     def get_radius(self):
@@ -343,8 +353,16 @@ class Plane(SurfacePrimitive):
 
 class Cube(SurfacePrimitive):
     """
-    a cube with one corner at (-1,-1,-1) and the opposite corner at (1,1,1)
+    a axis aligned cube fully defined by its corners
     """
+
+    def __init__(self, min_corner=(-1, -1, -1), max_corner=(1, 1, 1), *args, **kwargs):
+        super().__init__(*args, **kwargs)  # call the parent constructor
+
+        # a 3x2 matrix that tracks the min and max values for each axis,
+        self._axis_spans = np.sort(np.vstack((min_corner[:3], max_corner[:3])), axis=0).T
+        # the corner points are 8 points that make up the span of the cube
+        self.bounding_points = np.vstack([Point(x, y, z) for x, y, z in itertools.product(*self._axis_spans)]).T
 
     def intersect(self, rays):
         # So, if the minimum intersection of an axis exceeds the maximum intersection of a separate axis, rays do not
@@ -370,10 +388,11 @@ class Cube(SurfacePrimitive):
 
             # now update the intersection point for each plane
             new_hits[0] = np.where(np.logical_not(is_zero),
-                                   -(origins[axis] + 1) / (directions[axis] + is_zero), skew_case_min)
+                                   -(origins[axis] - self._axis_spans[axis, 0]) / (directions[axis] + is_zero),
+                                   skew_case_min)
 
             new_hits[1] = np.where(np.logical_not(is_zero),
-                                   -(origins[axis] - 1) / (directions[axis] + is_zero), np.inf)
+                                   -(origins[axis] - self._axis_spans[axis, 1]) / (directions[axis] + is_zero), np.inf)
 
             # now we need to sort the new hits so 0 is the min and 1 is the max
             new_hits = np.sort(new_hits, axis=0)

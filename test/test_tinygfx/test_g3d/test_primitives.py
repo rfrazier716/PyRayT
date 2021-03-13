@@ -106,6 +106,21 @@ class TestSphere(unittest.TestCase):
         # a new sphere can have the radius assigned
         self.assertEqual(primitives.Sphere(3).get_radius(), 3)
 
+    def test_boundary_points(self):
+        # make sure you get the correct list of corners from the cube
+        corners = primitives.Sphere(3).bounding_points
+        expected_corners = {
+            (-3, -3, -3),
+            (-3, -3, 3),
+            (-3, 3, -3),
+            (-3, 3, 3),
+            (3, -3, -3),
+            (3, -3, 3),
+            (3, 3, -3),
+            (3, 3, 3),
+        }
+        self.assertEqual(expected_corners, set(map(tuple, corners[:3].T)))
+
     def test_ray_intersection_unit_sphere(self):
         hit = self.sphere.intersect(self.ray)
         self.assertEqual(hit.shape, (2, 1))
@@ -309,6 +324,21 @@ class TestCube(unittest.TestCase):
     def setUp(self) -> None:
         self.surface = primitives.Cube()
 
+    def test_getting_corner_points(self):
+        # make sure you get the correct list of corners from the cube
+        corners = primitives.Cube((-1, -1, -1), (1, 2, 3)).corner_points
+        expected_corners = {
+            (-1, -1, -1),
+            (-1, -1, 3),
+            (-1, 2, -1),
+            (-1, 2, 3),
+            (1, -1, -1),
+            (1, -1, 3),
+            (1, 2, -1),
+            (1, 2, 3),
+        }
+        self.assertEqual(expected_corners, set(map(tuple, corners[:3].T)))
+
     def test_intersection_within_cube(self):
         rays = (
             primitives.Ray(direction=primitives.Vector(1, 0, 0)),
@@ -340,6 +370,19 @@ class TestCube(unittest.TestCase):
         ray = primitives.Ray(origin=primitives.Point(-2, 0, 0), direction=primitives.Vector(0, 1, 0).normalize())
         hit = self.surface.intersect(ray)
         self.assertTrue(np.allclose(hit, np.inf))
+
+    def test_nondefault_constructor(self):
+        cube_extents = (1, 2, 5)
+        surface = primitives.Cube((-1, -1, -1), cube_extents)
+        rays = (
+            primitives.Ray(direction=primitives.Vector(1, 0, 0)),
+            primitives.Ray(direction=primitives.Vector(0, 1, 0)),
+            primitives.Ray(direction=primitives.Vector(0, 0, 1))
+        )
+
+        for ray, extent in zip(rays, cube_extents):
+            hit = surface.intersect(ray)
+            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[-1, extent]]).T), f"{hit}")
 
     def test_arrayed_intersection(self):
         # make a bunch of rays to intersect, move some s.t. they intersect teh surface at a different point
