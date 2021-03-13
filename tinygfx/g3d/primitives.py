@@ -362,9 +362,9 @@ class Cube(SurfacePrimitive):
         super().__init__(*args, **kwargs)  # call the parent constructor
 
         # a 3x2 matrix that tracks the min and max values for each axis,
-        self._axis_spans = np.sort(np.vstack((min_corner[:3], max_corner[:3])), axis=0).T
+        self.axis_spans = np.sort(np.vstack((min_corner[:3], max_corner[:3])), axis=0).T
         # the corner points are 8 points that make up the span of the cube
-        self.bounding_points = np.vstack([Point(x, y, z) for x, y, z in itertools.product(*self._axis_spans)]).T
+        self.bounding_points = np.vstack([Point(x, y, z) for x, y, z in itertools.product(*self.axis_spans)]).T
 
     def intersect(self, rays):
         # So, if the minimum intersection of an axis exceeds the maximum intersection of a separate axis, rays do not
@@ -390,11 +390,11 @@ class Cube(SurfacePrimitive):
 
             # now update the intersection point for each plane
             new_hits[0] = np.where(np.logical_not(is_zero),
-                                   -(origins[axis] - self._axis_spans[axis, 0]) / (directions[axis] + is_zero),
+                                   -(origins[axis] - self.axis_spans[axis, 0]) / (directions[axis] + is_zero),
                                    skew_case_min)
 
             new_hits[1] = np.where(np.logical_not(is_zero),
-                                   -(origins[axis] - self._axis_spans[axis, 1]) / (directions[axis] + is_zero), np.inf)
+                                   -(origins[axis] - self.axis_spans[axis, 1]) / (directions[axis] + is_zero), np.inf)
 
             # now we need to sort the new hits so 0 is the min and 1 is the max
             new_hits = np.sort(new_hits, axis=0)
@@ -426,6 +426,18 @@ class Cube(SurfacePrimitive):
 
         # if a 1d array was passed, transpose it and strip a dimension
         return normals
+
+
+def cube_combine(l_cube: Cube, r_cube: Cube, intersection_type: str):
+    spans = np.sort(np.hstack((l_cube.axis_spans, r_cube.axis_spans)), axis=1)  # get the cube spans
+    if intersection_type == "add":
+        return Cube(*spans[:, [0, 3]].T)
+
+    elif intersection_type == "int":
+        return Cube(*spans[:, 1:3].T)
+
+    else:
+        raise ValueError(f"Valid Combinations are (int, add), got {intersection_type}")
 
 
 class Cylinder(SurfacePrimitive):

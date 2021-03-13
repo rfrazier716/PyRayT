@@ -458,6 +458,26 @@ class TestCube(unittest.TestCase):
         self.assertTrue(np.allclose(normals[:, split_index:], expected))
 
 
+class TestCubeCombination(unittest.TestCase):
+    def setUp(self) -> None:
+        self.l_cube = primitives.Cube()
+        self.r_cube = primitives.Cube((0, 0, 0), (2, 3, 4))
+
+    def test_addition(self):
+        combined_cube = primitives.cube_combine(self.l_cube, self.r_cube, "add")
+        expected_spans = np.array(((-1, -1, -1), (2, 3, 4))).T
+        self.assertTrue(np.allclose(combined_cube.axis_spans, expected_spans))
+
+    def test_intersection(self):
+        combined_cube = primitives.cube_combine(self.l_cube, self.r_cube, "int")
+        expected_spans = np.array(((-0, -0, -0), (1, 1, 1))).T
+        self.assertTrue(np.allclose(combined_cube.axis_spans, expected_spans))
+
+    def test_invalid_operator(self):
+        with self.assertRaises(ValueError):
+            primitives.cube_combine(self.l_cube,self.r_cube,"Hello")
+
+
 class TestInfiniteCylinder(unittest.TestCase):
     def setUp(self) -> None:
         self.surface = primitives.Cylinder(1, infinite=True)
