@@ -141,9 +141,8 @@ class TestWorldObjectScaling(WorldObjectTestCase):
     def test_invalid_norm(self):
         # force a scale of zero and assert an error is raised
         scale_factor = 0
-        self._obj.scale_all(scale_factor)
         with self.assertRaises(ValueError):
-            self._obj.get_orientation()
+            self._obj.scale_all(scale_factor)
 
 
 class TestWorldObjectTranslation(WorldObjectTestCase):

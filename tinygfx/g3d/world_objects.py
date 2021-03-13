@@ -10,6 +10,17 @@ import numpy as np
 import tinygfx.g3d.primitives as primitives
 
 
+def bounding_box(point_set):
+    """
+    Returns an axis oriented bounding box that fully contains the point set
+    :param point_set:
+    :return:
+    """
+    point_set_min = np.min(point_set[:3], axis=1)
+    point_set_max = np.max(point_set[:3], axis=1)
+    return primitives.Cube(point_set_min, point_set_max)
+
+
 class CountedObject(object):
     _object_count = 0  # keeps track of how many objects of each type exist
     _next_object_id = 0  # the next id number to use when a new object is initialized
@@ -94,7 +105,7 @@ class WorldObject(CountedObject):
         self._obj_origin = primitives.Point(0, 0, 0)  # position in object space
         self._obj_direction = primitives.Vector(0, 0, 1)  # direction in object space
 
-        self._world_position = primitives.Point(0, 0, 0)  # the objects position in world space
+        self._world_origin = primitives.Point(0, 0, 0)  # the objects position in world space
         self._world_direction = primitives.Vector(0, 0, 1)  # the objects direction in world space
 
         # Flags that get set to false whenever the transform matrix has been updated
@@ -106,18 +117,37 @@ class WorldObject(CountedObject):
                                                        dtype=float)  # transform matrix from object to world space
         self._object_coordinate_transform = np.identity(4, dtype=float)
 
+        # var watch list is a list of function to call whenever the world transform matrix is updated
+        # the function must accept no arguments
+        self._var_watchlist = [
+            self._world_matrix_update_handler
+        ]
+
+    def _world_matrix_update_handler(self):
+        # update the world origin and direction
+
+        self._world_origin = np.matmul(self._world_coordinate_transform, self._obj_origin)
+        world_dir = np.matmul(self._world_coordinate_transform, self._obj_direction)
+        norm = linalg.norm(world_dir)
+        if norm < 1E-7:
+            raise ValueError(f"Measured Norm of World primitives.Vector below tolerance: {norm}")
+        else:
+            self._world_direction = world_dir / norm
+
+        # update the object transform matrix
+        self._object_coordinate_transform = np.linalg.inv(self._world_coordinate_transform)
+
     def _append_world_transform(self, new_transform):
         self._world_coordinate_transform = np.matmul(new_transform, self._world_coordinate_transform)
-        self._dir_valid = False
-        self._pos_valid = False
-        self._obj_transform_valid = False
+        # update the functions in the watch list
+        [fn() for fn in self._var_watchlist]
 
     def get_position(self):
         # check if the position is valid, if not update it and return
         if not self._pos_valid:
-            self._world_position = np.matmul(self._world_coordinate_transform, self._obj_origin)
+            self._world_origin = np.matmul(self._world_coordinate_transform, self._obj_origin)
             self._pos_valid = True
-        return self._world_position
+        return self._world_origin
 
     def get_orientation(self):
         # check if we need to update the direction vector
@@ -336,12 +366,20 @@ class SquareAperture(RectangularAperture):
 
 class TracerSurface(WorldObject, abc.ABC):
     _aperture: Aperture = None  # initialize a new aperture for the surface
+    surface: primitives.SurfacePrimitive
 
     def __init__(self, surface_args, material=None, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
         self._normal_scale = 1  # a multiplier used when normals are inverted
+
+        # make a bounding volume to enclose the shape
+        self._aobb = bounding_box(self._surface_primitive.bounding_points)
+        self._var_watchlist.append(self._boundary_box_update_fn)
+
+    def _boundary_box_update_fn(self):
+        self._aobb = bounding_box(np.matmul(self._world_coordinate_transform, self._surface_primitive.bounding_points))
 
     def invert_normals(self):
         self._normal_scale = -1
@@ -467,7 +505,7 @@ class OrthographicCamera(WorldObject):
     """
 
     def __init__(self, h_pixel_count: int, h_width: float, aspect_ratio: float, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs) # call the next constructor in the MRO
+        super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._h_pixels = h_pixel_count
         self._h_width = h_width
         self._v_width = aspect_ratio * h_width
@@ -489,7 +527,7 @@ class OrthographicCamera(WorldObject):
         h_steps = np.linspace(-self._h_width / 2, self._h_width / 2, self._h_pixels)
         v_steps = np.linspace(self._v_width / 2, -self._v_width / 2, self._v_pixels)
 
-        rays = primitives.bundle_of_rays(self._h_pixels*self._v_pixels)
+        rays = primitives.bundle_of_rays(self._h_pixels * self._v_pixels)
         ys, zs = np.meshgrid(h_steps, v_steps)
         rays[0, 1] = ys.reshape(-1)
         rays[0, 2] = zs.reshape(-1)
