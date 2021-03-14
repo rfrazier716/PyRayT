@@ -119,7 +119,7 @@ class WorldObject(CountedObject):
 
         # var watch list is a list of function to call whenever the world transform matrix is updated
         # the function must accept no arguments
-        self._var_watchlist = [
+        self.var_watchlist = [
             self._world_matrix_update_handler
         ]
 
@@ -140,7 +140,7 @@ class WorldObject(CountedObject):
     def _append_world_transform(self, new_transform):
         self._world_coordinate_transform = np.matmul(new_transform, self._world_coordinate_transform)
         # update the functions in the watch list
-        [fn() for fn in self._var_watchlist]
+        [fn() for fn in self.var_watchlist]
 
     def get_position(self):
         # check if the position is valid, if not update it and return
@@ -299,7 +299,28 @@ class ObjectGroup(WorldObject, collections.UserList):
             surface.transform(new_transform)
 
 
-class TracerSurface(WorldObject, abc.ABC):
+class Intersectable(WorldObject, abc.ABC):
+    """
+    Base class for a renderable object
+    """
+
+    _aobb: primitives.Cube
+    _parent: WorldObject  # the parent is an additional world object that this object is tied to
+
+    @abc.abstractmethod
+    def intersect(self, rays):
+        pass
+
+    @property
+    def bounding_box(self):
+        return self._aobb
+
+    def attach_to(self, parent_object: WorldObject) -> None:
+        self._parent = parent_object
+        self.var_watchlist += parent_object.var_watchlist
+
+
+class TracerSurface(Intersectable, abc.ABC):
     surface: primitives.SurfacePrimitive
 
     def __init__(self, surface_args, material=None, *args, **kwargs):
@@ -310,7 +331,7 @@ class TracerSurface(WorldObject, abc.ABC):
 
         # make a bounding volume to enclose the shape
         self._aobb = bounding_box(self._surface_primitive.bounding_points)
-        self._var_watchlist.append(self._boundary_box_update_fn)
+        self.var_watchlist.append(self._boundary_box_update_fn)
 
     def _boundary_box_update_fn(self):
         self._aobb = bounding_box(np.matmul(self._world_coordinate_transform, self._surface_primitive.bounding_points))
@@ -338,10 +359,10 @@ class TracerSurface(WorldObject, abc.ABC):
         # any hit that is not in the aperture is eliminated
 
         # filter out any negative hits, and then return the smallest, replacing np.inf with -1
-        hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # reduce the hits to a 1xn array of minimum hits
-        hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
+        # hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # reduce the hits to a 1xn array of minimum hits
+        # hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
 
-        return hits
+        return np.sort(hits, axis=0)
 
     def shade(self, rays, *shader_args):
         """
@@ -370,6 +391,7 @@ class TracerSurface(WorldObject, abc.ABC):
     @property
     def bounding_volume(self):
         return self._aobb
+
 
 class Sphere(TracerSurface):
     surface = primitives.Sphere

@@ -386,7 +386,9 @@ class Cube(SurfacePrimitive):
             is_zero = np.isclose(directions[axis], 0)
             # need a special case if the position is skew to an axis, have to know if the point is in teh projected
             # square
-            skew_case_min = np.where(np.abs(origins[axis]) <= 1.0, -np.inf, np.inf)
+            skew_case_min = np.where(np.logical_and(
+                origins[axis] <= self.axis_spans[axis, 1],
+                origins[axis] >= self.axis_spans[axis, 0]), -np.inf, np.inf)
 
             # now update the intersection point for each plane
             new_hits[0] = np.where(np.logical_not(is_zero),
@@ -428,12 +430,41 @@ class Cube(SurfacePrimitive):
         return normals
 
 
+def overlap(arr1: np.ndarray, arr2: np.ndarray):
+    if arr1.ndim == 1:
+        min1 = np.min(arr1)
+        max1 = np.max(arr1)
+
+        min2 = np.min(arr2)
+        max2 = np.max(arr2)
+
+        min_of_max = np.min(np.hstack((max1, max2)))
+        max_of_min = np.max(np.hstack((min1, min2)))
+        arr1_intersection = arr1[np.logical_and(arr1 >= max_of_min, arr1 <= min_of_max)]
+        arr2_intersection = arr2[np.logical_and(arr2 >= max_of_min, arr2 <= min_of_max)]
+
+        return arr1_intersection, arr2_intersection
+
+
 def cube_combine(l_cube: Cube, r_cube: Cube, intersection_type: str):
-    spans = np.sort(np.hstack((l_cube.axis_spans, r_cube.axis_spans)), axis=1)  # get the cube spans
+    # make a mask of the two surfaces which will be sorted
+    surface_mask = np.zeros((3, 4))
+    surface_mask[:, 2:] = 1
+
+    spans = np.hstack((l_cube.axis_spans, r_cube.axis_spans))  # get the cube spans
+    arg_sort = np.argsort(spans, axis=1)
+    sorted_surface_intersection = np.array([mask[sort] for mask, sort in zip(surface_mask, arg_sort)])
+
+    print(sorted_surface_intersection)
     if intersection_type == "add":
-        return Cube(*spans[:, [0, 3]].T)
+        return Cube(*spans.sort(axis=1)[:, [0, 3]].T)
 
     elif intersection_type == "int":
+        surface_mask = np.zeros((3, 4))
+        surface_mask[:, 2:] = 1
+        arg_sort = np.argsort(spans, axis=1)
+        for mask, sort in zip(surface_mask, arg_sort):
+            pass
         return Cube(*spans[:, 1:3].T)
 
     else:
