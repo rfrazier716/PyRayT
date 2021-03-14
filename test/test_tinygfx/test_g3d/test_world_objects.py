@@ -58,7 +58,6 @@ class WorldObjectTestCase(unittest.TestCase):
     def setUp(self):
         self._obj = cg.WorldObject()
 
-
 class TestWorldObjectCreation(WorldObjectTestCase):
     def test_object_creation(self):
         # the object should be centered at the origin facing the positive z-axis
@@ -276,11 +275,40 @@ class TestObjectGroup(unittest.TestCase):
         self.assertTrue(np.allclose(subgroup.get_position(), primitives.Point(x_movement, 0, 0)))
         self.assertTrue(np.allclose(sub_object.get_position(), primitives.Point(x_movement + 1, 0, 0)))
 
+class TestTracerSurface(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.radius = 3
+        self.sphere = cg.Sphere(self.radius)
+
+    def test_getting_surface_id(self):
+        sphere_id = id(self.sphere)
+
+        id_tuple = self.sphere.surface_ids[0]
+        self.assertEqual(sphere_id, id_tuple[0])
+
+        # make sure we can reference the surface
+        self.assertEqual(id_tuple[1].primitive.get_radius(), 3)
+
+    def test_intersection_results(self):
+        # intersection should return 2 arrays
+        n_rays = 11
+        y_vals = np.linspace(-2, 2, n_rays)
+        rays = cg.bundle_of_rays(n_rays)
+        rays[1, 0] = 1  # point towards the right axis
+        rays[0, 0] = -5
+        rays[0, 1] = y_vals
+
+        hits, surface_ids = self.sphere.intersect(rays)
+        self.assertEqual(hits.shape, surface_ids.shape)
+
+        self.assertTrue(np.allclose(surface_ids, id(self.sphere)))
+
 
 class TestTracerSurfaceBoundingBox(unittest.TestCase):
     def setUp(self) -> None:
         self.surface = cg.Sphere(1)
-        
+
     def test_default_bounding_box(self):
         """
         The Default bounding box should be a regular cube
@@ -356,166 +384,119 @@ class TestTracerSurfaceBoundingBox(unittest.TestCase):
             (3, 1, -1),
             (3, 1, 1),
         }
-        actual =  set(map(tuple, corners[:3].astype(int).T))
-        self.assertAlmostEqual(expected_corners,actual, f"Expected:\n {expected_corners}\n\ngot:\n{actual}")
-    
-class TestSphere(unittest.TestCase):
-    def setUp(self) -> None:
-        self.radius = 3
-        self.sphere = cg.Sphere(self.radius)
-        self.ray = primitives.Ray(direction=primitives.Vector(1, 0, 0))
+        actual = set(map(tuple, corners[:3].astype(int).T))
+        self.assertAlmostEqual(expected_corners, actual, f"Expected:\n {expected_corners}\n\ngot:\n{actual}")
 
-        self.intersection_points = ((0, 0, -1), (0, 0, 1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0))
-        self.intersections = [primitives.Point(*intersection) for intersection in self.intersection_points]
-
-    def test_intersection_scaled_sphere(self):
-        # if the sphere is scaled, the intersection should grow with the scaling
-        scale_factor = 10
-        self.sphere.scale_all(scale_factor)
-        hit = self.sphere.intersect(self.ray)
-        self.assertAlmostEqual(hit[0], scale_factor * self.radius)
-
-    def test_intersection_translated_sphere(self):
-        movement = 10
-        self.sphere.move_x(movement)
-        hit = self.sphere.intersect(self.ray)
-        self.assertAlmostEqual(hit[0], movement - self.radius)
-
-    def test_normals_scaled_sphere(self):
-        # scaling a sphere should have no effect on the normals
-        scaling = 5
-        self.sphere.scale_all(scaling)
-        scaled_intersection_points = ((0, 0, -5), (0, 0, 5), (0, 5, 0), (0, -5, 0), (5, 0, 0), (-5, 0, 0))
-        self.intersections = [primitives.Point(*intersection) for intersection in scaled_intersection_points]
-        # for a nontransformed sphere the normals should be vectors of the coordinates
-        normals = [self.sphere.get_world_normals(intersection) for intersection in self.intersections]
-        for normal, intersection in zip(normals, scaled_intersection_points):
-            expected = primitives.Vector(*intersection) / scaling
-            self.assertTrue(np.allclose(normal, expected))
-            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
-
-        # assert that the operation did not overwrite the world transform matrix
-        self.assertTrue(np.allclose(self.sphere.get_world_transform()[:-1, :-1], np.identity(3) * scaling))
-
-    def test_normals_rotated_sphere(self):
-        # rotation should give the same normals
-        z_rotation = 45
-        self.sphere.rotate_z(45)
-
-        normals = [self.sphere.get_world_normals(intersection) for intersection in self.intersections]
-        for normal, intersection in zip(normals, self.intersection_points):
-            expected = primitives.Vector(*intersection)
-            self.assertTrue(np.allclose(normal, expected), f"Expected {normal}, got {expected}")
-            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
-
-        # assert that the operation did not overwrite the world transform matrix
-
-    def test_normals_translated_sphere(self):
-        translation = 10
-        self.sphere.move_x(translation)
-        translated_intersections = [intersection + np.array([translation, 0, 0, 0]) for intersection in
-                                    self.intersections]
-        normals = [self.sphere.get_world_normals(intersection) for intersection in translated_intersections]
-        for normal, intersection in zip(normals, self.intersection_points):
-            expected = primitives.Vector(*intersection)
-            self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
-            self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
-
-    def test_normal_inversion(self):
-        cube = cg.Cuboid()
-        point = primitives.Point(1, 0, 0)
-        normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, primitives.Vector(*point[:-1])), f"{normals}")
-
-        cube.invert_normals()
-        normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, -primitives.Vector(*point[:-1])), f"{normals}")
+# These should be moved into a TracerSurface test to make sure the right values are returned
+# class TestSphere(unittest.TestCase):
+#     def setUp(self) -> None:
+#         self.radius = 3
+#         self.sphere = cg.Sphere(self.radius)
+#         self.ray = primitives.Ray(direction=primitives.Vector(1, 0, 0))
+#
+#         self.intersection_points = ((0, 0, -1), (0, 0, 1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0))
+#         self.intersections = [primitives.Point(*intersection) for intersection in self.intersection_points]
+#
+#     def test_intersection_scaled_sphere(self):
+#         # if the sphere is scaled, the intersection should grow with the scaling
+#         scale_factor = 10
+#         self.sphere.scale_all(scale_factor)
+#         hit = self.sphere.intersect(self.ray)
+#         self.assertAlmostEqual(hit[0], scale_factor * self.radius)
+#
+#     def test_intersection_translated_sphere(self):
+#         movement = 10
+#         self.sphere.move_x(movement)
+#         hit = self.sphere.intersect(self.ray)
+#         self.assertAlmostEqual(hit[0], movement - self.radius)
+#
+#     def test_normals_scaled_sphere(self):
+#         # scaling a sphere should have no effect on the normals
+#         scaling = 5
+#         self.sphere.scale_all(scaling)
+#         scaled_intersection_points = ((0, 0, -5), (0, 0, 5), (0, 5, 0), (0, -5, 0), (5, 0, 0), (-5, 0, 0))
+#         self.intersections = [primitives.Point(*intersection) for intersection in scaled_intersection_points]
+#         # for a nontransformed sphere the normals should be vectors of the coordinates
+#         normals = [self.sphere.get_world_normals(intersection) for intersection in self.intersections]
+#         for normal, intersection in zip(normals, scaled_intersection_points):
+#             expected = primitives.Vector(*intersection) / scaling
+#             self.assertTrue(np.allclose(normal, expected))
+#             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+#
+#         # assert that the operation did not overwrite the world transform matrix
+#         self.assertTrue(np.allclose(self.sphere.get_world_transform()[:-1, :-1], np.identity(3) * scaling))
+#
+#     def test_normals_rotated_sphere(self):
+#         # rotation should give the same normals
+#         z_rotation = 45
+#         self.sphere.rotate_z(45)
+#
+#         normals = [self.sphere.get_world_normals(intersection) for intersection in self.intersections]
+#         for normal, intersection in zip(normals, self.intersection_points):
+#             expected = primitives.Vector(*intersection)
+#             self.assertTrue(np.allclose(normal, expected), f"Expected {normal}, got {expected}")
+#             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+#
+#         # assert that the operation did not overwrite the world transform matrix
+#
+#     def test_normals_translated_sphere(self):
+#         translation = 10
+#         self.sphere.move_x(translation)
+#         translated_intersections = [intersection + np.array([translation, 0, 0, 0]) for intersection in
+#                                     self.intersections]
+#         normals = [self.sphere.get_world_normals(intersection) for intersection in translated_intersections]
+#         for normal, intersection in zip(normals, self.intersection_points):
+#             expected = primitives.Vector(*intersection)
+#             self.assertTrue(np.allclose(normal, expected), f"Expected {expected}, got {normal}")
+#             self.assertAlmostEqual(np.linalg.norm(normal), 1.0)
+#
+#     def test_normal_inversion(self):
+#         cube = cg.Cuboid()
+#         point = primitives.Point(1, 0, 0)
+#         normals = cube.get_world_normals(point)
+#         self.assertTrue(np.allclose(normals, primitives.Vector(*point[:-1])), f"{normals}")
+#
+#         cube.invert_normals()
+#         normals = cube.get_world_normals(point)
+#         self.assertTrue(np.allclose(normals, -primitives.Vector(*point[:-1])), f"{normals}")
 
 
 class TestCuboid(unittest.TestCase):
     def setUp(self) -> None:
         self.cube = cg.Cuboid()
-        self.rays = (
-            primitives.Ray(direction=primitives.Vector(-1, 0, 0)),
-            primitives.Ray(direction=primitives.Vector(1, 0, 0)),
-            primitives.Ray(direction=primitives.Vector(0, -1, 0)),
-            primitives.Ray(direction=primitives.Vector(0, 1, 0)),
-            primitives.Ray(direction=primitives.Vector(0, 0, -1)),
-            primitives.Ray(direction=primitives.Vector(0, 0, 1))
-        )
 
     def test_default_constructor(self):
-        hit = np.asarray([self.cube.intersect(ray) for ray in self.rays])
-        # all hits should be a distance of 1
-        self.assertTrue(np.allclose(hit, 1))
+        self.assertTrue(np.allclose(self.cube.primitive.axis_spans, np.tile((-1, 1), (3, 1))))
 
     def test_from_length_constructor(self):
         lengths = (2, 3, 4)
-        cube = cg.Cuboid.from_lengths(*lengths)
-        expected_hits = np.array((2, 2, 3, 3, 4, 4)) / 2
-        hits = np.asarray([cube.intersect(ray)[0] for ray in self.rays])
-
-        self.assertTrue(np.allclose(hits, expected_hits), f"{hits}")
+        cube = cg.Cuboid.from_sides(*lengths)
+        expected_span = np.array(((-1, 1), (-1.5, 1.5), (-2, 2)))
+        actual = cube.primitive.axis_spans
+        self.assertTrue(np.allclose(actual, expected_span), actual)
 
     def test_from_corner_constructor_tuple(self):
         corner0 = (-1, -2, -3)
         corner1 = (4, 5, 6)
 
-        cube = cg.Cuboid.from_corners(corner0, corner1)
-        hits = np.asarray([cube.intersect(ray)[0] for ray in self.rays])
+        cube = cg.Cuboid(corner0, corner1)
+        expected_span = np.vstack((corner0, corner1)).T
 
-        # the hits in the negative direction should be the same as the first corner
-        self.assertTrue(np.allclose(hits[::2], np.abs(corner0)), f"{hits}")
-
-        # the hits in the positive direction should be the same as the second corner
-        self.assertTrue(np.allclose(hits[1::2], np.abs(corner1)), f"{hits}")
+        actual = cube.primitive.axis_spans
+        self.assertTrue(np.allclose(actual, expected_span), actual)
 
     def test_from_corner_constructor_point(self):
         corner0 = primitives.Point(*(-1, -2, -3))
         corner1 = primitives.Point(*(4, 5, 6))
 
-        cube = cg.Cuboid.from_corners(corner0, corner1)
-        hits = np.asarray([cube.intersect(ray)[0] for ray in self.rays])
+        cube = cg.Cuboid(corner0, corner1)
+        expected_span = np.vstack((corner0, corner1)).T[:3]
 
-        # the hits in the negative direction should be the same as the first corner
-        self.assertTrue(np.allclose(hits[::2], np.abs(corner0[:-1])), f"{hits}")
+        actual = cube.primitive.axis_spans
+        self.assertTrue(np.allclose(actual, expected_span), actual)
 
-        # the hits in the positive direction should be the same as the second corner
-        self.assertTrue(np.allclose(hits[1::2], np.abs(corner1[:-1])), f"{hits}")
 
-    def test_from_corner_constructor_error(self):
-        with self.assertRaises(ValueError):
-            corner0 = primitives.Point(*(-1, -2, -3))
-            corner1 = primitives.Point(*(4, 5, 6))
-            cube = cg.Cuboid.from_corners(corner1, corner0)
 
-    def test_scaling(self):
-        scaling = 5
-        self.cube.scale_all(scaling)
-        hit = np.asarray([self.cube.intersect(ray) for ray in self.rays])
-        # all hits should be a distance of 1
-        self.assertTrue(np.allclose(hit, scaling))
-
-    def test_translation(self):
-        movement = 0.5
-        self.cube.move(movement, movement, movement)
-        hits = np.asarray([self.cube.intersect(ray) for ray in self.rays])
-
-        # all hits in the negative directions should be 0.5
-        self.assertTrue(np.allclose(hits[::2], movement), f"{hits}")
-
-        # all hits in the negative directions should be 1.5
-        self.assertTrue(np.allclose(hits[1::2], 1 + movement), f"{hits}")
-
-    def test_normal_inversion(self):
-        cube = cg.Cuboid()
-        point = primitives.Point(1, 0, 0)
-        normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, primitives.Vector(*point[:-1])), f"{normals}")
-
-        cube.invert_normals()
-        normals = cube.get_world_normals(point)
-        self.assertTrue(np.allclose(normals, -primitives.Vector(*point[:-1])), f"{normals}")
 
 
 if __name__ == '__main__':

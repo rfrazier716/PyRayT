@@ -10,7 +10,7 @@ class Operation(Enum):
     DIFFERENCE = 3
 
 
-def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation):
+def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation, sort_output=True):
     """
     Given two arrays and an operation, returns a new array which is the CSG operation acting on the array.
     If the array is thought of as intersection points between a ray and a two objects being combined with a CSG
@@ -46,9 +46,9 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation):
         # for a union operation you want the longest spans from 1-0, do this by casting all numbers >1 to zero
         ray_hit_path = np.where(ray_hit_path > 1, 1, ray_hit_path)
         ray_hit_path = np.diff(ray_hit_path, axis=0, prepend=0)
-        return np.sort(np.where(ray_hit_path != 0, merged_array, np.inf), axis=0)
+        csg_hits = np.where(ray_hit_path != 0, merged_array, np.inf)
 
-    if operation == Operation.INTERSECT:
+    elif operation == Operation.INTERSECT:
         # make a mask that tracks when the ray enters and exits each surface
         merged_mask = np.ones(merged_array.shape)
         merged_mask[1::2] = -1
@@ -66,9 +66,9 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation):
 
         ray_hit_path = np.where(ray_hit_path == 2, 1, 0)
         ray_hit_path += np.roll(ray_hit_path, 1, axis=0)
-        return np.sort(np.where(ray_hit_path == 1, merged_array, np.inf), axis=0)
+        csg_hits = np.where(ray_hit_path == 1, merged_array, np.inf)
 
-    if operation == Operation.DIFFERENCE:
+    elif operation == Operation.DIFFERENCE:
         # A difference operation is the same as the union operate of A with the inverse of B.
 
         merged_mask = np.ones(merged_array.shape)
@@ -86,7 +86,12 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation):
 
         # now add together the ray hit path with itself, rolled one down
         ray_hit_path += np.roll(ray_hit_path, 1, axis=0)
-        return np.sort(np.where(ray_hit_path == 1, merged_array, np.inf), axis=0)
+        csg_hits = np.where(ray_hit_path == 1, merged_array, np.inf)
+
+    else:
+        raise ValueError(f"Invalid Operation provided {operation}")
+
+    return np.sort(csg_hits, axis=0) if sort_output else csg_hits
 
 
 class CSGSurface(Intersectable):
@@ -142,13 +147,33 @@ class CSGSurface(Intersectable):
         bounding_box_intersections = np.any(np.isfinite(self._aobb.intersect(rays)), axis=0)
 
         # calculate the csg hits for the array subset that intersects the object
-        intersecting_rays = rays[:,:,bounding_box_intersections]  # make a subset of rays that intersect
+        intersecting_rays = rays[:, :, bounding_box_intersections]  # make a subset of rays that intersect
         local_ray_set = np.matmul(self._get_object_transform(), intersecting_rays)
-        l_hits = self._l_child.intersect(local_ray_set)
-        r_hits = self._r_child.intersect(local_ray_set)
-        csg_hits = array_csg(l_hits, r_hits, self._operation)
+        l_hits, l_surfaces = self._l_child.intersect(local_ray_set)
+        r_hits, r_surfaces = self._r_child.intersect(local_ray_set)
+
+        # build a mask to sort the surfaces
+        csg_surfaces = np.vstack((l_surfaces, r_surfaces))
+        surface_sort_mask = np.argsort(np.vstack((l_hits, r_hits)), axis=0)
+        csg_surfaces = csg_surfaces[surface_sort_mask, np.arange(csg_surfaces.shape[-1])]
+
+        csg_hits = array_csg(l_hits, r_hits, self._operation, sort_output=False)
+
+        # sort the hits and the surface mask
+        hit_argsort = np.argsort(csg_hits, axis=0)
+        csg_surfaces = csg_surfaces[hit_argsort, np.arange(csg_surfaces.shape[-1])]
+        csg_hits = csg_hits[hit_argsort, np.arange(csg_hits.shape[-1])]
 
         # plug the csg_hits back into a main hit matrix
         all_hits = np.full((csg_hits.shape[0], rays.shape[-1]), np.inf)
-        all_hits[:,bounding_box_intersections] = csg_hits  # plug the csg_hits into the hits matrix
-        return all_hits  # return the hits matrix
+        all_hits[:, bounding_box_intersections] = csg_hits  # plug the csg_hits into the hits matrix
+
+        # plug the csg surfaces back into the main surface matrix
+        all_surfaces = np.full((csg_hits.shape[0], rays.shape[-1]), -1)
+        all_surfaces[:, bounding_box_intersections] = csg_surfaces
+        return all_hits, all_surfaces  # return the hits matrix
+
+    @property
+    def surface_ids(self) -> tuple:
+        # returns the surface id's of both children
+        return self._l_child.surface_ids + self._r_child.surface_ids

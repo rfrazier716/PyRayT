@@ -319,6 +319,14 @@ class Intersectable(WorldObject, abc.ABC):
         self._parent = parent_object
         self.var_watchlist += parent_object.var_watchlist
 
+    @property
+    def surface_ids(self) -> tuple:
+        """
+        Returns a tuple of surface ids and surface that make up the intersectable object, used for calculating
+        intersections.
+        """
+        return (id(self), self),
+
 
 class TracerSurface(Intersectable, abc.ABC):
     surface: primitives.SurfacePrimitive
@@ -362,7 +370,7 @@ class TracerSurface(Intersectable, abc.ABC):
         # hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # reduce the hits to a 1xn array of minimum hits
         # hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
 
-        return np.sort(hits, axis=0)
+        return np.sort(hits, axis=0), np.full(hits.shape, id(self))  # return the hits matrix and the intersecting surface
 
     def shade(self, rays, *shader_args):
         """
@@ -392,6 +400,10 @@ class TracerSurface(Intersectable, abc.ABC):
     def bounding_volume(self):
         return self._aobb
 
+    @property
+    def primitive(self) -> primitives.SurfacePrimitive:
+        return self._surface_primitive
+
 
 class Sphere(TracerSurface):
     surface = primitives.Sphere
@@ -417,25 +429,18 @@ class YZPlane(TracerSurface):
 class Cuboid(TracerSurface):
     surface = primitives.Cube
 
-    def __init__(self, material=None, *args, **kwargs):
-        super().__init__(surface_args=(), material=material, *args, **kwargs)
+    def __init__(self, l_corner=(-1, -1, -1), r_corner=(1, 1, 1), material=None, *args, **kwargs):
+        super().__init__(surface_args=(l_corner, r_corner), material=material, *args, **kwargs)
 
     @classmethod
-    def from_lengths(cls, x=1, y=1, z=1):
-        return cls().scale(x / 2, y / 2, z / 2)  # divide each by 2 because a regular cube extends from -1,1
+    def from_sides(cls, x=1, y=1, z=1):
+        corners = (np.tile((-0.5, 0.5), (3, 1)).T * np.array((x, y, z)))
+        return cls(*corners)
 
     @classmethod
-    def from_corners(cls, corner_0=np.array((-1, -1, -1)), corner_1=np.array((1, 1, 1))):
-        corner_0 = np.asarray(corner_0)
-        corner_1 = np.asarray(corner_1)
-        if np.any(corner_1 < corner_0):
-            raise ValueError("Second Corner must be greater than first corner at each dimension")
-
-        center = 0.5 * (corner_0 + corner_1)
-        scale_values = 0.5 * (corner_1 - corner_0)
-
-        # return a cube object spanning those points
-        return cls().scale(*scale_values[:3]).move(*center[:3])
+    def from_length(cls, length):
+        corners = length * np.tile((-0.5, 0.5), (3, 1)).T
+        return cls(*corners)
 
 
 class OrthographicCamera(WorldObject):
