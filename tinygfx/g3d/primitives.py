@@ -446,31 +446,6 @@ def overlap(arr1: np.ndarray, arr2: np.ndarray):
         return arr1_intersection, arr2_intersection
 
 
-def cube_combine(l_cube: Cube, r_cube: Cube, intersection_type: str):
-    # make a mask of the two surfaces which will be sorted
-    surface_mask = np.zeros((3, 4))
-    surface_mask[:, 2:] = 1
-
-    spans = np.hstack((l_cube.axis_spans, r_cube.axis_spans))  # get the cube spans
-    arg_sort = np.argsort(spans, axis=1)
-    sorted_surface_intersection = np.array([mask[sort] for mask, sort in zip(surface_mask, arg_sort)])
-
-    print(sorted_surface_intersection)
-    if intersection_type == "add":
-        return Cube(*spans.sort(axis=1)[:, [0, 3]].T)
-
-    elif intersection_type == "int":
-        surface_mask = np.zeros((3, 4))
-        surface_mask[:, 2:] = 1
-        arg_sort = np.argsort(spans, axis=1)
-        for mask, sort in zip(surface_mask, arg_sort):
-            pass
-        return Cube(*spans[:, 1:3].T)
-
-    else:
-        raise ValueError(f"Valid Combinations are (int, add), got {intersection_type}")
-
-
 class Cylinder(SurfacePrimitive):
     """
     A cylinder with a radius of 1 in the ZY plane, extending from +1 to -1
