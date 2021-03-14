@@ -108,7 +108,7 @@ class EdgeRender(object):
         self._state = self.States.IDLE
 
 
-def draw(surface: TracerSurface):
+def draw(surface: TracerSurface, axis=None):
     # draw a surface for a given projection
     bounding_box = surface.bounding_volume.bounding_points[:4] * 1.5
     mins = np.min(bounding_box, axis=1)
@@ -126,8 +126,8 @@ def draw(surface: TracerSurface):
 
     renderer = EdgeRender(camera, (surface,))
     image = renderer.render()
-    axis = plt.gca()
+    if axis is None:
+        axis = plt.gca()
     axis.imshow(1 - image, extent=[-h_span / 2, h_span / 2, -v_span / 2, v_span / 2], cmap='gray')
     axis.set_axisbelow(True)
     axis.grid(color='gray', linestyle='dashed')
-    return image

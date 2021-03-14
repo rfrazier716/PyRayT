@@ -26,6 +26,11 @@ class TestCSGAttributes(unittest.TestCase):
         nested_csg = csg.CSGSurface(cg.Sphere(1), self.csg, csg.Operation.UNION)
         self.assertEqual(len(nested_csg.surface_ids), 3)
 
+    def tet_moving_csg(self):
+        # moving the csg should also update the bounding box
+        self.csg.move_x(3)
+        self.assertTrue(np.allclose(self.csg.bounding_box.axis_spans, ((2, 4), (-1, 1), (-1, 1))))
+
 
 class TestCSGAdd(unittest.TestCase):
     def setUp(self) -> None:
@@ -211,15 +216,12 @@ class TestArrayCSGOperation(unittest.TestCase):
 
     def test_add_operation(self):
         unioned = csg.array_csg(self.array1, self.array2, csg.Operation.UNION)
-        print(unioned)
 
     def test_diff_operation(self):
         diff = csg.array_csg(self.array1, self.array2, csg.Operation.DIFFERENCE)
-        print(diff)
 
     def test_intersection_operation(self):
         intersect = csg.array_csg(self.array1, self.array2, csg.Operation.INTERSECT)
-        print(intersect)
 
 
 if __name__ == '__main__':

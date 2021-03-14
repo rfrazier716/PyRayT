@@ -1,7 +1,7 @@
 from enum import Enum
 import numpy as np
 
-from tinygfx.g3d import Intersectable, primitives as primitives
+from tinygfx.g3d import Intersectable, primitives, bounding_box
 
 
 class Operation(Enum):
@@ -102,16 +102,16 @@ class CSGSurface(Intersectable):
 
         # store the boolean type
         self._operation = operation
+        self.var_watchlist.append(self._update_bounding_box)
+
 
         # attach the child objects to the parent
         # make it so if a child is modified the bounding boxes are recalculated
         self._l_child = l_child
         self._l_child.attach_to(self)
-        self._l_child.var_watchlist.append(self._update_bounding_box)
 
         self._r_child = r_child
         self._r_child.attach_to(self)
-        self._r_child.var_watchlist.append(self._update_bounding_box)
 
         self._update_bounding_box()  # update the bounding box
 
@@ -130,11 +130,13 @@ class CSGSurface(Intersectable):
                     (self._operation == Operation.INTERSECT and np.any(np.all(np.isinf(new_spans), axis=0))):
                 raise ValueError(f"CSG Child Surfaces {self._l_child} and {self._r_child} no longer intersect")
 
-            self._aobb = primitives.Cube(*new_spans[:2])
+            local_aobb = primitives.Cube(*new_spans[:2])
 
         else:
             # for a diff operation the bounding box must always be the bounding box of the left hand child
-            self._aobb = self._l_child.bounding_box
+            local_aobb = self._l_child.bounding_box
+
+        self._aobb = bounding_box(np.matmul(self._world_coordinate_transform, local_aobb.bounding_points))
 
     def intersect(self, rays):
         # steps for intersection
