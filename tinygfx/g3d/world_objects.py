@@ -327,6 +327,10 @@ class Intersectable(WorldObject, abc.ABC):
         """
         return (id(self), self),
 
+    @property
+    def bounding_volume(self):
+        return self._aobb
+
 
 class TracerSurface(Intersectable, abc.ABC):
     surface: primitives.SurfacePrimitive
@@ -395,10 +399,6 @@ class TracerSurface(Intersectable, abc.ABC):
         world_normals[-1] = 0  # wipe out any w fields caused by the transpose of the transform
         world_normals /= np.linalg.norm(world_normals, axis=0)
         return world_normals * self._normal_scale  # return the normals, flipped if the object has them inverted
-
-    @property
-    def bounding_volume(self):
-        return self._aobb
 
     @property
     def primitive(self) -> primitives.SurfacePrimitive:

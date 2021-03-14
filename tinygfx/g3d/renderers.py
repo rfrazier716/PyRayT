@@ -23,7 +23,7 @@ class EdgeRender(object):
         self._results = None
 
         self._camera = camera  # make a new dataframe to hold results
-        self._surfaces = surfaces
+        self._shapes = surfaces
 
         self._state_machine = {
             self.States.INITIALIZE: self._st_initialize,
@@ -64,16 +64,20 @@ class EdgeRender(object):
         self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
 
     def _st_propagate(self):
-        # the hits matrix is an mxn matrix where you have m surfaces in the simulation and n rays being propagated
+        # the hits matrix is an 1xn matrix to track the nearest hits
         hit_distances = np.full(self._rays.shape[-1], np.inf)
         hit_surfaces = np.full(self._rays.shape[-1], -1)
 
         # calculate the intersection distances for every surface in the simulation
-        for n, surface in enumerate(self._surfaces):
-            surface_hits = surface.intersect(self._rays)
-            new_minima = np.logical_and(surface_hits >= 0, surface_hits <= hit_distances)
-            hit_distances = np.where(new_minima, surface_hits, hit_distances)
-            hit_surfaces = np.where(new_minima, n, hit_surfaces)
+        ray_hit_index = np.arange(self._rays.shape[-1])
+        for n, shape in enumerate(self._shapes):
+            shape_hits, shape_surfaces = shape.intersect(self._rays)
+            nearest_hit_arg = np.argmin(np.where(shape_hits > 0, shape_hits, np.inf), axis=0)
+            nearest_hit = shape_hits[nearest_hit_arg, ray_hit_index]
+            nearest_surface = shape_surfaces[nearest_hit_arg, ray_hit_index]
+            new_minima = nearest_hit < hit_distances
+            hit_distances = np.where(new_minima, nearest_hit, hit_distances)
+            hit_surfaces = np.where(new_minima, nearest_surface, hit_surfaces)
 
         # assign the hit distances and surfaces to an instance variable so they can be called in the next state
         self._hit_distances = hit_distances
@@ -110,15 +114,12 @@ def draw(surface: TracerSurface):
     mins = np.min(bounding_box, axis=1)
     maxes = np.max(bounding_box, axis=1)
 
-    print(mins, maxes)
-
     # this case is for a "top" projection in the xy plane
     # the camera origin should be above the object centered over it
     camera_origin = (maxes + mins) / 2
     camera_origin[2] = maxes[2]
     h_span, v_span = maxes[:2] - mins[:2]  # the camera spans
 
-    print(camera_origin)
     # make the camera and move it into position
     camera = OrthographicCamera(640, h_span, v_span / h_span)
     camera.rotate_y(90).rotate_z(90).move(*camera_origin[:3])
