@@ -8,7 +8,7 @@ import abc
 import numpy as np
 
 import tinygfx.g3d.primitives as primitives
-from tinygfx.g3d.materials.gooch import g_white
+from tinygfx.g3d.materials.gooch import BLACK
 
 
 def bounding_box(point_set):
@@ -336,7 +336,7 @@ class Intersectable(WorldObject, abc.ABC):
 class TracerSurface(Intersectable, abc.ABC):
     surface: primitives.SurfacePrimitive
 
-    def __init__(self, surface_args, material=g_white, *args, **kwargs):
+    def __init__(self, surface_args, material=BLACK, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
@@ -413,28 +413,28 @@ class TracerSurface(Intersectable, abc.ABC):
 class Sphere(TracerSurface):
     surface = primitives.Sphere
 
-    def __init__(self, radius, material=g_white, *args, **kwargs):
+    def __init__(self, radius, material=BLACK, *args, **kwargs):
         super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
 
 
 class Paraboloid(TracerSurface):
     surface = primitives.Paraboloid
 
-    def __init__(self, focus, material=g_white, *args, **kwargs):
+    def __init__(self, focus, material=BLACK, *args, **kwargs):
         super().__init__(surface_args=(focus,), material=material, *args, **kwargs)
 
 
 class YZPlane(TracerSurface):
     surface = primitives.Plane
 
-    def __init__(self, material=g_white, *args, **kwargs):
+    def __init__(self, material=BLACK, *args, **kwargs):
         super().__init__(surface_args=(), material=material, *args, **kwargs)
 
 
 class Cuboid(TracerSurface):
     surface = primitives.Cube
 
-    def __init__(self, l_corner=(-1, -1, -1), r_corner=(1, 1, 1), material=g_white, *args, **kwargs):
+    def __init__(self, l_corner=(-1, -1, -1), r_corner=(1, 1, 1), material=BLACK, *args, **kwargs):
         super().__init__(surface_args=(l_corner, r_corner), material=material, *args, **kwargs)
 
     @classmethod

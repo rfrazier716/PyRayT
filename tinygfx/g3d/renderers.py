@@ -234,7 +234,7 @@ def draw(surface: TracerSurface, axis=None, shaded=True):
     camera_origin = (maxes + mins) / 2
     camera_origin[2] = maxes[2]
     h_span, v_span = 1.5 * (maxes[:2] - mins[:2])  # the camera spans
-    resolution = 1080 if h_span > v_span else int(1080 * h_span / v_span)
+    resolution = 640 if h_span > v_span else int(640 * h_span / v_span)
     # make the camera and move it into position
     camera = OrthographicCamera(resolution, h_span, v_span / h_span)
     camera.rotate_y(90).rotate_z(90).move(*camera_origin[:3])
