@@ -89,9 +89,9 @@ class CSGSurface(Intersectable):
                                   self._operation)
 
             # check if the resulting spans are valid
-            if (self._operation == Operation.UNION and np.any(np.isfinite(new_spans[2:]))) or \
-                    (self._operation == Operation.INTERSECT and np.any(np.all(np.isinf(new_spans), axis=0))):
-                raise ValueError(f"CSG Child Surfaces {self._l_child} and {self._r_child} no longer intersect")
+            # if (self._operation == Operation.UNION and np.any(np.isfinite(new_spans[2:]))) or \
+            #         (self._operation == Operation.INTERSECT and np.any(np.all(np.isinf(new_spans), axis=0))):
+            #     raise ValueError(f"CSG Child Surfaces {self._l_child} and {self._r_child} no longer intersect")
 
             local_aobb = primitives.Cube(*new_spans[:2])
 
@@ -99,7 +99,7 @@ class CSGSurface(Intersectable):
             # for a diff operation the bounding box must always be the bounding box of the left hand child
             local_aobb = self._l_child.bounding_box
 
-        self._aobb = bounding_box(np.matmul(self._world_coordinate_transform, local_aobb.bounding_points))
+        self._aobb = local_aobb
 
     def intersect(self, rays):
         # steps for intersection
@@ -112,8 +112,7 @@ class CSGSurface(Intersectable):
         bounding_box_intersections = np.any(np.isfinite(self._aobb.intersect(rays)), axis=0)
 
         # calculate the csg hits for the array subset that intersects the object
-        intersecting_rays = rays[:, :, bounding_box_intersections]  # make a subset of rays that intersect
-        local_ray_set = np.matmul(self._get_object_transform(), intersecting_rays)
+        local_ray_set = rays[:, :, bounding_box_intersections]  # make a subset of rays that intersect
         l_hits, l_surfaces = self._l_child.intersect(local_ray_set)
         r_hits, r_surfaces = self._r_child.intersect(local_ray_set)
 
@@ -142,3 +141,11 @@ class CSGSurface(Intersectable):
     def surface_ids(self) -> tuple:
         # returns the surface id's of both children
         return self._l_child.surface_ids + self._r_child.surface_ids
+
+    def _append_world_transform(self, new_transform):
+        # override the append world transform so children are moved too
+        super()._append_world_transform(new_transform)
+        self._l_child.transform(new_transform)
+        self._r_child.transform(new_transform)
+
+

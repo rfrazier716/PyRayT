@@ -26,10 +26,15 @@ class TestCSGAttributes(unittest.TestCase):
         nested_csg = csg.CSGSurface(cg.Sphere(1), self.csg, csg.Operation.UNION)
         self.assertEqual(len(nested_csg.surface_ids), 3)
 
-    def tet_moving_csg(self):
+    def test_moving_csg(self):
         # moving the csg should also update the bounding box
         self.csg.move_x(3)
-        self.assertTrue(np.allclose(self.csg.bounding_box.axis_spans, ((2, 4), (-1, 1), (-1, 1))))
+        self.assertTrue(np.allclose(self.csg.bounding_box.axis_spans, ((2, 4), (-1, 1), (-1, 1))),
+                        self.csg.bounding_box.axis_spans)
+
+        # the position of the objects in the CSG should be updated as well
+        self.assertEqual(self.l_shape.get_position()[0], 3)
+        self.assertEqual(self.r_shape.get_position()[0], 3)
 
 
 class TestCSGAdd(unittest.TestCase):
@@ -86,9 +91,9 @@ class TestCSGAdd(unittest.TestCase):
         self.assertTrue(
             np.all(surfaces[:2, np.logical_and(y_vals > -0.5, np.logical_not(hit_missed))] == id(self.l_shape)))
 
-    def test_moving_to_nonintersection(self):
-        with self.assertRaises(ValueError):
-            self.r_shape.move(4)
+    # def test_moving_to_nonintersection(self):
+    #     with self.assertRaises(ValueError):
+    #         self.r_shape.move(4)
 
 
 class TestCSGIntersect(unittest.TestCase):
@@ -144,9 +149,9 @@ class TestCSGIntersect(unittest.TestCase):
         self.assertTrue(
             np.all(surfaces[:2, np.logical_and(y_vals > -0.5, np.logical_not(hit_missed))] == id(self.r_shape)))
 
-    def test_moving_to_nonintersection(self):
-        with self.assertRaises(ValueError):
-            self.r_shape.move(4)
+    # def test_moving_to_nonintersection(self):
+    #     with self.assertRaises(ValueError):
+    #         self.r_shape.move(4)
 
 
 class TestCSGDifference(unittest.TestCase):
