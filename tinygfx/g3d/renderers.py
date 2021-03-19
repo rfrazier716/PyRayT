@@ -110,7 +110,7 @@ class EdgeRender(object):
 
 def draw(surface: TracerSurface, axis=None):
     # draw a surface for a given projection
-    bounding_box = surface.bounding_volume.bounding_points[:4] * 1.5
+    bounding_box = surface.bounding_volume.bounding_points[:3]
     mins = np.min(bounding_box, axis=1)
     maxes = np.max(bounding_box, axis=1)
 
@@ -118,16 +118,21 @@ def draw(surface: TracerSurface, axis=None):
     # the camera origin should be above the object centered over it
     camera_origin = (maxes + mins) / 2
     camera_origin[2] = maxes[2]
-    h_span, v_span = maxes[:2] - mins[:2]  # the camera spans
-
+    h_span, v_span = 1.5 * (maxes[:2] - mins[:2])  # the camera spans
+    resolution = 640 if h_span > v_span else int(640 * h_span / v_span)
     # make the camera and move it into position
-    camera = OrthographicCamera(640, h_span, v_span / h_span)
+    camera = OrthographicCamera(resolution, h_span, v_span / h_span)
     camera.rotate_y(90).rotate_z(90).move(*camera_origin[:3])
 
     renderer = EdgeRender(camera, (surface,))
     image = renderer.render()
     if axis is None:
         axis = plt.gca()
-    axis.imshow(1 - image, extent=[-h_span / 2, h_span / 2, -v_span / 2, v_span / 2], cmap='gray')
+    axis.imshow(1 - image,
+                extent=[camera_origin[0] - h_span / 2,
+                        camera_origin[0] + h_span / 2,
+                        camera_origin[1] - v_span / 2,
+                        camera_origin[1] + v_span / 2],
+                cmap='gray')
     axis.set_axisbelow(True)
     axis.grid(color='gray', linestyle='dashed')
