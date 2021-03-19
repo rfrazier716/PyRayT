@@ -7,7 +7,9 @@ import unittest
 class TestGoochMaterial(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.material = matl.gooch.GoochMaterial(matl.gooch.WHITE, matl.gooch.BLUE, matl.gooch.YELLOW)
+        self.material = matl.gooch.GoochMaterial(base_color=matl.gooch.WHITE,
+                                                 warm_color=matl.gooch.YELLOW,
+                                                 cool_color=matl.gooch.BLUE)
         self.light_vector = cg.Point(0, 0, 10)
         self.normals = np.zeros((4, 10))
         self.normals[2] = 1
@@ -15,7 +17,7 @@ class TestGoochMaterial(unittest.TestCase):
 
     def test_single_light_source(self):
         # split the normal vector so half face away and half face towards
-        self.normals[2,:5] = -1
+        self.normals[2, :5] = -1
         pixel_values = self.material.shade(self.rays, self.normals, self.light_vector)
 
         expected_color = matl.gooch.BLUE

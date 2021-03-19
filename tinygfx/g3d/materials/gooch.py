@@ -8,7 +8,7 @@ class RGBAColor(np.ndarray):
         obj = np.zeros(4, dtype=float).view(cls)
         return obj
 
-    def __init__(self, r: float= 0, g: float = 0, b: float= 0, a: float = 1) -> None:
+    def __init__(self, r: float = 0, g: float = 0, b: float = 0, a: float = 1) -> None:
         # assign initialization
         self[0] = r
         self[1] = g
@@ -54,6 +54,7 @@ RED = RGBAColor(1, 0, 0)
 GREEN = RGBAColor(0, 1, 0)
 BLUE = RGBAColor(0, 0, 1)
 YELLOW = RGBAColor(1, 1, 0)
+ORANGE = RGBAColor(1,0.5,0)
 
 
 @dataclass
@@ -75,10 +76,10 @@ class GoochMaterial(object):
         normals = normals[:3, np.newaxis] if normals.ndim == 1 else normals[:3]
 
         if light_positions.ndim == 1:
-            light_vectors = (rays[0, :3] - light_positions[:3, np.newaxis])[np.newaxis, ...]
+            light_vectors = (light_positions[:3, np.newaxis] - rays[0, :3])[np.newaxis, ...]
 
         else:
-            light_vectors = np.tile(rays[0, :3], (light_positions.shape[-1], 1, 1)) - light_positions[:3, :, np.newaxis]
+            light_vectors = light_positions[:3, :, np.newaxis] - np.tile(rays[0, :3], (light_positions.shape[-1], 1, 1))
 
         # normalize the light vector
         light_vectors /= np.linalg.norm(light_vectors, axis=1)
@@ -92,3 +93,6 @@ class GoochMaterial(object):
         pixel_value = np.einsum('i,j->ij', shade_warm, all_light_mixture) + np.einsum('i,j->ij', shade_cool,
                                                                                       1 - all_light_mixture)
         return pixel_value
+
+
+g_white = GoochMaterial(base_color=WHITE, warm_color=ORANGE, cool_color=BLUE)

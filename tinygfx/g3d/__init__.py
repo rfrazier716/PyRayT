@@ -11,3 +11,4 @@ from . import primitives
 from .primitives import Ray, Vector, Point, bundle_of_rays  # bring in basic ray properties
 from . import renderers
 from . import csg
+from . import materials

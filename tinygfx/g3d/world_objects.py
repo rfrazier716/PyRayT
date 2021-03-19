@@ -8,6 +8,7 @@ import abc
 import numpy as np
 
 import tinygfx.g3d.primitives as primitives
+from tinygfx.g3d.materials.gooch import g_white
 
 
 def bounding_box(point_set):
@@ -335,7 +336,7 @@ class Intersectable(WorldObject, abc.ABC):
 class TracerSurface(Intersectable, abc.ABC):
     surface: primitives.SurfacePrimitive
 
-    def __init__(self, surface_args, material=None, *args, **kwargs):
+    def __init__(self, surface_args, material=g_white, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
@@ -374,16 +375,20 @@ class TracerSurface(Intersectable, abc.ABC):
         # hits = np.min(np.where(hits >= 0, hits, np.inf), axis=0)  # reduce the hits to a 1xn array of minimum hits
         # hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
 
-        return np.sort(hits, axis=0), np.full(hits.shape, id(self))  # return the hits matrix and the intersecting surface
+        return np.sort(hits, axis=0), np.full(hits.shape,
+                                              id(self))  # return the hits matrix and the intersecting surface
 
-    def shade(self, rays, *shader_args):
+    def shade(self, rays: np.ndarray, distances: np.ndarray, **kwargs) -> np.ndarray:
         """
         propagates a set of rays incident on the surface. returns a new set of rays and refractive indices representing
         the rays after transmitting/reflecting off the surface.
         """
 
-        # translate rays to object space
-        return self._material.shade(self, rays, *shader_args)
+        # get the normals for the surface at the coordinate
+        coordinates = rays[0] + distances * rays[1]
+        normals = self.get_world_normals(coordinates)  # get the world normals of the surface
+        pixel_values = self._material.shade(np.stack((coordinates, rays[1]),axis=0), normals, **kwargs)
+        return pixel_values
 
     def get_world_normals(self, positions):
         """
@@ -408,28 +413,28 @@ class TracerSurface(Intersectable, abc.ABC):
 class Sphere(TracerSurface):
     surface = primitives.Sphere
 
-    def __init__(self, radius, material=None, *args, **kwargs):
+    def __init__(self, radius, material=g_white, *args, **kwargs):
         super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
 
 
 class Paraboloid(TracerSurface):
     surface = primitives.Paraboloid
 
-    def __init__(self, focus, material=None, *args, **kwargs):
+    def __init__(self, focus, material=g_white, *args, **kwargs):
         super().__init__(surface_args=(focus,), material=material, *args, **kwargs)
 
 
 class YZPlane(TracerSurface):
     surface = primitives.Plane
 
-    def __init__(self, material=None, *args, **kwargs):
+    def __init__(self, material=g_white, *args, **kwargs):
         super().__init__(surface_args=(), material=material, *args, **kwargs)
 
 
 class Cuboid(TracerSurface):
     surface = primitives.Cube
 
-    def __init__(self, l_corner=(-1, -1, -1), r_corner=(1, 1, 1), material=None, *args, **kwargs):
+    def __init__(self, l_corner=(-1, -1, -1), r_corner=(1, 1, 1), material=g_white, *args, **kwargs):
         super().__init__(surface_args=(l_corner, r_corner), material=material, *args, **kwargs)
 
     @classmethod
