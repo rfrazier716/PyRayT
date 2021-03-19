@@ -304,6 +304,13 @@ class TestTracerSurface(unittest.TestCase):
 
         self.assertTrue(np.allclose(surface_ids, id(self.sphere)))
 
+    def test_intersection_moved_object(self):
+        # if we move the sphere by it's radius, a ray at (0,0,-1) with v=(0,0,1) will intersect at t=1
+        self.sphere.move_x(3)
+        test_ray = primitives.Ray(origin=cg.Point(0,0,-1), direction = cg.Vector(0,0,1))
+        hit, surface = self.sphere.intersect(test_ray)
+        self.assertTrue(np.allclose(hit, 1), f"expected 1 for all hits but got {hit}")
+
 
 class TestTracerSurfaceBoundingBox(unittest.TestCase):
     def setUp(self) -> None:
