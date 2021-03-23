@@ -50,7 +50,7 @@ def _blue_yellow_gooch(base_color):
 WHITE = _blue_yellow_gooch(color.WHITE)
 RED = _blue_yellow_gooch(color.RED)
 GREEN = _blue_yellow_gooch(color.GREEN)
-BLUE = _blue_yellow_gooch(color.BLUE)
+BLUE = GoochMaterial(base_color=color.BLUE, warm_color=color.YELLOW, cool_color=color.BLUE, alpha=0.2)
 YELLOW = _blue_yellow_gooch(color.YELLOW)
 ORANGE =_blue_yellow_gooch(color.ORANGE)
 BLACK =_blue_yellow_gooch(color.BLACK)

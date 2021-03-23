@@ -223,18 +223,22 @@ class ShadedRenderer():
         self._state = self.States.IDLE
 
 
-def draw(surface: TracerSurface, axis=None, shaded=True):
+def draw(surface: TracerSurface, axis=None, shaded=True, bounds=None, resolution=640):
     # draw a surface for a given projection
     bounding_box = surface.bounding_volume.bounding_points[:3]
-    mins = np.min(bounding_box, axis=1)
-    maxes = np.max(bounding_box, axis=1)
+    if bounds is not None:
+        mins = np.asarray(bounds[0])
+        maxes = np.asarray(bounds[1])
+    else:
+        mins = np.min(bounding_box, axis=1)
+        maxes = np.max(bounding_box, axis=1)
 
     # this case is for a "top" projection in the xy plane
     # the camera origin should be above the object centered over it
     camera_origin = (maxes + mins) / 2
     camera_origin[2] = maxes[2]
     h_span, v_span = 1.5 * (maxes[:2] - mins[:2])  # the camera spans
-    resolution = 640 if h_span > v_span else int(640 * h_span / v_span)
+    resolution = resolution if h_span > v_span else int(resolution * h_span / v_span)
     # make the camera and move it into position
     camera = OrthographicCamera(resolution, h_span, v_span / h_span)
     camera.rotate_y(90).rotate_z(90).move(*camera_origin[:3])
