@@ -285,23 +285,43 @@ class TestPlane(unittest.TestCase):
         self.surface = primitives.Plane()
 
     def test_positive_intersection(self):
-        ray = primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(1, 0, 0))
-        hit = self.surface.intersect(ray)[0, 0]
-        self.assertAlmostEqual(hit, 1)
+        ray = primitives.Ray(primitives.Point(0, 0, 1), primitives.Vector(0, 0, -1))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit[:, 0], (1, 1)))
 
-        ray = primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(1, 1, 0).normalize())
-        hit = self.surface.intersect(ray)[0, 0]
-        self.assertAlmostEqual(hit, np.sqrt(2))
+        ray = primitives.Ray(primitives.Point(0, 0, 1), primitives.Vector(-1, 0, -1).normalize())
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit[:, 0], (np.sqrt(2), np.sqrt(2))))
 
     def test_negative_intersection(self):
-        ray = primitives.Ray(primitives.Point(1, 0, 0), primitives.Vector(1, 0, 0))
-        hit = self.surface.intersect(ray)[0, 0]
-        self.assertAlmostEqual(hit, -1)
+        ray = primitives.Ray(primitives.Point(0, 0, 1), primitives.Vector(0, 0, 1))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit[:, 0], (-1, -1)))
 
     def test_parallel_intersection(self):
-        ray = primitives.Ray(primitives.Point(1, 0, 0), primitives.Vector(0, 1, 1).normalize())
-        hit = self.surface.intersect(ray)[0, 0]
-        self.assertAlmostEqual(hit, np.inf)
+        ray = primitives.Ray(primitives.Point(0,0,1), primitives.Vector(1,0,0).normalize())
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit,np.inf))
+
+    def test_missed_intersection(self):
+        # a ray outside of the patch should miss
+        ray = primitives.Ray(primitives.Point(2, 0, 1), primitives.Vector(0, 0, -1))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit, np.inf))
+
+    def test_nondefault_constructor(self):
+        # a ray outside of the patch should miss
+        self.surface = primitives.Plane(width=3, length=2)
+
+        # we should be able to intersect out to the patch
+        ray = primitives.Ray(primitives.Point(1.49, 0.99, 1), primitives.Vector(0, 0, -1))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit, 1))
+
+        # but exceeding those dimensions will miss
+        ray = primitives.Ray(primitives.Point(1.51, 1.01, 1), primitives.Vector(0, 0, -1))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit, np.inf))
 
     def test_arrayed_intersection(self):
         n_rays = 1000
@@ -310,12 +330,12 @@ class TestPlane(unittest.TestCase):
         # make a bunch of rays at x=-1, half will point towards the positive x-axis and the other will
         # point towards the positive y-axis
         rays = primitives.bundle_of_rays(1000)
-        rays[0, 0] = -1
-        rays[1, 0, :split] = 1
+        rays[0, 2] = -1
+        rays[1, 2, :split] = 1
         rays[1, 1] = 1
 
         hit = self.surface.intersect(rays)
-        self.assertEqual(hit.shape, (1, n_rays), f"Ray shape is {hit.shape}")
+        self.assertEqual(hit.shape, (2, n_rays), f"Ray shape is {hit.shape}")
         self.assertTrue(np.allclose(hit[0, :split], 1))
         self.assertTrue(np.allclose(hit[0, split:], np.inf))
 
@@ -474,62 +494,7 @@ class TestCube(unittest.TestCase):
         self.assertTrue(np.allclose(normals[:, split_index:], expected))
 
 
-class TestInfiniteCylinder(unittest.TestCase):
-    def setUp(self) -> None:
-        self.surface = primitives.Cylinder(1, infinite=True)
-
-    def test_intersection_to_sidewalls(self):
-        rays = (
-            primitives.Ray(origin=primitives.Point(-2, 0, 0), direction=primitives.Vector(1, 0, 0)),
-            primitives.Ray(origin=primitives.Point(-2, 0, 1), direction=primitives.Vector(1, 0, 0)),
-            primitives.Ray(origin=primitives.Point(-2, 0, 2), direction=primitives.Vector(1, 0, 0))
-        )
-
-        for ray in rays:
-            hit = self.surface.intersect(ray)
-            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[1, 3]]).T), f"{hit}")
-
-    def test_no_intersection_inside(self):
-        rays = (
-            primitives.Ray(origin=primitives.Point(0, 0, 0), direction=primitives.Vector(0, 0, 1)),
-        )
-
-        for ray in rays:
-            hit = self.surface.intersect(ray)
-            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[-np.inf, np.inf]]).T), f"{hit}")
-
-    def test_no_intersection_outside(self):
-        """
-        if the ray origin is outside of the cylinder and it does not intersect, the returned hits should both be np.inf
-        this is so that when you eventually sort them with the cap hits you can tell there's no intersection
-        :return:
-        """
-        rays = (
-            primitives.Ray(origin=primitives.Point(2, 0, 0), direction=primitives.Vector(0, 0, 1)),
-        )
-
-        for ray in rays:
-            hit = self.surface.intersect(ray)
-            self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[np.inf, np.inf]]).T), f"{hit}")
-
-    def test_arrayed_intersection(self):
-        n_rays = 1000
-        split = int(n_rays / 2)
-
-        # make a bunch of rays at x=0, half will point towards the positive x-axis and the other will
-        # point towards the positive y-axis
-        rays = primitives.bundle_of_rays(1000)
-        rays[0, 0] = 0
-        rays[1, 0, :split] = 1
-        rays[1, 2, split:] = 1
-
-        hit = self.surface.intersect(rays)
-        self.assertEqual(hit.shape, (2, n_rays), f"Ray shape is {hit.shape}")
-        self.assertTrue(np.allclose(hit[:, :split].T, np.array((-1, 1))))
-        self.assertTrue(np.allclose(hit[:, split:].T, np.array((-np.inf, np.inf))))
-
-
-class TestFiniteCylinder(unittest.TestCase):
+class TestCylinder(unittest.TestCase):
     def setUp(self) -> None:
         self.surface = primitives.Cylinder(1)
 
@@ -607,14 +572,14 @@ class TestFiniteCylinder(unittest.TestCase):
             self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
 
     def test_normals_nondefault_constructor(self):
-        self.surface = primitives.Cylinder(3,min_height=-5,max_height=7)
+        self.surface = primitives.Cylinder(3, min_height=-5, max_height=7)
         coords = (
-            primitives.Point(-5, 0, 0),
-            primitives.Point(7, 0, 0),
+            primitives.Point(-3, 0, 0),
+            primitives.Point(3, 0, 0),
             primitives.Point(0, -3, 0),
             primitives.Point(0, 3, 0),
-            primitives.Point(0, 0, -3),
-            primitives.Point(0, 0, 3)
+            primitives.Point(0, 0, -5),
+            primitives.Point(0, 0, 7)
         )
         for coord in coords:
             expected = primitives.Vector(*coord[:-1]).normalize()
@@ -640,6 +605,7 @@ class TestFiniteCylinder(unittest.TestCase):
         expected = np.zeros((4, split_index))
         expected[1] = 1
         self.assertTrue(np.allclose(normals[:, split_index:], expected))
+
 
 if __name__ == '__main__':
     unittest.main()

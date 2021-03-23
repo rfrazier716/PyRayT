@@ -321,16 +321,20 @@ class Paraboloid(SurfacePrimitive):
 
 class Plane(SurfacePrimitive):
     """
-    A YZ-Plane defined at x=0
+    An XY-Plane defined at z=0
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, width=2, length=2, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.bounding_points = _corners_to_cube_points((0, -np.inf, -np.inf), (0, np.inf, np.inf))
+        self._width = width  # width is x-dim
+        self._length = length  # length is y-dim
+        self.bounding_points = _corners_to_cube_points((-self._width / 2, -self._length / 2, -1),
+                                                       (self._width / 2, self._length / 2, 1))
 
     def intersect(self, rays):
         """
-        a plane can have at most one intersection with a ray
+        a plane can have at most one intersection with a ray, but for the case of CSG we'll return a double hit at that
+        coordinate
 
         :param rays:
         :return:
@@ -341,15 +345,46 @@ class Plane(SurfacePrimitive):
         origins = padded_rays[0, :-1]  # should be a 3xn array of points
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
-        hits = np.where(np.logical_not(np.isclose(directions[0], 0)),
-                        -origins[0] / (directions[0] + (directions[0] == 0)), np.inf)
+        # need to check where the ray hits the 4 planes that bound this plane (determining width and length)
+        boundary_hits = np.empty((2, 2 * origins.shape[-1]))  # make an empty array for boundary hits
+        for axis, dim in enumerate((self._width, self._length)):
+            is_zero = np.isclose(directions[axis], 0)
+            # need a special case if the position is skew to an axis, have to know if the point is in the projected
+            # square
+            skew_case_hit = np.where(np.abs(origins[axis]) <= dim / 2, -np.inf, np.inf)
 
-        return np.atleast_2d(hits)
+            # now update the intersection point for each plane
+            hit_1 = -(origins[axis] - dim / 2) / (directions[axis] + is_zero)
+            hit_2 = -(origins[axis] + dim / 2) / (directions[axis] + is_zero)
+
+            boundary_hits[0, axis*origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, skew_case_hit, hit_1)
+            boundary_hits[1, axis*origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, np.inf, hit_2)
+
+        # now sort the boundary hits and reshape to be a 4xn matrix
+        boundary_hits.sort(axis=0)
+        boundary_hits = boundary_hits.reshape((4, -1))
+        # sort the mins and maxes of the boundary hits
+        # a valid hit has to be >= max of mins and <= mins of max
+        boundary_hits[:2].sort(axis=0)
+        boundary_hits[2:].sort(axis=0)
+
+        # next is to find the intersection with the actual plane
+        plane_axis = 2  # the plane perpendicular to the z-axis
+        skew_ray = np.isclose(directions[plane_axis], 0)
+        plane_hits = -origins[plane_axis] / (directions[plane_axis] + skew_ray)
+        plane_hits = np.where(skew_ray, np.inf, plane_hits)
+
+        # now filter out based on if plane hits is in the region
+        hits_in_bounds = np.logical_and(plane_hits >= boundary_hits[1], plane_hits <= boundary_hits[2])
+        plane_hits = np.where(hits_in_bounds, plane_hits, np.inf)
+
+        # plane_hits should be 2 elements long so we can do CSG on it (but really it's a double leement
+        return np.tile(plane_hits, (2, 1))
 
     def normal(self, intersections):
-        # a plane has a trivial normal, it's the -x axis
+        # a plane has a trivial normal, it's the -z axis
         normals = np.zeros(intersections.shape)
-        normals[0] = -1
+        normals[2] = 1
         return normals
 
 

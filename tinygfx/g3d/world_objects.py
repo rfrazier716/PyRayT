@@ -307,6 +307,7 @@ class Intersectable(WorldObject, abc.ABC):
 
     _aobb: primitives.Cube
     _parent: WorldObject  # the parent is an additional world object that this object is tied to
+    _normal_scale = 1  # a multiplier used when normals are inverted
 
     @abc.abstractmethod
     def intersect(self, rays):
@@ -319,6 +320,12 @@ class Intersectable(WorldObject, abc.ABC):
     def attach_to(self, parent_object: WorldObject) -> None:
         self._parent = parent_object
         self.var_watchlist += parent_object.var_watchlist
+
+    def invert_normals(self):
+        self._normal_scale = -1
+
+    def reset_normals(self):
+        self._normal_scale = 1
 
     @property
     def surface_ids(self) -> tuple:
@@ -340,7 +347,6 @@ class TracerSurface(Intersectable, abc.ABC):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
         self._material = material
-        self._normal_scale = 1  # a multiplier used when normals are inverted
 
         # make a bounding volume to enclose the shape
         self._aobb = bounding_box(self._surface_primitive.bounding_points)
@@ -348,12 +354,6 @@ class TracerSurface(Intersectable, abc.ABC):
 
     def _boundary_box_update_fn(self):
         self._aobb = bounding_box(np.matmul(self._world_coordinate_transform, self._surface_primitive.bounding_points))
-
-    def invert_normals(self):
-        self._normal_scale = -1
-
-    def reset_normals(self):
-        self._normal_scale = 1
 
     def intersect(self, rays):
         """
@@ -430,11 +430,11 @@ class Paraboloid(TracerSurface):
         super().__init__(surface_args=(focus,), material=material, *args, **kwargs)
 
 
-class YZPlane(TracerSurface):
+class XYPlane(TracerSurface):
     surface = primitives.Plane
 
-    def __init__(self, material=BLACK, *args, **kwargs):
-        super().__init__(surface_args=(), material=material, *args, **kwargs)
+    def __init__(self, width=2, length=2, material=BLACK, *args, **kwargs):
+        super().__init__(surface_args=(width, length), material=material, *args, **kwargs)
 
 
 class Cuboid(TracerSurface):

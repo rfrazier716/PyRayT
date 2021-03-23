@@ -76,6 +76,10 @@ class CSGSurface(Intersectable):
         self._r_child = r_child
         self._r_child.attach_to(self)
 
+        # invert the normals on a difference operation so colors process right
+        if self._operation == Operation.DIFFERENCE:
+            self._r_child.invert_normals()
+
         self._update_bounding_box()  # update the bounding box
 
     def _update_bounding_box(self):
@@ -136,6 +140,14 @@ class CSGSurface(Intersectable):
         all_surfaces = np.full((csg_hits.shape[0], rays.shape[-1]), -1)
         all_surfaces[:, bounding_box_intersections] = csg_surfaces
         return all_hits, all_surfaces  # return the hits matrix
+
+    def invert_normals(self):
+        self._l_child.invert_normals()
+        self._r_child.invert_normals()
+
+    def reset_normals(self):
+        self._l_child.reset_normals()
+        self._r_child.reset_normals()
 
     @property
     def surface_ids(self) -> tuple:
