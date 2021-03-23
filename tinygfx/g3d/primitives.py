@@ -421,13 +421,21 @@ class Cube(SurfacePrimitive):
         # -1 to 1
 
         # the normal coord is the one that's closest to one
-        normal_mask = np.isclose(np.abs(intersections), 1.0)
-        normals = np.sign(intersections) * normal_mask
+        single_point = intersections.ndim == 1
+
+        if single_point:
+            intersections = intersections[..., np.newaxis]
+
+        padded_axes = np.vstack((self.axis_spans, (0, 0)))
+        negative_normals = np.isclose(intersections, padded_axes[:, 0, np.newaxis])
+        positive_normals = np.isclose(intersections, padded_axes[:, 1, np.newaxis])
+        normals = np.where(negative_normals, -1.0, 0)
+        normals = np.where(positive_normals, 1.0, normals)
         normals[-1] = 0  # wipe out the point homogenous coordinate
         normals /= np.linalg.norm(normals, axis=0)
 
         # if a 1d array was passed, transpose it and strip a dimension
-        return normals
+        return normals[:, 0] if single_point else normals
 
 
 def overlap(arr1: np.ndarray, arr2: np.ndarray):
@@ -448,14 +456,17 @@ def overlap(arr1: np.ndarray, arr2: np.ndarray):
 
 class Cylinder(SurfacePrimitive):
     """
-    A cylinder with a radius of 1 in the ZY plane, extending from +1 to -1
+    A cylinder with a radius of 1 in the XY plane, extending from -1 to 1
     """
 
-    def __init__(self, radius=1, infinite=True, *args, **kwargs):
+    def __init__(self, radius=1, min_height=-1, max_height=1, capped=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._radius = radius  # this is the sphere's radius in object space, it can be manipulated in world space with
         # scale and transform operations
-        self._infinite = infinite  # whether or not the cylinder has end caps
+        self._h_min = min_height
+        self._h_max = max_height
+        self._capped = capped
+        self.bounding_points = Cube((-radius, -radius, min_height), (radius, radius, max_height)).bounding_points
 
     def get_radius(self):
         """
@@ -494,7 +505,7 @@ class Cylinder(SurfacePrimitive):
         sidewall_hits = np.sort(binomial_root(a, b, c), axis=0)  # have to sort the roots for intersections
 
         # calculate where the cap is hit
-        if not self._infinite:
+        if self._capped:
             cap_hits = np.tile((-np.inf, np.inf), (origins.shape[-1], 1)).T  # by default assume the cap hits as +/- inf
 
             # if the vector does not travel in the z-direction they'll never intersect
@@ -505,7 +516,7 @@ class Cylinder(SurfacePrimitive):
             skew_case_min = np.full((2, directions.shape[-1]), np.inf)
             skew_case_min[0] = np.where(np.abs(origins[2]) <= 1, -np.inf, np.inf)
 
-            cap_hits = -np.vstack(((origins[2] + 1), origins[2] - 1)) / (directions[2] + is_zero)
+            cap_hits = -np.vstack(((origins[2] - self._h_min), origins[2] - self._h_max)) / (directions[2] + is_zero)
             cap_hits = np.where(np.logical_not(is_zero), cap_hits, skew_case_min)
             cap_hits = np.sort(cap_hits, axis=0)
 
@@ -523,4 +534,24 @@ class Cylinder(SurfacePrimitive):
             return sidewall_hits
 
     def normal(self, intersections):
-        pass
+        # the normal coord is the one that's closest to one
+        single_point = intersections.ndim == 1
+
+        if single_point:
+            intersections = intersections[..., np.newaxis]
+
+        # for the normals if it's on one of the caps it's +/-1, otherwise it's the direction of teh first two points
+        normals = intersections.copy()
+        normals[2:] = 0  # otherwise wipe out the x-component of the normals
+
+        if self._capped:
+            z_coord = intersections[2]
+            negative_normals = np.isclose(z_coord, self._h_min)
+            positive_normals = np.isclose(z_coord, self._h_max)
+            normals = np.where(negative_normals, np.array([[0], [0], [-1], [0]]), normals)
+            normals = np.where(positive_normals, np.array([[0], [0], [1], [0]]), normals)
+
+        normals /= np.linalg.norm(normals, axis=0)  # make sure normals are unit magnitude
+
+        # if a 1d array was passed, transpose it and strip a dimension
+        return normals[:, 0] if single_point else normals

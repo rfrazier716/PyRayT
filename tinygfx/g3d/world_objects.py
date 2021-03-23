@@ -416,6 +416,12 @@ class Sphere(TracerSurface):
     def __init__(self, radius, material=BLACK, *args, **kwargs):
         super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
 
+class Cylinder(TracerSurface):
+    surface = primitives.Cylinder
+
+    def __init__(self, radius, height, material=BLACK, *args, **kwargs):
+        super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
+
 
 class Paraboloid(TracerSurface):
     surface = primitives.Paraboloid
@@ -447,6 +453,12 @@ class Cuboid(TracerSurface):
         corners = length * np.tile((-0.5, 0.5), (3, 1)).T
         return cls(*corners)
 
+
+class Cylinder(TracerSurface):
+    surface = primitives.Cylinder
+
+    def __init__(self, radius=1, min_height = -1, max_height = 1, material = BLACK, *args, **kwargs):
+        super().__init__(surface_args = (radius, min_height, max_height), material=material, *args, **kwargs)
 
 class OrthographicCamera(WorldObject):
     """

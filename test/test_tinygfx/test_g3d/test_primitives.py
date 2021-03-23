@@ -418,6 +418,22 @@ class TestCube(unittest.TestCase):
             normal = self.surface.normal(coord)
             self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
 
+    def test_normals_non_unit_cube(self):
+        self.surface = primitives.Cube((-2, -3, -4), (5, 6, 7))
+        coords = (
+            primitives.Point(-2, 0, 0),
+            primitives.Point(5, 0, 0),
+            primitives.Point(0, -3, 0),
+            primitives.Point(0, 6, 0),
+            primitives.Point(0, 0, -4),
+            primitives.Point(0, 0, 7)
+        )
+        for coord in coords:
+            expected = primitives.Vector(*coord[:-1]).normalize()
+            normal = self.surface.normal(coord)
+            self.assertEqual(expected.shape, normal.shape)
+            self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
+
     def test_offcenter_normal(self):
         coord = primitives.Point(-1 + 1E-8, 0.3, 0.7)
 
@@ -515,7 +531,7 @@ class TestInfiniteCylinder(unittest.TestCase):
 
 class TestFiniteCylinder(unittest.TestCase):
     def setUp(self) -> None:
-        self.surface = primitives.Cylinder(1, infinite=False)
+        self.surface = primitives.Cylinder(1)
 
     def test_intersection_to_sidewalls(self):
         rays = (
@@ -576,6 +592,54 @@ class TestFiniteCylinder(unittest.TestCase):
         self.assertTrue(np.allclose(hit[:, :split].T, np.array((-1, 1))))
         self.assertTrue(np.allclose(hit[:, split:].T, np.array((-1, 1))))
 
+    def test_normals(self):
+        coords = (
+            primitives.Point(-1, 0, 0),
+            primitives.Point(1, 0, 0),
+            primitives.Point(0, -1, 0),
+            primitives.Point(0, 1, 0),
+            primitives.Point(0, 0, -1),
+            primitives.Point(0, 0, 1)
+        )
+        for coord in coords:
+            expected = primitives.Vector(*coord[:-1]).normalize()
+            normal = self.surface.normal(coord)
+            self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
+
+    def test_normals_nondefault_constructor(self):
+        self.surface = primitives.Cylinder(3,min_height=-5,max_height=7)
+        coords = (
+            primitives.Point(-5, 0, 0),
+            primitives.Point(7, 0, 0),
+            primitives.Point(0, -3, 0),
+            primitives.Point(0, 3, 0),
+            primitives.Point(0, 0, -3),
+            primitives.Point(0, 0, 3)
+        )
+        for coord in coords:
+            expected = primitives.Vector(*coord[:-1]).normalize()
+            normal = self.surface.normal(coord)
+            self.assertTrue(np.allclose(expected, normal), f"expected {expected}, got {normal}")
+
+    def test_arrayed_normals(self):
+        # make a bunch of rays to intersect, move some s.t. they intersect thh surface at a different point
+        n_rays = 1000
+        split_index = int(n_rays / 2)
+        points = np.zeros((4, n_rays))
+        points[-1] = 1  # make points!
+        points[0, :split_index] = -1
+        points[1, split_index:] = 1
+
+        normals = self.surface.normal(points)
+        self.assertEqual(normals.shape, (4, n_rays))
+
+        expected = np.zeros((4, split_index))
+        expected[0] = -1
+        self.assertTrue(np.allclose(normals[:, :split_index], expected))
+
+        expected = np.zeros((4, split_index))
+        expected[1] = 1
+        self.assertTrue(np.allclose(normals[:, split_index:], expected))
 
 if __name__ == '__main__':
     unittest.main()
