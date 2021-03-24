@@ -287,7 +287,9 @@ class Paraboloid(SurfacePrimitive):
 
         self._focus = focus
         self._height = height
-        self.bounding_points = _corners_to_cube_points((0, -np.inf, -np.inf), (np.inf, np.inf, np.inf))
+        radius_at_max = np.sqrt(4*self._focus*self._height)
+        self.bounding_points = _corners_to_cube_points((-radius_at_max, -radius_at_max, -0),
+                                                       (radius_at_max, radius_at_max, self._height))
 
     def get_focus(self):
         return self._focus
@@ -376,7 +378,7 @@ class Paraboloid(SurfacePrimitive):
         normals[2] = -2 * self._focus
 
         # if the intersection is with the cap the normal should be in the positive Z direction
-        normals = np.where(np.isclose(intersections[2], self._height), np.array([[0], [0], [1], [0]]), normals)
+        normals = np.where(np.isclose(intersections[2], self._height), np.array([[0], [0], [1.0], [0]]), normals)
         normals /= np.linalg.norm(normals, axis=0)
         return normals if not single_point else normals[:, 0]
 
