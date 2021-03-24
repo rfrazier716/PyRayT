@@ -236,7 +236,7 @@ def draw(surface: TracerSurface, axis=None, shaded=True, bounds=None, resolution
     # this case is for a "top" projection in the xy plane
     # the camera origin should be above the object centered over it
     camera_origin = (maxes + mins) / 2
-    camera_origin[2] = maxes[2]
+    camera_origin[2] = 1.5*maxes[2]
     h_span, v_span = 1.5 * (maxes[:2] - mins[:2])  # the camera spans
     resolution = resolution if h_span > v_span else int(resolution * h_span / v_span)
     # make the camera and move it into position
