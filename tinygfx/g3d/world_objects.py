@@ -387,7 +387,7 @@ class TracerSurface(Intersectable, abc.ABC):
         # get the normals for the surface at the coordinate
         coordinates = rays[0] + distances * rays[1]
         normals = self.get_world_normals(coordinates)  # get the world normals of the surface
-        pixel_values = self._material.shade(np.stack((coordinates, rays[1]),axis=0), normals, **kwargs)
+        pixel_values = self._material.shade(np.stack((coordinates, rays[1]), axis=0), normals, **kwargs)
         return pixel_values
 
     def get_world_normals(self, positions):
@@ -416,6 +416,7 @@ class Sphere(TracerSurface):
     def __init__(self, radius, material=BLACK, *args, **kwargs):
         super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
 
+
 class Cylinder(TracerSurface):
     surface = primitives.Cylinder
 
@@ -426,8 +427,8 @@ class Cylinder(TracerSurface):
 class Paraboloid(TracerSurface):
     surface = primitives.Paraboloid
 
-    def __init__(self, focus, material=BLACK, *args, **kwargs):
-        super().__init__(surface_args=(focus,), material=material, *args, **kwargs)
+    def __init__(self, focus=1, height=1, material=BLACK, *args, **kwargs):
+        super().__init__(surface_args=(focus,height), material=material, *args, **kwargs)
 
 
 class XYPlane(TracerSurface):
@@ -457,8 +458,10 @@ class Cuboid(TracerSurface):
 class Cylinder(TracerSurface):
     surface = primitives.Cylinder
 
-    def __init__(self, radius=1, min_height = -1, max_height = 1, material = BLACK, *args, **kwargs):
-        super().__init__(surface_args = (radius, min_height, max_height), material=material, *args, **kwargs)
+    def __init__(self, radius=1, min_height=-1, max_height=1, material=BLACK, *args, **kwargs):
+        super().__init__(surface_args=(radius, min_height, max_height), material=material, *args, **kwargs)
+
+
 
 class OrthographicCamera(WorldObject):
     """
