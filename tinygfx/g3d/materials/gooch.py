@@ -1,12 +1,22 @@
 import numpy as np
 from dataclasses import dataclass, field
+import abc
 
 from tinygfx.g3d.materials.color import RGBAColor
 import tinygfx.g3d.materials.color as color
 
 
+class Material(abc.ABC):
+    """
+    A base class for all materials
+    """
+    @abc.abstractmethod
+    def shade(self, rays: np.ndarray, normals: np.ndarray, light_positions: np.ndarray) -> np.ndarray:
+        pass
+
+
 @dataclass
-class GoochMaterial(object):
+class GoochMaterial(Material):
     base_color: RGBAColor = field(default_factory=color.RGBAColor)
     warm_color: RGBAColor = field(default_factory=color.RGBAColor)
     cool_color: RGBAColor = field(default_factory=color.RGBAColor)
