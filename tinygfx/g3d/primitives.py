@@ -277,12 +277,16 @@ class Sphere(SurfacePrimitive):
 
 class Paraboloid(SurfacePrimitive):
     """
-    A Spherical parabola with focus at point (0,0,f). The directrix plane is the YZ plane
+    A Spherical parabola with focus at point (0,0,f). The directrix plane is the XY  plane
     """
 
-    def __init__(self, focus=1, *args, **kwargs):
+    def __init__(self, focus=1, height=1, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if focus <= 0 or height <= 0:
+            raise ValueError("Focus and height must be positive numbers")
+
         self._focus = focus
+        self._height = height
         self.bounding_points = _corners_to_cube_points((0, -np.inf, -np.inf), (np.inf, np.inf, np.inf))
 
     def get_focus(self):
@@ -296,27 +300,85 @@ class Paraboloid(SurfacePrimitive):
         origins = padded_rays[0, :-1]  # should be a 3xn array of points
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
+        # for parabolic intersections the XY coordinates get used a lot, so separate them once
+        origins_xy = origins[:2]
+        directions_xy = directions[:2]
+
         # get the components of the polynomial root equation
-        a = element_wise_dot(directions[1:], directions[1:], axis=0)
-        b = 2 * (element_wise_dot(directions[1:], origins[1:]) - 2 * directions[0] * self._focus)
+        a = element_wise_dot(directions_xy, directions_xy, axis=0)
+        b = 2 * (element_wise_dot(origins_xy, directions_xy, axis=0)) - 4 * self._focus * directions[2]
+        c = element_wise_dot(origins_xy, origins_xy, axis=0) - 4 * self._focus * origins[2]
 
-        c = element_wise_dot(origins[1:], origins[1:], axis=0) - origins[0] * 4 * self._focus
+        # calculate the binomial roots of the function
+        disc = b ** 2 - 4 * a * c  # the discriminant of the sqrt in the roots equation
+        # linear cases are where there's no expontential term, have to be handled separately
+        linear_cases = np.isclose(a, 0)
+        root = np.sqrt(np.maximum(0, disc))  # the square root of the discriminant protected from being nan
 
-        # these points are at the origin and intersect with the sphere at t=0
-        trivial_cases = np.isclose(c, 0)
+        # solve for the polynomial roots
+        parabola_hits = np.vstack(((-b + root), (-b - root))) / (
+                2 * a + linear_cases)
 
-        hits = binomial_root(a, b, c)
-        # hits = np.where(trivial_cases, 0, hits) # replace trivial cases with zeros
+        # Now correct for the cases that should be infinite (no intersection)
+        parabola_hits = np.where(disc >= 0, parabola_hits, np.inf)
 
+        # update for the linear roots case
+        # for linear cases, the second intersection should be +inf if the ray is traveling in the positive z direction
+        # and -inf if the ray is travelling in the negative direction,
+        linear_hits = np.empty((2, padded_rays.shape[-1]))
+        linear_hits[0] = -c / (b + np.isclose(b, 0))
+        linear_hits[1] = np.where(directions[2] >= 0, np.inf, -np.inf)
+
+        parabola_hits = np.where(linear_cases, linear_hits, parabola_hits)
+
+        # correct for cases that have neither a or b term
+        parabola_hits.sort(axis=0)
+
+        # now we need to clip the parabola hits with two two planes that define the max and min of the height
+
+        # make a variable to track if the ray travels parallel to the planes
+        parallel_to_plane = np.isclose(directions[2], 0)
+
+        # as well as track if the ray originates between the planes
+        inside_bounds = np.logical_and(origins[2] >= 0, origins[2] <= self._height)
+
+        # calculate the intersections and then apply edge cases
+        bounding_hits = np.empty((2, padded_rays.shape[-1]))
+        denominator = (directions[2] + parallel_to_plane)
+        bounding_hits[0] = - origins[2] / denominator
+        bounding_hits[1] = (self._height - origins[2]) / denominator
+
+        # need to replace edge cases with appropriate values
+        # if the ray origin is between the two planes, the first intersection should be -inf
+        # otherwise it should be +inf
+        # second hit should always be +inf
+        bounding_hits = np.where(parallel_to_plane, np.inf, bounding_hits)
+        bounding_hits[0] = np.where(np.logical_and(parallel_to_plane, inside_bounds), -np.inf, bounding_hits[0])
+
+        # combine all hits and sort them, this will give [min_p, min_b, max_p, max_b]
+        all_hits = np.hstack((parabola_hits, bounding_hits))
+        all_hits.sort(axis=0)
+        all_hits = all_hits.reshape(4, -1)
+        hits = np.vstack((np.max(all_hits[:2], axis=0), np.min(all_hits[2:], axis=0)))
+        # if the max of mins is greater than the min of max, we don't intersect the parabola
+        hits = np.where(hits[0] <= hits[1], hits, np.inf)
         return hits
 
     def normal(self, intersections):
         # normals are pretty simple and are of the form <-1,y/2f,x/2f>
         # create the normals array
+        single_point = intersections.ndim == 1
         normals = intersections.copy()
+        if single_point == 1:
+            normals = normals[..., np.newaxis]
+
         normals[3] = 0  # wipe out the point setting
-        normals[0] = -2 * self._focus
-        return normals / np.linalg.norm(normals, axis=0)
+        normals[2] = -2 * self._focus
+
+        # if the intersection is with the cap the normal should be in the positive Z direction
+        normals = np.where(np.isclose(intersections[2], self._height), np.array([[0], [0], [1], [0]]), normals)
+        normals /= np.linalg.norm(normals, axis=0)
+        return normals if not single_point else normals[:, 0]
 
 
 class Plane(SurfacePrimitive):
@@ -357,8 +419,9 @@ class Plane(SurfacePrimitive):
             hit_1 = -(origins[axis] - dim / 2) / (directions[axis] + is_zero)
             hit_2 = -(origins[axis] + dim / 2) / (directions[axis] + is_zero)
 
-            boundary_hits[0, axis*origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, skew_case_hit, hit_1)
-            boundary_hits[1, axis*origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, np.inf, hit_2)
+            boundary_hits[0, axis * origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, skew_case_hit,
+                                                                                                 hit_1)
+            boundary_hits[1, axis * origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, np.inf, hit_2)
 
         # now sort the boundary hits and reshape to be a 4xn matrix
         boundary_hits.sort(axis=0)

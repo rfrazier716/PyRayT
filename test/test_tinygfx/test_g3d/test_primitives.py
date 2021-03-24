@@ -182,8 +182,9 @@ class TestSphere(unittest.TestCase):
 
 class TestParaboloid(unittest.TestCase):
     def setUp(self) -> None:
-        self.f = 5
-        self.surface = primitives.Paraboloid(self.f)
+        self.f = 1
+        self.height = 3
+        self.surface = primitives.Paraboloid(self.f, height=self.height)
 
     def test_object_getters(self):
         self.assertEqual(self.surface.get_focus(), self.f)
@@ -193,42 +194,36 @@ class TestParaboloid(unittest.TestCase):
         self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
 
         hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0), primitives.Vector(0, 0, 1)))
-        self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
+        self.assertTrue(np.allclose(hit[:, 0], (0, 3)), f"got hits {hit}")
 
         hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0), primitives.Vector(1, 0, 0)))
         self.assertTrue(np.allclose(hit, 0), f"got hits {hit}")
 
     def test_intersection_linear_case(self):
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(1, 0, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, -1), primitives.Vector(0, 0, 1)))
         self.assertEqual(hit.shape, (2, 1))
-        self.assertTrue(np.allclose(hit, 1))
+        self.assertTrue(np.allclose(hit[:, 0], (1, 1 + self.height)))
 
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, -2 * self.f), primitives.Vector(1, 0, 0)))
-        self.assertTrue(np.allclose(hit, self.f))
-
-    def test_intersection_trivial_case(self):
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0)))
-        self.assertTrue(np.allclose(hit, 0))
-
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 0), primitives.Vector(0, 1, 1) / np.sqrt(2)))
-        self.assertTrue(np.allclose(hit, 0))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(2 * self.f, 0, 0), primitives.Vector(0, 0, -1)))
+        self.assertTrue(np.allclose(hit[:, 0], (-self.height, -self.f)), f"got {hit}")
 
     def test_intersection_dbl_root_case(self):
         hit = self.surface.intersect(
-            primitives.Ray(primitives.Point(self.f, -2 * self.f, 0), primitives.Vector(0, 1, 0)))
+            primitives.Ray(primitives.Point(0, -2 * self.f, self.f), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((0, 4 * self.f))), f"{hit}")
 
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(self.f, 0, 0), primitives.Vector(0, 1, 0)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, self.f), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((-2, 2)) * self.f), f"{hit}")
 
     def test_intersection_skew_case(self):
         hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(0, 1, 0)))
         self.assertTrue(np.allclose(hit, np.inf))
 
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(0, 1, 1)))
+        hit = self.surface.intersect(primitives.Ray(primitives.Point(-10, 0, 0), primitives.Vector(0, 0, 1)))
         self.assertTrue(np.allclose(hit, np.inf))
 
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(-1, 0, 0), primitives.Vector(0, 1, -1)))
+        hit = self.surface.intersect(
+            primitives.Ray(primitives.Point(0, 0, 1.05 * self.height), primitives.Vector(1, 1, 0)))
         self.assertTrue(np.allclose(hit, np.inf))
 
     def test_intersection_arrayed_case(self):
@@ -236,36 +231,42 @@ class TestParaboloid(unittest.TestCase):
         n_rays = 1000
         split_index = int(n_rays / 2)
         rays = primitives.bundle_of_rays(n_rays)
-        rays[0, 0, :split_index] = self.f  # move the ray's up to originate at the focus
-        rays[1, 1, :split_index] = 1  # have the rays move towards the positive y_axis
-        rays[1, 0, split_index:] = 1
+        rays[0, 2] = self.f  # move the ray's up to originate at the focus
+        rays[1, 1, :split_index] = 1  # have some rays move towards the positive y_axis
+        rays[1, 2, split_index:] = 1 # have others move towards the positive x-axis
 
         hits = self.surface.intersect(rays)
 
         self.assertEqual(hits.shape, (2, n_rays))
 
         self.assertTrue(np.allclose(np.sort(hits[:, :split_index], axis=0).T, np.array((-2 * self.f, 2 * self.f))))
-        self.assertTrue(np.allclose(np.sort(hits[:, split_index:], axis=0).T, np.array((0, 0))))
+        self.assertTrue(np.allclose(np.sort(hits[:, split_index:], axis=0).T, np.array((-self.f, (self.height-self.f)))))
 
     #  self.assertTrue(np.allclose(hits[split_index:], 0))
 
-    def test_intersection_negative_focus(self):
-        #  if the focus is negative the intersections should be in the -x region
-        surface = primitives.Paraboloid(-self.f)
-        hit = surface.intersect(primitives.Ray(primitives.Point(-self.f, 0, 0), primitives.Vector(0, 1, 0)))
-        self.assertTrue(np.allclose(np.sort(hit[:, 0]), np.array((-2, 2)) * self.f), f"{hit}")
+    def test_invalid_focus(self):
+        #  if the focus is negative an exception should be raised
+        with self.assertRaises(ValueError):
+            surface = primitives.Paraboloid(-5)
 
-    def test_intersection_far(self):
-        # check that an error is not raised when a grossly large value is passed to the intersection
-        # TODO: decide a max distance to clip value at?
-        hit = self.surface.intersect(primitives.Ray(primitives.Point(0, 0, 1000000000), primitives.Vector(1.3, 0, 0)))
+        with self.assertRaises(ValueError):
+            surface = primitives.Paraboloid(0)
+
+    def test_invalid_height(self):
+        #  if the height is negative an exception should be raised
+        with self.assertRaises(ValueError):
+            surface = primitives.Paraboloid(height=-5)
+
+        with self.assertRaises(ValueError):
+            surface = primitives.Paraboloid(height=0)
+
 
     def test_normal(self):
         normal = self.surface.normal(primitives.Point(0, 0, 0))
-        self.assertTrue(np.allclose(normal, primitives.Vector(-1, 0, 0)))
+        self.assertTrue(np.allclose(normal, primitives.Vector(0, 0, -1)))
 
-        normal = self.surface.normal(primitives.Point(self.f, 2 * self.f, 0))
-        self.assertTrue(np.allclose(normal, primitives.Vector(-1, 1, 0) / np.sqrt(2)))
+        normal = self.surface.normal(primitives.Point(0, 2 * self.f, self.f))
+        self.assertTrue(np.allclose(normal, primitives.Vector(0, 1, -1) / np.sqrt(2)))
 
     def test_arrayed_normals(self):
         n_pts = 1000
@@ -276,7 +277,7 @@ class TestParaboloid(unittest.TestCase):
         self.assertEqual(normals.shape, (4, n_pts))
 
         expected_normals = np.zeros((4, n_pts))
-        expected_normals[0] = -1
+        expected_normals[2] = -1
         self.assertTrue(np.allclose(normals, expected_normals))
 
 
@@ -299,9 +300,9 @@ class TestPlane(unittest.TestCase):
         self.assertTrue(np.allclose(hit[:, 0], (-1, -1)))
 
     def test_parallel_intersection(self):
-        ray = primitives.Ray(primitives.Point(0,0,1), primitives.Vector(1,0,0).normalize())
+        ray = primitives.Ray(primitives.Point(0, 0, 1), primitives.Vector(1, 0, 0).normalize())
         hit = self.surface.intersect(ray)
-        self.assertTrue(np.allclose(hit,np.inf))
+        self.assertTrue(np.allclose(hit, np.inf))
 
     def test_missed_intersection(self):
         # a ray outside of the patch should miss
