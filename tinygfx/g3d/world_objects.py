@@ -420,8 +420,8 @@ class Sphere(TracerSurface):
 class Cylinder(TracerSurface):
     surface = primitives.Cylinder
 
-    def __init__(self, radius, height, material=BLACK, *args, **kwargs):
-        super().__init__(surface_args=(radius,), material=material, *args, **kwargs)
+    def __init__(self, radius, min_height=-1, max_height=-1, material=BLACK, *args, **kwargs):
+        super().__init__(surface_args=(radius,min_height, max_height), material=material, *args, **kwargs)
 
 
 class Paraboloid(TracerSurface):

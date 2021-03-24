@@ -528,6 +528,21 @@ class TestCylinder(unittest.TestCase):
             hit = self.surface.intersect(ray)
             self.assertTrue(np.allclose(np.sort(hit, axis=0), np.array([[1, 2]]).T), f"{hit}")
 
+    def test_nondefault_constructor(self):
+        self.surface = primitives.Cylinder(radius=2, min_height = 0, max_height = 4)
+
+        ray = primitives.Ray(origin=primitives.Point(0, 0, -1), direction=primitives.Vector(1, 0, 0))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit, np.inf),hit)
+
+        ray = primitives.Ray(origin=primitives.Point(0, 0, 3), direction=primitives.Vector(1, 0, 0))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit[:,0],(-2,2)),hit)
+
+        ray = primitives.Ray(origin=primitives.Point(0, 0, 0), direction=primitives.Vector(0,0,1))
+        hit = self.surface.intersect(ray)
+        self.assertTrue(np.allclose(hit[:,0],(0,4)),hit)
+
     def test_no_intersection_outside(self):
         """
         if the ray origin is outside of the cylinder and it does not intersect, the returned hits should both be np.inf

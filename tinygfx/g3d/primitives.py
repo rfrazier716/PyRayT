@@ -287,7 +287,7 @@ class Paraboloid(SurfacePrimitive):
 
         self._focus = focus
         self._height = height
-        radius_at_max = np.sqrt(4*self._focus*self._height)
+        radius_at_max = np.sqrt(4 * self._focus * self._height)
         self.bounding_points = _corners_to_cube_points((-radius_at_max, -radius_at_max, -0),
                                                        (radius_at_max, radius_at_max, self._height))
 
@@ -604,34 +604,35 @@ class Cylinder(SurfacePrimitive):
         hits = np.zeros((4, directions.shape[-1]))
         sidewall_hits = np.sort(binomial_root(a, b, c), axis=0)  # have to sort the roots for intersections
 
-        # calculate where the cap is hit
-        if self._capped:
-            cap_hits = np.tile((-np.inf, np.inf), (origins.shape[-1], 1)).T  # by default assume the cap hits as +/- inf
+        # now we need to clip the parabola hits with two two planes that define the max and min of the height
 
-            # if the vector does not travel in the z-direction they'll never intersect
-            is_zero = np.isclose(directions[2], 0)
+        # make a variable to track if the ray travels parallel to the planes
+        parallel_to_plane = np.isclose(directions[2], 0)
 
-            # need a special case if the position is skew to an axis, have to know if the point is in the projected
-            # square
-            skew_case_min = np.full((2, directions.shape[-1]), np.inf)
-            skew_case_min[0] = np.where(np.abs(origins[2]) <= 1, -np.inf, np.inf)
+        # as well as track if the ray originates between the planes
+        inside_bounds = np.logical_and(origins[2] >= self._h_min, origins[2] <= self._h_max)
 
-            cap_hits = -np.vstack(((origins[2] - self._h_min), origins[2] - self._h_max)) / (directions[2] + is_zero)
-            cap_hits = np.where(np.logical_not(is_zero), cap_hits, skew_case_min)
-            cap_hits = np.sort(cap_hits, axis=0)
+        # calculate the intersections and then apply edge cases
+        bounding_hits = np.empty((2, padded_rays.shape[-1]))
+        denominator = (directions[2] + parallel_to_plane)
+        bounding_hits[0] = (self._h_min - origins[2]) / denominator
+        bounding_hits[1] = (self._h_max - origins[2]) / denominator
 
-            all_hits = np.vstack((sidewall_hits[0], cap_hits[0], sidewall_hits[1], cap_hits[1]))
-            # now calculate the max of the nearest hits, and min of the furthest hits to find where we intersect
-            # the cylinder
+        # need to replace edge cases with appropriate values
+        # if the ray origin is between the two planes, the first intersection should be -inf
+        # otherwise it should be +inf
+        # second hit should always be +inf
+        bounding_hits = np.where(parallel_to_plane, np.inf, bounding_hits)
+        bounding_hits[0] = np.where(np.logical_and(parallel_to_plane, inside_bounds), -np.inf, bounding_hits[0])
 
-            cylinder_hits = np.vstack((
-                np.max(all_hits[:2], axis=0),
-                np.min(all_hits[2:], axis=0))
-            )
-            cylinder_hits = np.where(cylinder_hits[0] < cylinder_hits[1], cylinder_hits, np.inf)
-            return cylinder_hits
-        else:
-            return sidewall_hits
+        # combine all hits and sort them, this will give [min_p, min_b, max_p, max_b]
+        all_hits = np.hstack((sidewall_hits, bounding_hits))
+        all_hits.sort(axis=0)
+        all_hits = all_hits.reshape(4, -1)
+        hits = np.vstack((np.max(all_hits[:2], axis=0), np.min(all_hits[2:], axis=0)))
+        # if the max of mins is greater than the min of max, we don't intersect the parabola
+        hits = np.where(hits[0] <= hits[1], hits, np.inf)
+        return hits
 
     def normal(self, intersections):
         # the normal coord is the one that's closest to one
@@ -642,7 +643,7 @@ class Cylinder(SurfacePrimitive):
 
         # for the normals if it's on one of the caps it's +/-1, otherwise it's the direction of teh first two points
         normals = intersections.copy()
-        normals[2:] = 0  # otherwise wipe out the x-component of the normals
+        normals[2:] = 0  # wipe out the z and w components
 
         if self._capped:
             z_coord = intersections[2]
