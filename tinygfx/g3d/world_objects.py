@@ -346,7 +346,7 @@ class TracerSurface(Intersectable, abc.ABC):
     def __init__(self, surface_args, material=BLACK, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
         self._surface_primitive = type(self).surface(*surface_args)  # create a surface primitive from the provided args
-        self._material = material
+        self.material = material
 
         # make a bounding volume to enclose the shape
         self._aobb = bounding_box(self._surface_primitive.bounding_points)
@@ -387,7 +387,7 @@ class TracerSurface(Intersectable, abc.ABC):
         # get the normals for the surface at the coordinate
         coordinates = rays[0] + distances * rays[1]
         normals = self.get_world_normals(coordinates)  # get the world normals of the surface
-        pixel_values = self._material.shade(np.stack((coordinates, rays[1]), axis=0), normals, **kwargs)
+        pixel_values = self.material.shade(np.stack((coordinates, rays[1]), axis=0), normals, **kwargs)
         return pixel_values
 
     def get_world_normals(self, positions):
