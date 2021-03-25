@@ -29,7 +29,7 @@ def flatten(list_to_flatten):
     return flattened_list
 
 
-class RaySet(object):
+class RaySet(np.ndarray):
     fields = (
         "generation",
         "intensity",
@@ -38,32 +38,39 @@ class RaySet(object):
         'id'
     )
 
+    def __new__(cls, n_rays):
+        obj = np.zeros((8 + len(RaySet.fields), n_rays), dtype=float)
+        return obj.view(cls)
+
     def __init__(self, n_rays, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
-        self.rays = cg.bundle_of_rays(n_rays)
-        self.metadata = np.zeros((len(RaySet.fields), n_rays))
-
         # set default values
+        self.rays = cg.bundle_of_rays(n_rays)
         self.wavelength = 0.633  # by default assume 633nm light
         self.index = 1
         self.generation = 0
         self.intensity = 100.  # default intensity is 100
         self.id = np.arange(n_rays)  # assign unique ids to each ray
 
-    @classmethod
-    def concat(cls, *ray_sets: "RaySet") -> "RaySet":
-        """
-        Creates a new RaySet by concatenating n number of existing sets
-        """
-        new_set = cls(0)
-        new_set.rays = np.dstack([this_set.rays for this_set in ray_sets])
-        new_set.metadata = np.hstack([this_set.metadata for this_set in ray_sets])
-        new_set.id = np.arange(new_set.rays.shape[-1])  # re allocate ids
-        return new_set
-
     @property
     def n_rays(self) -> int:
         return self.rays.shape[-1]
+
+    @property
+    def metadata(self):
+        return self[8:]
+
+    @metadata.setter
+    def metadata(self, update):
+        self[8:] = update
+
+    @property
+    def rays(self) -> np.ndarray:
+        return self[:8].reshape((2, 4, -1))
+
+    @rays.setter
+    def rays(self, update):
+        self[:8] = update.reshape(8, -1)
 
     @property
     def generation(self):
@@ -112,7 +119,7 @@ class OpticalSystem(object):
     components: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
     detectors: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
     boundary: cg.TracerSurface = field(
-        default_factory=lambda: cg.Cuboid.from_corners((-100, -100, -100), (100, 100, 100)))
+        default_factory=lambda: cg.Cuboid((-100, -100, -100), (100, 100, 100)))
 
 
 class _AnalyticDataFrame(object):
