@@ -300,7 +300,7 @@ class RayTracer(object):
             # update the dataframe of results
             self._frame.insert(self._ray_set[..., living_rays],
                                next_ray_set,
-                               self._hit_surfaces)
+                               self._hit_surfaces[living_rays])
             # copy the new ray set over to the current
             self._ray_set = next_ray_set
 
@@ -329,5 +329,3 @@ class RayTracer(object):
         self._simulation_complete = True
         self._state = self.States.IDLE
 
-
-def view
