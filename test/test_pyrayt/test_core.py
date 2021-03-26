@@ -1,5 +1,7 @@
 import unittest
 import pyrayt
+import tinygfx.g3d as cg
+from pyrayt.components.sources import LineOfRays
 
 import numpy as np
 
@@ -46,6 +48,36 @@ class TestRaySet(unittest.TestCase):
         self.assertTrue(np.allclose(joined_set.id, np.arange(30)), f"{joined_set.id}")
         self.assertTrue(np.allclose(joined_set.wavelength[:10], -1))
         self.assertTrue(np.allclose(joined_set.wavelength[10:], 2))
+
+
+class TestRayTrace(unittest.TestCase):
+    def setUp(self) -> None:
+        self.source = LineOfRays()
+        self.surface = cg.XYPlane(material=pyrayt.materials.mirror).rotate_y(-90).move_x(3)
+        self.tracer = pyrayt.RayTracer([self.source], [self.surface])
+
+    def test_result_length(self):
+        # with just one mirror the results should be 20 elements long
+        self.tracer.set_rays_per_source(10)
+        results = self.tracer.trace()
+        self.assertEqual(results.shape[0], 10) # rays should only intersect once then done
+
+        # all rays should end at 3.0
+        self.assertTrue(np.allclose(results['x1'], 3.0))
+
+    def test_result_infinite_reflections(self):
+        second_plane = cg.XYPlane(material=pyrayt.materials.mirror).rotate_y(90).move_x(-3)
+        generation_limit = 10
+        n_rays = 100000
+
+        self.tracer = pyrayt.RayTracer([self.source], [self.surface, second_plane], generation_limit=generation_limit)
+        self.tracer.set_rays_per_source(n_rays)
+
+        results = self.tracer.trace()
+        self.assertEqual(results.shape[0], generation_limit*n_rays) # rays should only intersect once then done
+
+        # make sure the generation number went to 9
+        self.assertEqual(set(results['generation']), set(range(10)))
 
 
 if __name__ == '__main__':

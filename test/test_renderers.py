@@ -19,7 +19,7 @@ class TestRenderReflection(unittest.TestCase):
 
         self.system.sources += self.sources
         self.system.components += self.surfaces
-        self.renderer = pyrayt.AnalyticRenderer(self.system, generation_limit=20)
+        self.renderer = pyrayt.RayTracer(self.system, generation_limit=20)
 
     def test_getters(self):
         self.renderer.set_generation_limit(1000)
@@ -35,7 +35,7 @@ class TestRenderReflection(unittest.TestCase):
         generation_limit = 10
         self.renderer.set_rays_per_source(rays_per_source)
         self.renderer.set_generation_limit(generation_limit)
-        self.renderer.render()
+        self.renderer.trace()
         results = self.renderer.get_results()
 
         # the resulting dataframe should have 2*5*10 (100) elements in it
@@ -60,7 +60,7 @@ class TestRenderReflection(unittest.TestCase):
         self.renderer.set_rays_per_source(1)  # only want one ray per source for this test
         top_baffle = cg.YZPlane(material=mat.absorber).rotate_y(90).move_z(1)
         self.system.components.append(top_baffle)
-        results = self.renderer.render()
+        results = self.renderer.trace()
 
         # verify that only four intersections were recorded and then the rays were killed
         self.assertEqual(results.shape[0], 4)
@@ -76,7 +76,7 @@ class TestRenderReflection(unittest.TestCase):
 
         top_baffle = cg.YZPlane(material=mat.absorber).rotate_y(90).move_z(1)
         self.system.components.append(top_baffle)
-        results = self.renderer.render()
+        results = self.renderer.trace()
 
         # verify that only four intersections were recorded and then the rays were killed
         self.assertEqual(results.shape[0], 11)
@@ -87,7 +87,7 @@ class TestRenderReflection(unittest.TestCase):
         self.renderer.set_generation_limit(10)
         self.renderer.set_rays_per_source(1)
 
-        results = self.renderer.render()
+        results = self.renderer.trace()
         self.assertEqual(results.shape[0], 11)
 
         # the first result should have a valid tilt but no distance
@@ -111,9 +111,9 @@ class TestRenderReflection(unittest.TestCase):
 
         system.sources += sources
         system.components += surfaces
-        renderer = pyrayt.AnalyticRenderer(system, rays_per_source=10, generation_limit=20)
+        renderer = pyrayt.RayTracer(system, rays_per_source=10, generation_limit=20)
 
-        results = renderer.render()
+        results = renderer.trace()
         self.assertEqual(results.shape[0], 20)
         self.assertTrue(np.allclose(results['index'][10:], 1.5))
 
@@ -126,7 +126,7 @@ class TestRenderRepeatedIntersection(unittest.TestCase):
 
         self.system.sources += self.sources
         self.system.components += self.surfaces
-        self.renderer = pyrayt.AnalyticRenderer(self.system, generation_limit=20)
+        self.renderer = pyrayt.RayTracer(self.system, generation_limit=20)
 
     def test_render_results(self):
         """
@@ -139,7 +139,7 @@ class TestRenderRepeatedIntersection(unittest.TestCase):
         generation_limit = 100
         self.renderer.set_rays_per_source(rays_per_source)
         self.renderer.set_generation_limit(generation_limit)
-        self.renderer.render()
+        self.renderer.trace()
         results = self.renderer.get_results()
 
         # rays should reflect back and forth until generation limit reached
