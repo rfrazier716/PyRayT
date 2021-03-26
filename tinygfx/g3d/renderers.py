@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import List
 
 import numpy as np
 from scipy import ndimage
@@ -95,7 +96,12 @@ class EdgeRender(object):
 
         # now do a binary dilation to make the lines a bit thicker
         edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2, 2))
-        self._results = edges
+
+        # put the result into an image canvas
+        canvas = np.zeros((*hit_matrix.shape, 4), dtype=float)
+        canvas[..., :] = np.logical_not(edges)[..., np.newaxis]
+        canvas[..., 3] = edges
+        self._results = canvas
         self._state = self.States.FINISH
 
     def _st_record(self):
@@ -196,8 +202,6 @@ class ShadedRenderer():
                                                         self._hit_distances[surface_mask],
                                                         light_positions=self._light)
 
-
-
         # # now draw the material outline
         # hit_matrix = self._hit_surfaces.reshape(self._camera.get_resolution()[-1], -1)
         # h_diffs = np.abs(np.diff(hit_matrix, axis=-1, prepend=0))
@@ -223,9 +227,9 @@ class ShadedRenderer():
         self._state = self.States.IDLE
 
 
-def draw(surface: TracerSurface, axis=None, shaded=True, bounds=None, resolution=640):
+def draw(surfaces: List[TracerSurface], axis=None, shaded=True, bounds=None, resolution=640):
     # draw a surface for a given projection
-    bounding_box = surface.bounding_volume.bounding_points[:3]
+    bounding_box = np.hstack([surface.bounding_volume.bounding_points[:3] for surface in surfaces])
     if bounds is not None:
         mins = np.asarray(bounds[0])
         maxes = np.asarray(bounds[1])
@@ -236,7 +240,7 @@ def draw(surface: TracerSurface, axis=None, shaded=True, bounds=None, resolution
     # this case is for a "top" projection in the xy plane
     # the camera origin should be above the object centered over it
     camera_origin = (maxes + mins) / 2
-    camera_origin[2] = 1.5*maxes[2]
+    camera_origin[2] = 1.5 * maxes[2]
     h_span, v_span = 1.5 * (maxes[:2] - mins[:2])  # the camera spans
     resolution = resolution if h_span > v_span else int(resolution * h_span / v_span)
     # make the camera and move it into position
@@ -246,11 +250,11 @@ def draw(surface: TracerSurface, axis=None, shaded=True, bounds=None, resolution
     if shaded:
         light_position = Point(*maxes)
         light_position[2] *= 3
-        renderer = ShadedRenderer(camera, (surface,), light_position=light_position)
+        renderer = ShadedRenderer(camera, surfaces, light_position=light_position)
         cmap = None
 
     else:
-        renderer = EdgeRender(camera, (surface,))
+        renderer = EdgeRender(camera, surfaces)
         cmap = 'gray'
     image = renderer.render()
     if axis is None:
@@ -262,4 +266,4 @@ def draw(surface: TracerSurface, axis=None, shaded=True, bounds=None, resolution
                         camera_origin[1] - v_span / 2,
                         camera_origin[1] + v_span / 2])
     axis.set_axisbelow(True)
-    #axis.grid(color='gray', linestyle='dashed')
+    # axis.grid(color='gray', linestyle='dashed')
