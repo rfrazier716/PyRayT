@@ -35,7 +35,6 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation, sort
         merged_argsort = np.argsort(merged_array, axis=0)
         merged_array = merged_array[merged_argsort, np.arange(merged_array.shape[-1])]
 
-
     if operation == Operation.UNION or operation == Operation.INTERSECT:
         merged_mask = np.where(merged_argsort & 1, -1, 1)
         surface_count = np.cumsum(merged_mask, axis=0)
@@ -47,7 +46,7 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation, sort
         raise ValueError(f"operation {operation} is invalid")
 
     if operation == Operation.UNION:
-        surface_count = np.logical_xor(surface_count, np.roll(surface_count,1,axis=0))
+        surface_count = np.logical_xor(surface_count, np.roll(surface_count, 1, axis=0))
         csg_hits = np.where(surface_count != 0, merged_array, np.inf)
 
     elif operation == Operation.INTERSECT or operation == Operation.DIFFERENCE:
@@ -161,3 +160,13 @@ class CSGSurface(Intersectable):
         self._r_child.transform(new_transform)
 
 
+def union(s0: Intersectable, s1: Intersectable) -> CSGSurface:
+    return CSGSurface(s0, s1, Operation.UNION)
+
+
+def intersect(s0: Intersectable, s1: Intersectable) -> CSGSurface:
+    return CSGSurface(s0, s1, Operation.INTERSECT)
+
+
+def difference(s0: Intersectable, s1: Intersectable) -> CSGSurface:
+    return CSGSurface(s0, s1, Operation.DIFFERENCE)

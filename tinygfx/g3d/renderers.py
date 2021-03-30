@@ -91,11 +91,12 @@ class EdgeRender(object):
         # find the edges of the surfaces using np diff functions
         # convert the hit_surfaces array into a matrix
         hit_matrix = self._hit_surfaces.reshape(self._camera.get_resolution()[-1], -1)
-        h_diffs = np.abs(np.diff(hit_matrix, axis=-1, prepend=0))
-        v_diffs = np.abs(np.diff(hit_matrix, axis=0, prepend=0))
+        h_diffs = np.abs(np.diff(hit_matrix, axis=-1, prepend=-1))
+        v_diffs = np.abs(np.diff(hit_matrix, axis=0, prepend=-1))
 
         # now do a binary dilation to make the lines a bit thicker
-        edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2, 2))
+        #edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2,2))
+        edges = h_diffs + v_diffs
 
         # put the result into an image canvas
         canvas = np.zeros((*hit_matrix.shape, 4), dtype=float)
