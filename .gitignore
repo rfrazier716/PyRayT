@@ -108,6 +108,7 @@ celerybeat.pid
 # Environments
 .env
 .venv*
+.test
 env/
 venv/
 ENV/
@@ -144,10 +145,12 @@ cython_debug/
 
 # VSCODE settings
 .vscode/
-notebooks/
 builds/
 *.orig
 
 # Documents created by coverage
 .coverage
 htmlcov
+
+# Jupyter Notebooks
+notebooks/
