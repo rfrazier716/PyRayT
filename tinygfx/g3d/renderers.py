@@ -95,8 +95,8 @@ class EdgeRender(object):
         v_diffs = np.abs(np.diff(hit_matrix, axis=0, prepend=-1))
 
         # now do a binary dilation to make the lines a bit thicker
-        #edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2,2))
-        edges = h_diffs + v_diffs
+        # edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2,2))
+        edges = (h_diffs + v_diffs) > 0
 
         # put the result into an image canvas
         canvas = np.zeros((*hit_matrix.shape, 4), dtype=float)
@@ -228,7 +228,7 @@ class ShadedRenderer():
         self._state = self.States.IDLE
 
 
-def draw(surfaces: List[TracerSurface], axis=None, shaded=True, bounds=None, resolution=640):
+def draw(surfaces: List[TracerSurface], view='xy', axis=None, shaded=True, bounds=None, resolution=640):
     # draw a surface for a given projection
     bounding_box = np.hstack([surface.bounding_volume.bounding_points[:3] for surface in surfaces])
     if bounds is not None:
@@ -238,8 +238,19 @@ def draw(surfaces: List[TracerSurface], axis=None, shaded=True, bounds=None, res
         mins = np.min(bounding_box, axis=1)
         maxes = np.max(bounding_box, axis=1)
 
+    if axis is None:
+        axis = plt.gca()
+
     # this case is for a "top" projection in the xy plane
     # the camera origin should be above the object centered over it
+    if view == 'xy':
+        _draw_xy(surfaces, axis, shaded, resolution, maxes, mins)
+
+    elif view == 'xz':
+        _draw_xz(surfaces, axis, shaded, resolution, maxes, mins)
+
+
+def _draw_xy(surfaces: List[TracerSurface], axis, shaded, resolution, maxes, mins):
     camera_origin = (maxes + mins) / 2
     camera_origin[2] = 1.5 * maxes[2]
     h_span, v_span = 1.5 * (maxes[:2] - mins[:2])  # the camera spans
@@ -248,15 +259,15 @@ def draw(surfaces: List[TracerSurface], axis=None, shaded=True, bounds=None, res
     camera = OrthographicCamera(resolution, h_span, v_span / h_span)
     camera.rotate_y(90).rotate_z(90).move(*camera_origin[:3])
 
+    light_position = Point(*maxes)
+    light_position[2] *= 3
+
     if shaded:
-        light_position = Point(*maxes)
-        light_position[2] *= 3
         renderer = ShadedRenderer(camera, surfaces, light_position=light_position)
-        cmap = None
 
     else:
         renderer = EdgeRender(camera, surfaces)
-        cmap = 'gray'
+
     image = renderer.render()
     if axis is None:
         axis = plt.gca()
@@ -267,4 +278,32 @@ def draw(surfaces: List[TracerSurface], axis=None, shaded=True, bounds=None, res
                         camera_origin[1] - v_span / 2,
                         camera_origin[1] + v_span / 2])
     axis.set_axisbelow(True)
-    # axis.grid(color='gray', linestyle='dashed')
+
+
+def _draw_xz(surfaces: List[TracerSurface], axis, shaded, resolution, maxes, mins):
+    camera_origin = (maxes + mins) / 2
+    camera_origin[1] = 1.5 * maxes[1]
+    h_span, v_span = 1.5 * (maxes[[0, 2]] - mins[[0, 2]])  # the camera spans
+    resolution = resolution if h_span > v_span else int(resolution * h_span / v_span)
+    # make the camera and move it into position
+    camera = OrthographicCamera(resolution, h_span, v_span / h_span)
+    camera.rotate_z(90).move(*camera_origin[:3])
+
+    light_position = Point(*maxes)
+    light_position[1] *= -3
+
+    if shaded:
+        renderer = ShadedRenderer(camera, surfaces, light_position=light_position)
+
+    else:
+        renderer = EdgeRender(camera, surfaces)
+    image = renderer.render()
+    if axis is None:
+        axis = plt.gca()
+
+    axis.imshow(image,
+                extent=[camera_origin[0] - h_span / 2,
+                        camera_origin[0] + h_span / 2,
+                        camera_origin[2] - v_span / 2,
+                        camera_origin[2] + v_span / 2])
+    axis.set_axisbelow(True)
