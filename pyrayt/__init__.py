@@ -3,3 +3,4 @@ from . import _pyrayt
 from ._pyrayt import *
 
 from . import materials
+from . import components

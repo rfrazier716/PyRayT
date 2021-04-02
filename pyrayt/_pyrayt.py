@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
+import matplotlib.pyplot as plt
 
 import numpy as np
 import pandas as pd
@@ -146,7 +147,7 @@ class _AnalyticDataFrame(object):
 
 class RayTracer(object):
     ray_offset_value = 1E-6  # how far off the rays are moved from surfaces
-    ray_intensity_threashold = 0.1# kill rays whose instensity is below 0.1
+    ray_intensity_threashold = 0.1  # kill rays whose instensity is below 0.1
 
     class States(Enum):
         PROPAGATE = 1
@@ -329,3 +330,26 @@ class RayTracer(object):
         self._simulation_complete = True
         self._state = self.States.IDLE
 
+    def show(self, view='xy', axis=None, resolution=640):
+        if axis is None:
+            axis = plt.gca()
+        cg.renderers.draw(self._components, view = view, axis=axis, shaded=False, resolution=resolution)
+
+        # set the view projections
+        if view == 'xy':
+            ax0 = 'x'
+            ax1 = 'y'
+        elif view == 'xz':
+            ax0 = 'x'
+            ax1 = 'z'
+
+        x1 = ax0 + '1'
+        y1 = ax1 + '1'
+        x0 = ax0 + '0'
+        y0 = ax1 + '0'
+        if self._simulation_complete:
+            u = self._frame.data[x1].sub(self._frame.data[x0])
+            v = self._frame.data[y1].sub(self._frame.data[y0])
+            axis.set_aspect('equal')
+            axis.quiver(self._frame.data[x0], self._frame.data[y0], u, v, scale=1, units='x', width=0.01,
+                        color='C0')
