@@ -63,12 +63,12 @@ class TestRefractiveMaterial(unittest.TestCase):
 
     def test_index_updated_exiting(self):
         rays = pyrayt.RaySet(10)
-        rays.rays[1, 1:3] = 1.
+        rays.rays[1, 2] = 1.
         rays.index = 20
 
         # if we're exiting the material the index should be set to 1
         new_rays = self.material.trace(self.surface, rays)
-        self.assertTrue(np.allclose(new_rays.index, 1.0))
+        self.assertTrue(np.allclose(new_rays.index, 1.0), new_rays.index[0])
 
     def test_refraction_occurs_incoming(self):
         rays = pyrayt.RaySet(10)

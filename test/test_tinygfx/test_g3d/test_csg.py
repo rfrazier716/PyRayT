@@ -149,11 +149,6 @@ class TestCSGIntersect(unittest.TestCase):
         self.assertTrue(
             np.all(surfaces[:2, np.logical_and(y_vals > -0.5, np.logical_not(hit_missed))] == id(self.r_shape)))
 
-    # def test_moving_to_nonintersection(self):
-    #     with self.assertRaises(ValueError):
-    #         self.r_shape.move(4)
-
-
 class TestCSGDifference(unittest.TestCase):
     def setUp(self) -> None:
         self.l_shape = cg.Sphere(1)
