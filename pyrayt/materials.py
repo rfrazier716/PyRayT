@@ -43,7 +43,8 @@ class _ReflectingMaterial(TracableMaterial):
         ray_set.rays[1] = cg.reflect(ray_set.rays[1], normals)
         return ray_set
 
-class _BasicRefractor(TracableMaterial):
+
+class BasicRefractor(TracableMaterial):
     def __init__(self, refractive_index, *args, **kwargs):
         self._index = refractive_index
         super().__init__(cg_matl.gooch.BLUE, *args, **kwargs)
@@ -55,6 +56,7 @@ class _BasicRefractor(TracableMaterial):
         return ray_set
 
 
-absorber = _AbsorbingMaterial()  # an instance of the absorbing material class to call
+absorber = _AbsorbingMaterial()  # an
+# instance of the absorbing material class to call
 mirror = _ReflectingMaterial()
-glass = _BasicRefractor(1.5)
+glass = BasicRefractor(1.5)

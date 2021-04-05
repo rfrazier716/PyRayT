@@ -5,18 +5,6 @@ from tinygfx.g3d import WorldObject, ObjectGroup
 import tinygfx.g3d as cg
 
 
-class TestFlattenFn(unittest.TestCase):
-    def test_flatten_system(self):
-        system = []
-        system.append(0)
-        system.append((1, (2, 3)))
-        system.append((4, 5, 6))
-        system.append(7)
-        flattened = pyrayt.flatten(system)
-        for n, field in enumerate(flattened):
-            self.assertEqual(n, field)
-
-
 class TestAnalyticSystem(unittest.TestCase):
     def setUp(self):
         self.system = pyrayt.OpticalSystem()

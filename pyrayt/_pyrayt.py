@@ -8,28 +8,6 @@ import pandas as pd
 from tinygfx import g3d as cg
 
 
-def flatten(list_to_flatten):
-    def _flatten_helper(iterable, flattened_list):
-        """
-        a helper method to walk through a nested list and return the flattened list in order
-
-        :param iterable:
-        :param flattened_list:
-        :return:
-        """
-        for item in iterable:
-            # if the item is itself iterable, recursively enter the function
-            if not isinstance(item, str) and hasattr(item, '__iter__'):
-                _flatten_helper(item, flattened_list)
-            else:
-                flattened_list.append(item)
-
-    # reset the flattened_system
-    flattened_list = []
-    _flatten_helper(list_to_flatten, flattened_list)
-    return flattened_list
-
-
 class RaySet(np.ndarray):
     fields = (
         "generation",
@@ -114,16 +92,7 @@ class RaySet(np.ndarray):
         self.metadata[4] = update
 
 
-@dataclass(unsafe_hash=True)
-class OpticalSystem(object):
-    sources: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
-    components: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
-    detectors: cg.ObjectGroup = field(default_factory=cg.ObjectGroup)
-    boundary: cg.TracerSurface = field(
-        default_factory=lambda: cg.Cuboid((-100, -100, -100), (100, 100, 100)))
-
-
-class _AnalyticDataFrame(object):
+class _RayTraceDataframe(object):
     def __init__(self):
         self.df_columns = RaySet.fields + ("surface", "x0", "y0", "z0", "x1", "y1", "z1", "x_tilt",
                                            "y_tilt", "z_tilt")
@@ -147,7 +116,7 @@ class _AnalyticDataFrame(object):
 
 class RayTracer(object):
     ray_offset_value = 1E-6  # how far off the rays are moved from surfaces
-    ray_intensity_threashold = 0.1  # kill rays whose instensity is below 0.1
+    ray_intensity_threshold = 0.1  # kill rays whose instensity is below 0.1
 
     class States(Enum):
         PROPAGATE = 1
@@ -159,13 +128,22 @@ class RayTracer(object):
         INTERACT = 7
 
     def __init__(self, sources: list, components: list, rays_per_source=10, generation_limit=10):
-        self._frame = _AnalyticDataFrame()  # make a new dataframe to hold results
+        self._frame = _RayTraceDataframe()  # make a new dataframe to hold results
         self._state = RayTracer.States.IDLE  # by default the renderer is idling
         self._generation_number = 0
         self._simulation_complete = False
 
-        self._sources = sources
-        self._components = components
+        # if single elements are passed for sources or components, pad them into a tuple
+        if not hasattr(sources, "__iter__"):
+            self._sources = (sources,)
+        else:
+            self._sources = sources
+
+        if not hasattr(components, "__iter__"):  # returns True if type of iterable - same problem with strings
+            self._components = (components,)
+        else:
+            self._components = components
+
         self._rays_per_source = rays_per_source
         self._generation_limit = generation_limit  # how many reflections/refractions a ray can encounter
         self._world_index = 1  # the refractive index of the world
@@ -173,8 +151,6 @@ class RayTracer(object):
         self._state_machine = {
             RayTracer.States.INITIALIZE: self._st_initialize,
             RayTracer.States.PROPAGATE: self._st_propagate,
-            RayTracer.States.RECORD: self._st_record,
-            RayTracer.States.TRIM: self._st_trim,
             RayTracer.States.FINISH: self._st_finish,
             RayTracer.States.INTERACT: self._st_interact
         }
@@ -189,7 +165,7 @@ class RayTracer(object):
 
     def reset(self):
         self._simulation_complete = False
-        self._frame = _AnalyticDataFrame()  # reset the dataframe
+        self._frame = _RayTraceDataframe()  # reset the dataframe
         self._state = RayTracer.States.IDLE  # by default the renderer is idling
         self._generation_number = 0
 
@@ -229,13 +205,8 @@ class RayTracer(object):
         """
         return self._frame.data
 
-    def _generate_flattened_structures(self):
-        self._sources = tuple(flatten(self._sources))
-        self._components = tuple(flatten(self._components))
-
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
-        self._generate_flattened_structures()
 
         # make a ray set from the concatenated ray sets returned by the sources
         self._ray_set = np.hstack([source.generate_rays(self._rays_per_source) for source in self._sources]).view(
@@ -246,7 +217,7 @@ class RayTracer(object):
     def _st_propagate(self):
         # the hits matrix is an 1xn matrix to track the nearest hits
         hit_distances = np.full(self._ray_set.n_rays, np.inf)
-        hit_surfaces = np.full(self._ray_set.n_rays, -1)
+        hit_surfaces = np.full(self._ray_set.n_rays, -1, dtype=np.int64)
 
         # calculate the intersection distances for every surface in the simulation
         ray_hit_index = np.arange(self._ray_set.n_rays)
@@ -286,7 +257,7 @@ class RayTracer(object):
         # dead rays are anywhere that the direction vector has been set to zero (absorbed) or the surface vector is -1
         # (no intersection)
         absorbed_rays = np.isclose(np.linalg.norm(self._ray_set.rays[1], axis=0), 0)
-        powerless_rays = self._ray_set.intensity < self.ray_intensity_threashold
+        powerless_rays = self._ray_set.intensity < self.ray_intensity_threshold
         dead_rays = np.logical_or(absorbed_rays, self._hit_surfaces == -1, powerless_rays)
         living_rays = np.logical_not(dead_rays)  # living rays aren't dead...
         # increment the generation number
@@ -320,20 +291,15 @@ class RayTracer(object):
                 # continue the simulation
                 self._state = RayTracer.States.PROPAGATE
 
-    def _st_record(self):
-        pass
-
-    def _st_trim(self):
-        pass
-
     def _st_finish(self):
         self._simulation_complete = True
         self._state = self.States.IDLE
 
-    def show(self, view='xy', axis=None, resolution=640):
+    def show(self, view='xy', axis=None, **kwargs):
+        shaded = kwargs.pop('shaded', False)
         if axis is None:
             axis = plt.gca()
-        cg.renderers.draw(self._components, view = view, axis=axis, shaded=False, resolution=resolution)
+        cg.renderers.draw(self._components, view=view, axis=axis, shaded=shaded, **kwargs)
 
         # set the view projections
         if view == 'xy':
@@ -347,6 +313,8 @@ class RayTracer(object):
         y1 = ax1 + '1'
         x0 = ax0 + '0'
         y0 = ax1 + '0'
+
+        # if the simulation has been run plot the results
         if self._simulation_complete:
             u = self._frame.data[x1].sub(self._frame.data[x0])
             v = self._frame.data[y1].sub(self._frame.data[y0])

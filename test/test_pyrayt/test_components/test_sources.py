@@ -1,13 +1,14 @@
 import unittest
 import numpy as np
-import pyrayt.components.sources as sources
+
+import pyrayt.components
 import tinygfx.g3d.primitives as primitives
 
 
 class TestSource(unittest.TestCase):
     # using a line of rays as a proxy source for wrapper methods
     def setUp(self) -> None:
-        self.source = sources.LineOfRays(1)
+        self.source = pyrayt.components.LineOfRays(1)
 
     def test_transformed_ray_generation(self):
         # rotate and generate a single ray
@@ -31,7 +32,7 @@ class TestSource(unittest.TestCase):
 
 class TestLineOfRays(unittest.TestCase):
     def setUp(self) -> None:
-        self.source = sources.LineOfRays(1)
+        self.source = pyrayt.components.LineOfRays(1)
 
     def test_single_ray_generation(self):
         # t_rays is shorthand for tracer rays

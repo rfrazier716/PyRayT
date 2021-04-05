@@ -1,7 +1,7 @@
 import unittest
 
 import pyrayt
-from pyrayt.components.sources import LineOfRays
+from pyrayt.components import LineOfRays
 import tinygfx.g3d.world_objects as cg
 import pyrayt.shaders.analytic as mat
 import numpy as np
