@@ -116,6 +116,7 @@ def refract(vectors, normals, n1, n2, n_global=1):
     :return: a 4xn array of homogeneous vectors representing the new transmission direction of the vectors after the
         medium
     """
+    vectors /= np.linalg.norm(vectors, axis=0)
     cos_theta1_p = element_wise_dot(vectors, normals, axis=0)  # the angle dotted with the normals
     cos_theta1_n = element_wise_dot(vectors, -normals, axis=0)  # the vector dotted with the negative normals
 
