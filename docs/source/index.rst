@@ -6,11 +6,18 @@
 Welcome to PyRayT's documentation!
 ======================================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
 
-   pyrayt
+Packages
+`````````
+
+.. toctree::
+   :maxdepth: 1
+
+   install
+   tutorial
+   reference/index
+   examples
+   license
 
 Indices and tables
 ==================
