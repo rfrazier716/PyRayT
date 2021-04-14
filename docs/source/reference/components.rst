@@ -23,6 +23,7 @@ Built in Parts
 .. _Apertures:
 Specifying Apertures
 `````````````````````
+All optical component factor functions accept an :code:`aperture` keyword argument. Internally, the
 
 Spherical Lenses
 `````````````````
@@ -45,6 +46,4 @@ Miscellaneous
 
 * :func:`~pyrayt.components.baffle`
 
-Creating a Custom Part
-============================
 

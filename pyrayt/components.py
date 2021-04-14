@@ -156,7 +156,16 @@ def _mirror(func):
 
 
 @_mirror
-def plane_mirror(thickness: float, **kwargs) -> cg.csg.CSGSurface:
+def plane_mirror(thickness: float, **kwargs) -> cg.Intersectable:
+    """
+    Creates a plane mirror where every side is reflective. If o
+
+    :param thickness: The mirror thickness. A thickness of zero will result in a 2D planar mirror.
+    :param kwargs: additional keyword arguments.
+    :return: A mirror composed of two reflective surfaces, each of which is parallel to the YZ plane.
+        The first surface is at x=-thickness, and the second surface is at x=0. The mirrors aperture is centered
+        at the origin unless modified by off_axis.
+    """
     off_axis = kwargs.get('off_axis')
     mirror = _create_aperture(kwargs.get('aperture'), thickness).move(*off_axis,
                                                                       0)  # move the mirror to it's off axis pt
@@ -165,7 +174,25 @@ def plane_mirror(thickness: float, **kwargs) -> cg.csg.CSGSurface:
 
 
 @_mirror
-def spherical_mirror(radius: float, thickness: float, **kwargs) -> cg.csg.CSGSurface:
+def spherical_mirror(radius: float, thickness: float, **kwargs) -> cg.Intersectable:
+    """
+    Creates a spherical mirror defined by the surface function.
+
+    .. math::
+        x(y,z) = r-\\sqrt{r^2-(x^2+y^2)}
+
+    Only the spherical surface is reflective, all sidewalls are absorbing.
+
+    :param radius: radius of the spherical surface. must be > 0. A radius of :code:`math.inf` will result in a
+        plane mirror.
+    :param thickness: back thickness of the mirror. The mirror's aperture will be extended with an absorbing surface
+        up to the plane defined by x=-thickness. If the resulting back-plane clips into the spherical surface, the
+        surface will be cut off at the back-plane
+    :param kwargs:
+    :return: A spherical mirror with an absorbing backplane facing towards the -X axis, and a spherical surface facing
+        towards +X. The focal point of the mirror is at (r/2, 0, 0).
+    """
+
     off_axis = kwargs.get('off_axis')
     material = kwargs.get('material')
     aperture = kwargs.get('aperture')
@@ -197,29 +224,36 @@ def spherical_mirror(radius: float, thickness: float, **kwargs) -> cg.csg.CSGSur
     return mirror
 
 
+# @_mirror
+# def elliptical_mirror(major_radius: float, minor_radius: float, thickness: float, **kwargs) -> cg.csg.CSGSurface:
+#     """
+#     :param major_radius:
+#     :param minor_radius:
+#     :param thickness:
+#     :param kwargs:
+#     :return:
+#     """
+#     off_axis = kwargs.get('off_axis')
+#     material = kwargs.get('material')
+#     aperture = kwargs.get('aperture')
+#     aperture_thickness = thickness + minor_radius
+#
+#     aperture = _create_aperture(aperture, aperture_thickness)
+#     aperture.material = matl.absorber
+#     aperture.move(*off_axis, 0)
+#     aperture.move_z(minor_radius / 2 - thickness)
+#
+#     mirror_surface = cg.Sphere(minor_radius, material=material)
+#     mirror_surface.scale_y(major_radius / minor_radius)
+#     mirror_surface.move_z(minor_radius)
+#     mirror = cg.csg.difference(aperture, mirror_surface)
+#     return mirror
+
+
 @_mirror
-def elliptical_mirror(major_radius: float, minor_radius: float, thickness: float, **kwargs) -> cg.csg.CSGSurface:
-    off_axis = kwargs.get('off_axis')
-    material = kwargs.get('material')
-    aperture = kwargs.get('aperture')
-    aperture_thickness = thickness + minor_radius
-
-    aperture = _create_aperture(aperture, aperture_thickness)
-    aperture.material = matl.absorber
-    aperture.move(*off_axis, 0)
-    aperture.move_z(minor_radius / 2 - thickness)
-
-    mirror_surface = cg.Sphere(minor_radius, material=material)
-    mirror_surface.scale_y(major_radius / minor_radius)
-    mirror_surface.move_z(minor_radius)
-    mirror = cg.csg.difference(aperture, mirror_surface)
-    return mirror
-
-
-@_mirror
-def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.CSGSurface:
+def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.Intersectable:
     """
-    A parabolic mirror created by revolving the below curve about the x-axis.
+    Creates a parabolic mirror defined by the below surface.
 
     .. math::
         x(y,z)=\\frac{1}{4f} (y^2+z^2) - f

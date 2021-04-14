@@ -3,9 +3,4 @@
 ##################
 
 
-Heading One
-============
-:class:`pyrayt._pyrayt.RayTracer`
-
-Heading Two
-============
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa but then is

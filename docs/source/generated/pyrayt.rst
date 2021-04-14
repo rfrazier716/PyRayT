@@ -23,7 +23,10 @@ pyrayt.materials module
 Module contents
 ---------------
 
-.. automodule:: pyrayt
+All variables in :code:`pyrayt._pyrayt` are pulled into the :code:`pyrayt` namespace when the package is
+imported.
+
+.. automodule:: pyrayt._pyrayt
    :members:
    :undoc-members:
    :show-inheritance:

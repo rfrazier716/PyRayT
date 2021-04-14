@@ -3,4 +3,3 @@
 #########
 
 .. include:: ../../LICENSE.txt
-    :class: highlight

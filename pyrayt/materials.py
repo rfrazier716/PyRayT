@@ -57,6 +57,8 @@ class BasicRefractor(TracableMaterial):
 
 
 absorber = _AbsorbingMaterial()  # an
+"""A bulk absorbing material"""
+
 # instance of the absorbing material class to call
 mirror = _ReflectingMaterial()
 glass = BasicRefractor(1.5)
