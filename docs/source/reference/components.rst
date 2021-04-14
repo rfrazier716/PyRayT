@@ -1,18 +1,49 @@
-#####################
+######################
  Traceable Components
-#####################
+######################
 
-Built in components
+Sources
+========
+
+Basic Sources
+``````````````
+
+* :class:`~pyrayt.components.LineOfRays`
+* :class:`~pyrayt.components.ConeOfRays`
+
+Additional Sources
+```````````````````
+
+* :class:`~pyryayt.components.Lamp`
+* :class:`~pyrayt.components.StaticLamp`
+
+Built in Parts
 ====================
 
-Lenses
-```````
+.. _Apertures:
+Specifying Apertures
+`````````````````````
+
+Spherical Lenses
+`````````````````
+PyRayT includes factory functions for spherical lenses that return :func:`tinygfx.g3d.csg.CSGSurface` objects. Additional
+keyword arguments can be passed to each function.
+
+* :func:`~pyrayt.components.biconvex_lens`
+* :func:`~pyrayt.components.plano_convex_lens`
 
 Mirrors
 ````````
 
+* :func:`~pyrayt.components.spherical_mirror`
+* :func:`~pyrayt.components.parabolic_mirror`
+* :func:`~pyrayt.components.plane_mirror`
+* :func:`~pyrayt.components.elliptical_mirror`
+
 Miscellaneous
 ``````````````
+
+* :func:`~pyrayt.components.baffle`
 
 Creating a Custom Part
 ============================

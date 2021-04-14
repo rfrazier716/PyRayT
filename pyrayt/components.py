@@ -1,5 +1,6 @@
 import abc
 from functools import lru_cache
+from functools import wraps
 from typing import Union, Tuple
 
 import numpy as np
@@ -17,6 +18,7 @@ def _lens(func):
     :return:
     """
 
+    @wraps(func)
     def wrapper_function(*args, **kwargs):
         lens_arguments = {
             'aperture': 1,
@@ -66,7 +68,22 @@ def _sphere_sample(n_pts: int, max_angle: float) -> np.ndarray:
 
 
 @_lens
-def biconvex_lens(r1: float, r2: float, thickness: float, **kwargs):
+def biconvex_lens(r1: float, r2: float, thickness: float, **kwargs) -> cg.Intersectable:
+    """
+    Creates a thick lens with two convex surfaces.
+
+    Any radii values less than zero will be treated as the absolute value of the input. passing :code:`math.inf` for
+    either radius will make that surface planar.
+
+    :param r1: Radius of curvature for the first lens surface.
+    :param r2: Radius of curvature for the second lens surface.
+    :param thickness: full thickness of the lens. If the thickness is set such that the two surface curvatures 'clip'
+        into eachother inside of the aperture bounds, the resulting aperture will be set by the clip point.
+    :param kwargs: Additional keyword arguments
+    :return: A traceable lens centered at the origin. The returned lens is oriented such that the
+        first surfaces faces the -X axis, and the second surface faces +X. The aperture is defined in the YZ Plane.
+    """
+
     # create an aperture from the aperture arguments
     aperture_shape = _create_aperture(kwargs.get('aperture'), thickness)
     left_side = cg.Sphere(r2).move_z(r1 - thickness / 2)
@@ -87,7 +104,20 @@ def biconvex_lens(r1: float, r2: float, thickness: float, **kwargs):
 
 
 @_lens
-def plano_convex_lens(r: float, thickness: float, **kwargs) -> cg.csg.CSGSurface:
+def plano_convex_lens(r: float, thickness: float, **kwargs) -> cg.csg.Intersectable:
+    """
+    Creates a thick lens with one convex surface and one planar surface.
+
+    :param r: Radius of curvature for the spherical surface. A radius value less than zero will be treated as the
+        absolute value of the input. passing :code:`math.inf` for the radius will make the second surface planar,
+        resulting in a planar window.
+    :param thickness: full thickness of the lens. If the thickness is set such that the two surface curvatures 'clip'
+        into each other inside of the aperture bounds, the resulting aperture will be set by the clip point.
+    :param kwargs: Additional keyword arguments
+    :return: A traceable lens centered at the origin, oriented such that the planar surface faces the -X axis,
+        and the spherical surface faces +X. The aperture is defined in the YZ Plane.
+    """
+
     # create an aperture from the aperture arguments
     aperture = _create_aperture(kwargs.get('aperture'), thickness)
     right_side = cg.Sphere(r).move_z(-(r - thickness / 2))
@@ -111,7 +141,7 @@ def _mirror(func):
     :param func:
     :return:
     """
-
+    @wraps(func)
     def wrapper_function(*args, **kwargs):
         lens_arguments = {
             'aperture': 1,
@@ -188,6 +218,21 @@ def elliptical_mirror(major_radius: float, minor_radius: float, thickness: float
 
 @_mirror
 def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.CSGSurface:
+    """
+    A parabolic mirror created by revolving the below curve about the x-axis.
+
+    .. math::
+        x(y,z)=\\frac{1}{4f} (y^2+z^2) - f
+
+    Only the parabolic surface is reflective, and all sidewalls are absorbing.
+
+    :param focus: focal length of the parabola
+    :param thickness: Back thickness of the mirror. The parabola will be extended with an absorbing surface that extends
+        until x=-(focus + thickness)
+    :param kwargs: additional keyword arguments
+    :return: A Parabolic mirror whose focus is on the origin.
+    """
+
     off_axis = kwargs.get('off_axis')
     material = kwargs.get('material')
     aperture = kwargs.get('aperture')
@@ -201,10 +246,10 @@ def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.CSGSurf
         furthest_point = np.linalg.norm(np.asarray(off_axis)) + aperture
 
     front_thickness = 1 / (
-                4 * focus) * furthest_point ** 2  # the front thickness is the parabola value at the furthest point
+            4 * focus) * furthest_point ** 2  # the front thickness is the parabola value at the furthest point
     total_thickness = thickness + front_thickness
 
-    aperture_shape = _create_aperture(aperture, total_thickness).move(*off_axis,0)
+    aperture_shape = _create_aperture(aperture, total_thickness).move(*off_axis, 0)
     aperture_shape.material = matl.absorber  # assign the material
     aperture_shape.move_z(total_thickness / 2 - thickness)
 
@@ -217,7 +262,15 @@ def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.CSGSurf
     return mirror
 
 
-def baffle(aperture: Tuple[float, float]):
+def baffle(aperture: Union[float, Tuple[float, float]]) -> cg.Intersectable:
+    """
+    Creates a planar baffle that absorbs all intersecting rays.
+
+    :param aperture: Aperture specification for the baffle. see :ref:`Specifying Apertures <Apertures>` for additional
+        details.
+    :return: a planar baffle centered at the origin, coplanar to the YZ Plane.
+    """
+
     return cg.XYPlane(aperture[0], aperture[1], material=matl.absorber)
 
 
@@ -326,5 +379,3 @@ class StaticLamp(Lamp):
     @lru_cache(10)
     def generate_rays(self, n_rays: int) -> pyrayt.RaySet:
         return super().generate_rays(n_rays)
-
-

@@ -174,6 +174,14 @@ pyparsing = ">=2.0.3,<2.0.4 || >2.0.4,<2.1.2 || >2.1.2,<2.1.6 || >2.1.6"
 python-dateutil = ">=2.1"
 
 [[package]]
+name = "msvc-runtime"
+version = "14.28.29910"
+description = "Install the Microsoft™ Visual C++™ runtime DLLs to the sys.prefix and Scripts directories"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[[package]]
 name = "numpy"
 version = "1.20.1"
 description = "NumPy is the fundamental package for array computing with Python."
@@ -350,6 +358,21 @@ lint = ["flake8 (>=3.5.0)", "isort", "mypy (>=0.790)", "docutils-stubs"]
 test = ["pytest", "pytest-cov", "html5lib", "cython", "typed-ast"]
 
 [[package]]
+name = "sphinx-autodoc-typehints"
+version = "1.11.1"
+description = "Type hints (PEP 484) support for the Sphinx autodoc extension"
+category = "dev"
+optional = false
+python-versions = ">=3.5.2"
+
+[package.dependencies]
+Sphinx = ">=3.0"
+
+[package.extras]
+test = ["pytest (>=3.1.0)", "typing-extensions (>=3.5)", "sphobjinv (>=2.0)", "Sphinx (>=3.2.0)", "dataclasses"]
+type_comments = ["typed-ast (>=1.4.0)"]
+
+[[package]]
 name = "sphinx-rtd-theme"
 version = "0.5.1"
 description = "Read the Docs theme for Sphinx"
@@ -520,7 +543,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.5"
-content-hash = "53c6513aa2c91d76df89fdbf96e40f58eb347b834480849668e23bcf7604a033"
+content-hash = "5e95da0d248e468739649e459d48051a79a382033071f475886d5615bb6f42a7"
 
 [metadata.files]
 alabaster = [
@@ -745,6 +768,19 @@ matplotlib = [
     {file = "matplotlib-3.3.4-pp37-pypy37_pp73-manylinux2010_x86_64.whl", hash = "sha256:cf3a7e54eff792f0815dbbe9b85df2f13d739289c93d346925554f71d484be78"},
     {file = "matplotlib-3.3.4.tar.gz", hash = "sha256:3e477db76c22929e4c6876c44f88d790aacdf3c3f8f3a90cb1975c0bf37825b0"},
 ]
+msvc-runtime = [
+    {file = "msvc_runtime-14.28.29910-cp35-cp35m-win32.whl", hash = "sha256:54e0574ac6395e3386334a981452b9e3b32e2bc5d8b7931e87b0a04003ab2e61"},
+    {file = "msvc_runtime-14.28.29910-cp35-cp35m-win_amd64.whl", hash = "sha256:e56ac9329110e2051cf4dab8499ac1511aa750a172f9472ce49422eb7dbcfaed"},
+    {file = "msvc_runtime-14.28.29910-cp36-cp36m-win32.whl", hash = "sha256:b98993af6f6f4b357f1cd378b8d59f3773aa1735a47dedf77b80828f277389d4"},
+    {file = "msvc_runtime-14.28.29910-cp36-cp36m-win_amd64.whl", hash = "sha256:ce81d5927eb09042d9cd8a5c549187f6d79009a445997e73308bc031e4b1656e"},
+    {file = "msvc_runtime-14.28.29910-cp37-cp37m-win32.whl", hash = "sha256:3f8fea2ea05b16895a408f682617974b02b94f30369aae8220fdd9c86446595b"},
+    {file = "msvc_runtime-14.28.29910-cp37-cp37m-win_amd64.whl", hash = "sha256:e17009f7234a2cef9b91a27f020f420499a41f7733d07d02da971590e2d85495"},
+    {file = "msvc_runtime-14.28.29910-cp38-cp38-win32.whl", hash = "sha256:091f1621f09214b60be6dc081810ee95729f780aefd6cfcd762283c1c11cccca"},
+    {file = "msvc_runtime-14.28.29910-cp38-cp38-win_amd64.whl", hash = "sha256:84c14ee4919d1b33f1dbccf75ebdd57cae35ef31ecab34f7ea71b87c2daa0845"},
+    {file = "msvc_runtime-14.28.29910-cp39-cp39-win32.whl", hash = "sha256:f02c733ce97b630450318c43c823dafd3eeaf7dff16145796d1809b5a3da304d"},
+    {file = "msvc_runtime-14.28.29910-cp39-cp39-win_amd64.whl", hash = "sha256:44f69d0e88618cb4929a1c0b2da5a59591b00ab312fc4cf788b76fd99046a997"},
+    {file = "msvc_runtime-14.28.29910-pp37-pypy37_pp73-win32.whl", hash = "sha256:be0f3875f90139a5ee2263f85f617a886f7b4b9dfd37dc0bd4e0e86972190503"},
+]
 numpy = [
     {file = "numpy-1.20.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:ae61f02b84a0211abb56462a3b6cd1e7ec39d466d3160eb4e1da8bf6717cdbeb"},
     {file = "numpy-1.20.1-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:65410c7f4398a0047eea5cca9b74009ea61178efd78d1be9847fac1d6716ec1e"},
@@ -890,6 +926,10 @@ snowballstemmer = [
 sphinx = [
     {file = "Sphinx-3.4.3-py3-none-any.whl", hash = "sha256:c314c857e7cd47c856d2c5adff514ac2e6495f8b8e0f886a8a37e9305dfea0d8"},
     {file = "Sphinx-3.4.3.tar.gz", hash = "sha256:41cad293f954f7d37f803d97eb184158cfd90f51195131e94875bc07cd08b93c"},
+]
+sphinx-autodoc-typehints = [
+    {file = "sphinx-autodoc-typehints-1.11.1.tar.gz", hash = "sha256:244ba6d3e2fdb854622f643c7763d6f95b6886eba24bec28e86edf205e4ddb20"},
+    {file = "sphinx_autodoc_typehints-1.11.1-py3-none-any.whl", hash = "sha256:da049791d719f4c9813642496ee4764203e317f0697eb75446183fa2a68e3f77"},
 ]
 sphinx-rtd-theme = [
     {file = "sphinx_rtd_theme-0.5.1-py2.py3-none-any.whl", hash = "sha256:fa6bebd5ab9a73da8e102509a86f3fcc36dec04a0b52ea80e5a033b2aba00113"},

@@ -18,6 +18,7 @@ Packages
    reference/index
    examples
    license
+   generated/index
 
 Indices and tables
 ==================
