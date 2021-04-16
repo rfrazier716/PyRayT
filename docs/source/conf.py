@@ -10,10 +10,9 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
-
+import os
+import sys
+sys.path.insert(0, os.path.abspath('./_ext'))
 
 # -- Project information -----------------------------------------------------
 
@@ -30,8 +29,9 @@ release = '0.2.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
-              'sphinx.ext.autosummary'
-              #'sphinx_autodoc_typehints'
+              'sphinx.ext.autosummary',
+              'sphinx_panels',
+              'encyclopedia'
               ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -55,9 +55,11 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_css_files = [
     'css/custom.css',
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css",
+]
+html_js_files = [
+    "https://kit.fontawesome.com/b9c0b6e7c8.js",
 ]
 
 # automatically document typehints
 autodoc_typehints = 'description'
-
-

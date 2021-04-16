@@ -1,5 +1,15 @@
-.license {
-    border: 1px solid #e1e4e5;
-    overflow-x: auto;
-    margin: 1px 0 24px;
+.rst-content code.literal {
+    color: #000000 !important;
+}
+
+#traceable-components code.xref.py.literal .pre {
+    text-decoration: line-through;
+}
+
+#traceable-components a.reference.internal code.xref.py.literal .pre {
+    text-decoration: none !important;
+}
+
+i.rp-encyclopedia{
+    color: crimson;
 }

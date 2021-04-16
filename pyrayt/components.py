@@ -382,6 +382,9 @@ class ConeOfRays(Source):
 
 
 class Lamp(Source):
+    """
+    a lamp
+    """
     def __init__(self, width: float, length: float, max_angle: float = 90, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._max_angle = max_angle * np.pi / 180  # convert the max angle to radians internally
