@@ -31,7 +31,9 @@ release = '0.2.0'
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
               'sphinx_panels',
-              'encyclopedia'
+              'encyclopedia',
+              'sphinx-prompt',
+              'sphinx.ext.autosectionlabel',
               ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -63,3 +65,9 @@ html_js_files = [
 
 # automatically document typehints
 autodoc_typehints = 'description'
+
+# set the pygments style for code
+pygments_style = 'sphinx'
+
+# auto section labels
+autosectionlabel_prefix_document = True

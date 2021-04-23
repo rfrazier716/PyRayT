@@ -383,6 +383,18 @@ testing = ["pytest (>=6.0.1,<6.1.0)", "pytest-regressions (>=2.0.1,<2.1.0)"]
 themes = ["sphinx-rtd-theme", "pydata-sphinx-theme (>=0.4.0,<0.5.0)", "sphinx-book-theme (>=0.0.36,<0.1.0)", "myst-parser (>=0.12.9,<0.13.0)"]
 
 [[package]]
+name = "sphinx-prompt"
+version = "1.4.0"
+description = "Sphinx directive to add unselectable prompt"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+pygments = "*"
+Sphinx = "*"
+
+[[package]]
 name = "sphinx-rtd-theme"
 version = "0.5.1"
 description = "Read the Docs theme for Sphinx"
@@ -553,7 +565,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.5"
-content-hash = "54b4af0f0b26bfcbb818fda2fbad67236918fbea60482a46bcf79df233ebdf05"
+content-hash = "a901a4252d5ed59200b854df813712600a13cc7809cb3ad3627d81b0fdf316c3"
 
 [metadata.files]
 alabaster = [
@@ -931,6 +943,10 @@ sphinx-autodoc-typehints = [
 sphinx-panels = [
     {file = "sphinx-panels-0.5.2.tar.gz", hash = "sha256:b7b3faa05f37b7318fd14cd85c4effa1ab905dfc8bed236a63978565ea461ae4"},
     {file = "sphinx_panels-0.5.2-py3-none-any.whl", hash = "sha256:2b2e18448b0494e7a232d6c7dfb9aa3982e7aeb92aeea7d1b146e34e9261d2f1"},
+]
+sphinx-prompt = [
+    {file = "sphinx-prompt-1.4.0.tar.gz", hash = "sha256:70c8e66d1f36def1e295ed961c7562bbf8fc697eea5191b92b41e4784c264ef5"},
+    {file = "sphinx_prompt-1.4.0-py3-none-any.whl", hash = "sha256:ac54b204c3e0ff75851d92060672b65407ff67f8942bde2eb6ba318b8e7ca595"},
 ]
 sphinx-rtd-theme = [
     {file = "sphinx_rtd_theme-0.5.1-py2.py3-none-any.whl", hash = "sha256:fa6bebd5ab9a73da8e102509a86f3fcc36dec04a0b52ea80e5a033b2aba00113"},
