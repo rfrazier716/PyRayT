@@ -32,7 +32,7 @@ Additional Sources
 ```````````````````
 
 * :class:`~pyrayt.components.Lamp` - A randomly generated set of rays, uniformly distributed over an aperture with a Lambertian intensity distribution.
-* :class:`~pyrayt.components.StaticLamp` - Identical to :class:`~pyrayt.components.Lamp`, but uses caching to ensure successive calls to :meth:`~pyryat.components.Source.generate_rays` generate the same :class:`~pyrayt._pyrayt.RaySet` object.
+* :class:`~pyrayt.components.StaticLamp` - Identical to :class:`~pyrayt.components.Lamp`, but uses caching to ensure successive calls to :meth:`~pyrayt.components.Source.generate_rays` generate the same :class:`~pyrayt._pyrayt.RaySet` object.
 * :class:`~pyryat.components.ImageSource` - Generates a set of Rays based on the pixel values of an image.
 
 Built in Parts
