@@ -71,3 +71,6 @@ pygments_style = 'sphinx'
 
 # auto section labels
 autosectionlabel_prefix_document = True
+
+# autoclass the init function instead of the class function
+autoclass_content = 'init'
