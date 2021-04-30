@@ -10,7 +10,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-            key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum "pyproject.toml" }}-{{checksum ".circleci/config.yml"}}
+            key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum "pyproject.toml" }}
       - run:
           name: install python dependencies
           command: |
@@ -76,6 +76,9 @@ jobs:
           username: rfrazier
           password: $DOCKER_API_KEY
 
+    environment:
+      PYPI_API_KEY: $PYPI_PASSWORD
+
     steps:
       - checkout
       - restore_cache:
@@ -84,7 +87,7 @@ jobs:
           name: deploy to pypi
           command: |
             /root/.poetry/bin/poetry build
-            /root/.poetry/bin/poetry publish --username rfrazier716 --password $PYPI_PASSWORD
+            /root/.poetry/bin/poetry publish --username rfrazier716 --password $PYPI_API_KEY
 
 workflows:
   build_and_deploy:
@@ -95,11 +98,13 @@ workflows:
               only: /.*/
 
       - unit-tests:
+          name: py37-tests
           version: "3.7"
           requires:
             - build
 
       - unit-tests:
+          name: py38-tests
           version: "3.8"
           requires:
             - build
@@ -111,6 +116,8 @@ workflows:
       - deploy:
           requires:
             - build
+            - py37-tests
+            - py38-tests
           filters:
             tags:
               only: /^v[0-9]+(\.[0-9]+)*(-[a-z]+(\.[0-9]+)*)?/
