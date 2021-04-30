@@ -87,7 +87,8 @@ jobs:
           name: deploy to pypi
           command: |
             /root/.poetry/bin/poetry build
-            /root/.poetry/bin/poetry publish --username rfrazier716 --password $PYPI_API_KEY
+            /root/.poetry/bin/poetry config pypi-token.pypi $PYPI_API_KEY
+            /root/.poetry/bin/poetry publish
 
 workflows:
   build_and_deploy:
