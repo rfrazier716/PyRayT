@@ -77,7 +77,8 @@ jobs:
           password: $DOCKER_API_KEY
 
     environment:
-      PYPI_API_KEY: $PYPI_PASSWORD
+      PYPI_USERNAME: $PYPI_USERNAME
+      PYPI_PASSROWD: $PYPI_PASSWORD
 
     steps:
       - checkout
@@ -87,8 +88,7 @@ jobs:
           name: deploy to pypi
           command: |
             /root/.poetry/bin/poetry build
-            /root/.poetry/bin/poetry config pypi-token.pypi $PYPI_API_KEY
-            /root/.poetry/bin/poetry publish
+            /root/.poetry/bin/poetry publish --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
 workflows:
   build_and_deploy:
