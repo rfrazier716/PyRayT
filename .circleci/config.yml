@@ -78,7 +78,7 @@ jobs:
 
     environment:
       PYPI_USERNAME: $PYPI_USERNAME
-      PYPI_PASSROWD: $PYPI_PASSWORD
+      PYPI_PASSWORD: $PYPI_PASSWORD
 
     steps:
       - checkout
