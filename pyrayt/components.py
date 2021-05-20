@@ -305,7 +305,7 @@ def baffle(aperture: Union[float, Tuple[float, float]]) -> cg.Intersectable:
     :return: a planar baffle centered at the origin, coplanar to the YZ Plane.
     """
 
-    return cg.XYPlane(aperture[0], aperture[1], material=matl.absorber)
+    return cg.XYPlane(aperture[0], aperture[1], material=matl.absorber).rotate_y(90)
 
 
 class Source(cg.WorldObject, abc.ABC):

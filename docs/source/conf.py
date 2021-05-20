@@ -21,7 +21,7 @@ copyright = '2021, Ryan Frazier'
 author = 'Ryan Frazier'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.0-alpha'
+release = '0.2.0'
 
 # -- General configuration ---------------------------------------------------
 
