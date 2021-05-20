@@ -392,8 +392,8 @@ class Plane(SurfacePrimitive):
         super().__init__(*args, **kwargs)
         self._width = width  # width is x-dim
         self._length = length  # length is y-dim
-        self.bounding_points = _corners_to_cube_points((-self._width / 2, -self._length / 2, -1),
-                                                       (self._width / 2, self._length / 2, 1))
+        self.bounding_points = _corners_to_cube_points((-self._width / 2, -self._length / 2, -.01),
+                                                       (self._width / 2, self._length / 2, .01))
 
     def intersect(self, rays):
         """
