@@ -281,6 +281,11 @@ class TestTracerSurface(unittest.TestCase):
         self.radius = 3
         self.sphere = cg.Sphere(self.radius)
 
+    def test_multiple_surface_id(self):
+        sphere_id = self.sphere.get_id()
+        cylinder_id = cg.Cylinder().get_id()
+        self.assertNotEqual(sphere_id, cylinder_id)
+
     def test_getting_surface_id(self):
         sphere_id = self.sphere.get_id()
 

@@ -1,6 +1,7 @@
 import collections
 import copy
 
+from itertools import count
 from numpy import linalg as linalg
 from scipy.spatial import transform as transform
 
@@ -23,24 +24,11 @@ def bounding_box(point_set):
 
 
 class CountedObject(object):
-    _object_count = 0  # keeps track of how many objects of each type exist
-    _next_object_id = 0  # the next id number to use when a new object is initialized
-
-    @classmethod
-    def _increment(cls):
-        # increments the classes object count and returns the object number of the instance that called it
-        this_id = cls._next_object_id
-        cls._object_count += 1
-        cls._next_object_id += 1
-        return this_id
-
-    @classmethod
-    def _decrement(cls):
-        cls._object_count -= 1
+    _ids = count(0)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
-        self._id = self._increment()  # object specific id number for this instance
+        self._id = next(self._ids)
 
     def get_id(self):
         """
@@ -50,18 +38,6 @@ class CountedObject(object):
         :rtype: int
         """
         return self._id
-
-    @classmethod
-    def get_count(cls):
-        """
-        Gets the current count of objects
-        :return: the current number of objects in memory
-        :rtype: int
-        """
-        return cls._object_count
-
-    def __del__(self):
-        type(self)._decrement()  # reduce the object count by 1
 
 
 class WorldObject(CountedObject):
