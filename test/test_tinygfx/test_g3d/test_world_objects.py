@@ -282,7 +282,7 @@ class TestTracerSurface(unittest.TestCase):
         self.sphere = cg.Sphere(self.radius)
 
     def test_getting_surface_id(self):
-        sphere_id = id(self.sphere)
+        sphere_id = self.sphere.get_id()
 
         id_tuple = self.sphere.surface_ids[0]
         self.assertEqual(sphere_id, id_tuple[0])
@@ -302,7 +302,7 @@ class TestTracerSurface(unittest.TestCase):
         hits, surface_ids = self.sphere.intersect(rays)
         self.assertEqual(hits.shape, surface_ids.shape)
 
-        self.assertTrue(np.allclose(surface_ids, id(self.sphere)))
+        self.assertTrue(np.allclose(surface_ids, self.sphere.get_id()))
 
     def test_intersection_moved_object(self):
         # if we move the sphere by it's radius, a ray at (0,0,-1) with v=(0,0,1) will intersect at t=1
@@ -501,9 +501,6 @@ class TestCuboid(unittest.TestCase):
 
         actual = cube.primitive.axis_spans
         self.assertTrue(np.allclose(actual, expected_span), actual)
-
-
-
 
 
 if __name__ == '__main__':

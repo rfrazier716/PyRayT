@@ -333,7 +333,7 @@ class Intersectable(WorldObject, abc.ABC):
         Returns a tuple of surface ids and surface that make up the intersectable object, used for calculating
         intersections.
         """
-        return (id(self), self),
+        return (self.get_id(), self),
 
     @property
     def bounding_volume(self):
@@ -376,7 +376,7 @@ class TracerSurface(Intersectable, abc.ABC):
         # hits = np.where(np.isfinite(hits), hits, -1)  # mask the hits so that anywhere it's np.inf it's cast as -1
 
         return np.sort(hits, axis=0), np.full(hits.shape,
-                                              id(self))  # return the hits matrix and the intersecting surface
+                                              self.get_id())  # return the hits matrix and the intersecting surface
 
     def shade(self, rays: np.ndarray, distances: np.ndarray, **kwargs) -> np.ndarray:
         """
