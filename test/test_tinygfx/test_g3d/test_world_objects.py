@@ -9,46 +9,11 @@ class TestCountedObject(unittest.TestCase):
         self.obj = cg.CountedObject()
 
     def test_count_incrementing(self):
-        obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
-
-        # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
-
-        # none of the objects should have the same count_id
-        obj_ids = set([test_object.get_id() for test_object in test_objects])
-        self.assertEqual(len(obj_ids), obj_to_create)
-
-        # the objects should be incremented sequentially
-        self.assertTrue(np.all(np.diff(np.sort(np.array(list(obj_ids)))) == 1))
-
-    def test_decrementing_object_count(self):
-        obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
-
-        # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
-
-        # deleting objects should reduce the count
-        for n in range(len(test_objects)):
-            test_objects.pop(-1)
-            self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count - n - 1)
-
-    def test_creating_obj_after_deletion(self):
-        # create a list of objects then delete them all
-
-        obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
-        max_id = test_objects[-1].get_id()
-        del test_objects
-
-        # make sure that a new object indexes up and does not reuse any of the deleted IDs
-        new_object = cg.CountedObject()
-        self.assertEqual(new_object.get_id(), max_id + 1)
-
+        obj_id = self.obj.get_id()
+        for _ in range(20):
+            next_id = cg.CountedObject().get_id()
+            self.assertTrue(next_id > obj_id)
+            obj_id = next_id
 
 class WorldObjectTestCase(unittest.TestCase):
     """
