@@ -426,6 +426,7 @@ class RayTracer(object):
             components
         """
         shaded = kwargs.pop('shaded', False)
+        show_at_end = False
         if axis is None:
             axis = plt.gca()
             show_at_end = True
