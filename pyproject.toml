@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyrayt"
-version = "0.2.0-alpha"
+version = "0.2.0"
 description = "a toolchain for developing and simulating optical packages"
 authors = ["Frazier, Ryan"]
 license = "MIT"
@@ -15,7 +15,6 @@ numpy = "^1.20.0"
 scipy = "^1.6.0"
 pandas = "^1.2.2"
 matplotlib = "^3.3.4"
-sphinx-panels = "^0.5.2"
 
 [tool.poetry.dev-dependencies]
 coverage = "^5.4.0"
