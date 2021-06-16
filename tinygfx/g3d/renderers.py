@@ -95,8 +95,9 @@ class EdgeRender(object):
         v_diffs = np.abs(np.diff(hit_matrix, axis=0, prepend=-1))
 
         # now do a binary dilation to make the lines a bit thicker
-        edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2,2), iterations=np.maximum(1,int(np.max(hit_matrix.shape)/200)))
-        #edges = (h_diffs + v_diffs) > 0
+        edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2, 2),
+                                        iterations=np.maximum(1, int(np.max(hit_matrix.shape) / 300)))
+        # edges = (h_diffs + v_diffs) > 0
 
         # put the result into an image canvas
         canvas = np.zeros((*hit_matrix.shape, 4), dtype=float)
