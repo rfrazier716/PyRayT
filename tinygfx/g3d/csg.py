@@ -10,7 +10,9 @@ class Operation(Enum):
     DIFFERENCE = 3
 
 
-def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation, sort_output=True):
+def array_csg(
+    array1: np.ndarray, array2: np.ndarray, operation: Operation, sort_output=True
+):
     """
     Given two arrays and an operation, returns a new array which is the CSG operation acting on the array.
     If the array is thought of as intersection points between a ray and a two objects being combined with a CSG
@@ -40,7 +42,9 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation, sort
         surface_count = np.cumsum(merged_mask, axis=0)
 
     elif operation == Operation.DIFFERENCE:
-        merged_mask = np.where(np.logical_xor(merged_argsort & 1, merged_argsort >= array1.shape[0]), -1, 1)
+        merged_mask = np.where(
+            np.logical_xor(merged_argsort & 1, merged_argsort >= array1.shape[0]), -1, 1
+        )
         surface_count = np.cumsum(merged_mask, axis=0) + 1
     else:
         raise ValueError(f"operation {operation} is invalid")
@@ -50,7 +54,7 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation, sort
         csg_hits = np.where(surface_count != 0, merged_array, np.inf)
 
     elif operation == Operation.INTERSECT or operation == Operation.DIFFERENCE:
-        is_two = (surface_count == 2)
+        is_two = surface_count == 2
         mask = np.logical_or(is_two, np.roll(is_two, 1, axis=0))
         csg_hits = np.where(mask, merged_array, np.inf)
 
@@ -58,9 +62,14 @@ def array_csg(array1: np.ndarray, array2: np.ndarray, operation: Operation, sort
 
 
 class CSGSurface(Intersectable):
-
-    def __init__(self, l_child: Intersectable, r_child: Intersectable, operation: Operation, *args,
-                 **kwargs):
+    def __init__(
+        self,
+        l_child: Intersectable,
+        r_child: Intersectable,
+        operation: Operation,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)  # call the next constructor in the MRO
 
         # store the boolean type
@@ -87,9 +96,11 @@ class CSGSurface(Intersectable):
         :return:
         """
         if self._operation != Operation.DIFFERENCE:
-            new_spans = array_csg(self._l_child.bounding_box.axis_spans.T,
-                                  self._r_child.bounding_box.axis_spans.T,
-                                  self._operation)
+            new_spans = array_csg(
+                self._l_child.bounding_box.axis_spans.T,
+                self._r_child.bounding_box.axis_spans.T,
+                self._operation,
+            )
 
             # check if the resulting spans are valid
             # if (self._operation == Operation.UNION and np.any(np.isfinite(new_spans[2:]))) or \
@@ -112,17 +123,23 @@ class CSGSurface(Intersectable):
 
         # get a boolean mask of rays that intersect the surface
         rays = np.atleast_3d(rays)
-        bounding_box_intersections = np.any(np.isfinite(self._aobb.intersect(rays)), axis=0)
+        bounding_box_intersections = np.any(
+            np.isfinite(self._aobb.intersect(rays)), axis=0
+        )
 
         # calculate the csg hits for the array subset that intersects the object
-        local_ray_set = rays[:, :, bounding_box_intersections]  # make a subset of rays that intersect
+        local_ray_set = rays[
+            :, :, bounding_box_intersections
+        ]  # make a subset of rays that intersect
         l_hits, l_surfaces = self._l_child.intersect(local_ray_set)
         r_hits, r_surfaces = self._r_child.intersect(local_ray_set)
 
         # build a mask to sort the surfaces
         csg_surfaces = np.vstack((l_surfaces, r_surfaces))
         surface_sort_mask = np.argsort(np.vstack((l_hits, r_hits)), axis=0)
-        csg_surfaces = csg_surfaces[surface_sort_mask, np.arange(csg_surfaces.shape[-1])]
+        csg_surfaces = csg_surfaces[
+            surface_sort_mask, np.arange(csg_surfaces.shape[-1])
+        ]
 
         csg_hits = array_csg(l_hits, r_hits, self._operation, sort_output=False)
 
@@ -133,7 +150,9 @@ class CSGSurface(Intersectable):
 
         # plug the csg_hits back into a main hit matrix
         all_hits = np.full((csg_hits.shape[0], rays.shape[-1]), np.inf)
-        all_hits[:, bounding_box_intersections] = csg_hits  # plug the csg_hits into the hits matrix
+        all_hits[
+            :, bounding_box_intersections
+        ] = csg_hits  # plug the csg_hits into the hits matrix
 
         # plug the csg surfaces back into the main surface matrix
         all_surfaces = np.full((csg_hits.shape[0], rays.shape[-1]), -1)

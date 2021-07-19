@@ -9,7 +9,7 @@ from tinygfx.g3d import Point
 
 
 class EdgeRender(object):
-    ray_offset_value = 1E-6  # how far off the rays are moved from surfaces
+    ray_offset_value = 1e-6  # how far off the rays are moved from surfaces
 
     class States(Enum):
         PROPAGATE = 1
@@ -45,7 +45,9 @@ class EdgeRender(object):
 
         # run the state machine to completion
         while self._state != self.States.IDLE:
-            self._state_machine[self._state]()  # execute the state function for that state
+            self._state_machine[
+                self._state
+            ]()  # execute the state function for that state
 
         # return the rendered data
         return self._results
@@ -63,7 +65,9 @@ class EdgeRender(object):
 
         # make a ray set from the concatenated ray sets returned by the sources
         self._rays = self._camera.generate_rays()
-        self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
+        self._state = (
+            self.States.PROPAGATE
+        )  # update the state machine to propagate through the system
 
     def _st_propagate(self):
         # the hits matrix is an 1xn matrix to track the nearest hits
@@ -74,7 +78,9 @@ class EdgeRender(object):
         ray_hit_index = np.arange(self._rays.shape[-1])
         for n, shape in enumerate(self._shapes):
             shape_hits, shape_surfaces = shape.intersect(self._rays)
-            nearest_hit_arg = np.argmin(np.where(shape_hits > 0, shape_hits, np.inf), axis=0)
+            nearest_hit_arg = np.argmin(
+                np.where(shape_hits > 0, shape_hits, np.inf), axis=0
+            )
             nearest_hit = shape_hits[nearest_hit_arg, ray_hit_index]
             nearest_surface = shape_surfaces[nearest_hit_arg, ray_hit_index]
             new_minima = nearest_hit < hit_distances
@@ -95,8 +101,11 @@ class EdgeRender(object):
         v_diffs = np.abs(np.diff(hit_matrix, axis=0, prepend=-1))
 
         # now do a binary dilation to make the lines a bit thicker
-        edges = ndimage.binary_dilation(h_diffs + v_diffs, ndimage.generate_binary_structure(2, 2),
-                                        iterations=np.maximum(1, int(np.max(hit_matrix.shape) / 300)))
+        edges = ndimage.binary_dilation(
+            h_diffs + v_diffs,
+            ndimage.generate_binary_structure(2, 2),
+            iterations=np.maximum(1, int(np.max(hit_matrix.shape) / 300)),
+        )
         # edges = (h_diffs + v_diffs) > 0
 
         # put the result into an image canvas
@@ -117,7 +126,7 @@ class EdgeRender(object):
         self._state = self.States.IDLE
 
 
-class ShadedRenderer():
+class ShadedRenderer:
     class States(Enum):
         PROPAGATE = 1
         INTERACT = 2
@@ -126,7 +135,9 @@ class ShadedRenderer():
         INITIALIZE = 5
         TRIM = 6
 
-    def __init__(self, camera: OrthographicCamera, shapes: list, light_position: np.ndarray):
+    def __init__(
+        self, camera: OrthographicCamera, shapes: list, light_position: np.ndarray
+    ):
         self._state = self.States.IDLE  # by default the renderer is idling
         self._simulation_complete = False
         self._results = None
@@ -158,7 +169,9 @@ class ShadedRenderer():
 
         # run the state machine to completion
         while self._state != self.States.IDLE:
-            self._state_machine[self._state]()  # execute the state function for that state
+            self._state_machine[
+                self._state
+            ]()  # execute the state function for that state
 
         # return the rendered data
         return self._results
@@ -168,7 +181,9 @@ class ShadedRenderer():
 
         # Create an outgoing ray set from the camera
         self._rays = self._camera.generate_rays()
-        self._state = self.States.PROPAGATE  # update the state machine to propagate through the system
+        self._state = (
+            self.States.PROPAGATE
+        )  # update the state machine to propagate through the system
 
     def _st_propagate(self):
         # the hits matrix is an 1xn matrix to track the nearest hits
@@ -179,7 +194,9 @@ class ShadedRenderer():
         ray_hit_index = np.arange(self._rays.shape[-1])
         for n, shape in enumerate(self._shapes):
             shape_hits, shape_surfaces = shape.intersect(self._rays)
-            nearest_hit_arg = np.argmin(np.where(shape_hits > 0, shape_hits, np.inf), axis=0)
+            nearest_hit_arg = np.argmin(
+                np.where(shape_hits > 0, shape_hits, np.inf), axis=0
+            )
             nearest_hit = shape_hits[nearest_hit_arg, ray_hit_index]
             nearest_surface = shape_surfaces[nearest_hit_arg, ray_hit_index]
             new_minima = nearest_hit < hit_distances
@@ -200,9 +217,11 @@ class ShadedRenderer():
         for id, surface in self._surface_lut:
             surface_mask = self._hit_surfaces == id
             if np.any(surface_mask):
-                canvas[:, surface_mask] = surface.shade(self._rays[..., surface_mask],
-                                                        self._hit_distances[surface_mask],
-                                                        light_positions=self._light)
+                canvas[:, surface_mask] = surface.shade(
+                    self._rays[..., surface_mask],
+                    self._hit_distances[surface_mask],
+                    light_positions=self._light,
+                )
 
         # # now draw the material outline
         # hit_matrix = self._hit_surfaces.reshape(self._camera.get_resolution()[-1], -1)
@@ -229,9 +248,18 @@ class ShadedRenderer():
         self._state = self.States.IDLE
 
 
-def draw(surfaces: List[TracerSurface], view='xy', axis=None, shaded=True, bounds=None, resolution=640):
+def draw(
+    surfaces: List[TracerSurface],
+    view="xy",
+    axis=None,
+    shaded=True,
+    bounds=None,
+    resolution=640,
+):
     # draw a surface for a given projection
-    bounding_box = np.hstack([surface.bounding_volume.bounding_points[:3] for surface in surfaces])
+    bounding_box = np.hstack(
+        [surface.bounding_volume.bounding_points[:3] for surface in surfaces]
+    )
     if bounds is not None:
         mins = np.asarray(bounds[0])
         maxes = np.asarray(bounds[1])
@@ -244,10 +272,10 @@ def draw(surfaces: List[TracerSurface], view='xy', axis=None, shaded=True, bound
 
     # this case is for a "top" projection in the xy plane
     # the camera origin should be above the object centered over it
-    if view == 'xy':
+    if view == "xy":
         _draw_xy(surfaces, axis, shaded, resolution, maxes, mins)
 
-    elif view == 'xz':
+    elif view == "xz":
         _draw_xz(surfaces, axis, shaded, resolution, maxes, mins)
 
 
@@ -273,11 +301,15 @@ def _draw_xy(surfaces: List[TracerSurface], axis, shaded, resolution, maxes, min
     if axis is None:
         axis = plt.gca()
 
-    axis.imshow(image,
-                extent=[camera_origin[0] - h_span / 2,
-                        camera_origin[0] + h_span / 2,
-                        camera_origin[1] - v_span / 2,
-                        camera_origin[1] + v_span / 2])
+    axis.imshow(
+        image,
+        extent=[
+            camera_origin[0] - h_span / 2,
+            camera_origin[0] + h_span / 2,
+            camera_origin[1] - v_span / 2,
+            camera_origin[1] + v_span / 2,
+        ],
+    )
     axis.set_axisbelow(True)
 
 
@@ -302,9 +334,13 @@ def _draw_xz(surfaces: List[TracerSurface], axis, shaded, resolution, maxes, min
     if axis is None:
         axis = plt.gca()
 
-    axis.imshow(image,
-                extent=[camera_origin[0] - h_span / 2,
-                        camera_origin[0] + h_span / 2,
-                        camera_origin[2] - v_span / 2,
-                        camera_origin[2] + v_span / 2])
+    axis.imshow(
+        image,
+        extent=[
+            camera_origin[0] - h_span / 2,
+            camera_origin[0] + h_span / 2,
+            camera_origin[2] - v_span / 2,
+            camera_origin[2] + v_span / 2,
+        ],
+    )
     axis.set_axisbelow(True)

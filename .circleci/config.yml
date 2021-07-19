@@ -7,46 +7,54 @@ jobs:
         auth:
           username: rfrazier716
           password: $DOCKER_API_KEY
+
+    environment: 
+      PIP_CACHE_DIR: ~/project/.cache/pip/
+      
     steps:
       - checkout
       - restore_cache:
-            key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum "pyproject.toml" }}
+            key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum ".circleci/config.yml" }}
+
       - run:
-          name: install python dependencies
+          name: Initialize Poetry
           command: |
-            [[ -d /root/.cache/pip ]] || curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
-            [[ -d /root/.cache/pip ]] || /root/.poetry/bin/poetry install
+            chmod +x ./scripts/poetry_init.sh
+            sh ./scripts/poetry_init.sh
+          
+      - run:
+          name: Installing Package Dependencies
+          command: $POETRY install
 
       - save_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum "pyproject.toml" }}
+          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum ".circleci/config.yml" }}
           paths:
-            - "/root/.cache/pip/"
-            - "/root/.poetry/"
-            - "~/.cache/pypoetry"
+            - .cache/pip/
+            - .poetry/
+            - .venv/
 
   unit-tests:
-    parameters:
-      version:
-        type: string
-        default: "3.8"
-
     docker: # use the Docker executor
-      - image: python:<< parameters.version >>
+      - image: python:3.8
         auth:
           username: rfrazier716
           password: $DOCKER_API_KEY
 
+    environment: 
+      PIP_CACHE_DIR: ~/project/.cache/pip/
+
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum "pyproject.toml" }}
+          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum ".circleci/config.yml" }}
       - run:
-          name: install dependencies
+          name: Initialize Poetry
           command: |
-            /root/.poetry/bin/poetry install
+            chmod +x ./scripts/poetry_init.sh
+            sh ./scripts/poetry_init.sh
       - run:
           name: run unittests
-          command: /root/.poetry/bin/poetry run tox -e py<< parameters.version >>
+          command: $POETRY run python -m unittest discover
 
   coverage:
     docker: # use the Docker executor
@@ -58,16 +66,67 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum "pyproject.toml" }}
+          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum ".circleci/config.yml" }}
       - run:
-          name: coverage
+          name: Initialize Poetry
           command: |
-            /root/.poetry/bin/poetry install
-            /root/.poetry/bin/poetry run tox -e coverage
+            chmod +x ./scripts/poetry_init.sh
+            sh ./scripts/poetry_init.sh
+      - run:
+          name: Run Coverage
+          command: $POETRY run python -m coverage run -m unittest discover
+      - run: 
+          name: Generate Coverage Reports
+          command: |
+            $POETRY run python -m coverage html -d ./htmlcov
+            $POETRY run python -m coverage report
+      - store_artifacts:
+          path: ./htmlcov
+  
+  format:
+    docker: # use the Docker executor
+    - image: python:3.8
+      auth:
+        username: rfrazier716
+        password: $DOCKER_API_KEY
+
+    steps:
+      - checkout
+      - restore_cache:
+          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum ".circleci/config.yml" }}
+      - run:
+          name: Initialize Poetry
+          command: |
+            chmod +x ./scripts/poetry_init.sh
+            sh ./scripts/poetry_init.sh  
+      - run:
+          name: Validate Code Formatting
+          command: $POETRY run black --check pyrayt tinygfx
+  
+  lint:
+    docker: # use the Docker executor
+    - image: python:3.8
+      auth:
+        username: rfrazier716
+        password: $DOCKER_API_KEY
+
+    steps:
+      - checkout
+      - restore_cache:
+          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum ".circleci/config.yml" }}
+      - run:
+          name: Initialize Poetry
+          command: |
+            chmod +x ./scripts/poetry_init.sh
+            sh ./scripts/poetry_init.sh  
+
+      # This should never fail, it's just to collect the artifact
+      - run:
+          name: Validate Code Formatting
+          command: $POETRY run pylint pyrayt tinygfx --exit-zero --output-format=json:lint_results.json,colorized
 
       - store_artifacts:
-          path: .tox/htmlcov
-
+          path: ./lint_results.json
 
   deploy:
     docker: # use the Docker executor
@@ -83,7 +142,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}-{{ checksum "pyproject.toml" }}
+          key: python-cache-{{ checksum "poetry.lock" }}
       - run:
           name: deploy to pypi
           command: |
@@ -99,26 +158,27 @@ workflows:
               only: /.*/
 
       - unit-tests:
-          name: py37-tests
-          version: "3.7"
-          requires:
-            - build
-
-      - unit-tests:
-          name: py38-tests
-          version: "3.8"
           requires:
             - build
 
       - coverage:
           requires:
             - build
+      
+      - lint:
+          requires:
+            - build
+
+      - format:
+          requires:
+            - build
 
       - deploy:
           requires:
             - build
-            - py37-tests
-            - py38-tests
+            - unit-tests
+            - format
+            
           filters:
             branches:
               only:

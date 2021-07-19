@@ -8,9 +8,13 @@ import abc
 class TracableMaterial(cg_matl.gooch.Material):
     def __init__(self, base_material, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor
-        self._base_material = base_material  # the material to call whenever the object is being rendered
+        self._base_material = (
+            base_material  # the material to call whenever the object is being rendered
+        )
 
-    def shade(self, rays: np.ndarray, normals: np.ndarray, light_positions: np.ndarray) -> np.ndarray:
+    def shade(
+        self, rays: np.ndarray, normals: np.ndarray, light_positions: np.ndarray
+    ) -> np.ndarray:
         return self._base_material.shade(rays, normals, light_positions)
 
     @abc.abstractmethod
@@ -22,9 +26,10 @@ class TracableMaterial(cg_matl.gooch.Material):
 
 
 class _AbsorbingMaterial(TracableMaterial):
-
     def __init__(self, *args, **kwargs):
-        super().__init__(cg_matl.gooch.BLACK, *args, **kwargs)  # call the parent constructor
+        super().__init__(
+            cg_matl.gooch.BLACK, *args, **kwargs
+        )  # call the parent constructor
 
     def trace(self, surface, ray_set: RaySet) -> RaySet:
         # an absorbing material will kill the ray direction vector
@@ -33,7 +38,6 @@ class _AbsorbingMaterial(TracableMaterial):
 
 
 class _ReflectingMaterial(TracableMaterial):
-
     def __init__(self, *args, **kwargs):
         super().__init__(cg_matl.gooch.BLUE, *args, **kwargs)
 
@@ -52,7 +56,9 @@ class BasicRefractor(TracableMaterial):
     def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
         # a reflecting material will
         normals = surface.get_world_normals(ray_set.rays[0])
-        ray_set.rays[1], ray_set.index = cg.refract(ray_set.rays[1], normals, ray_set.index, self._index)
+        ray_set.rays[1], ray_set.index = cg.refract(
+            ray_set.rays[1], normals, ray_set.index, self._index
+        )
         return ray_set
 
 
