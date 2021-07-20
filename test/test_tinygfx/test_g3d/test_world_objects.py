@@ -9,46 +9,11 @@ class TestCountedObject(unittest.TestCase):
         self.obj = cg.CountedObject()
 
     def test_count_incrementing(self):
-        obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
-
-        # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
-
-        # none of the objects should have the same count_id
-        obj_ids = set([test_object.get_id() for test_object in test_objects])
-        self.assertEqual(len(obj_ids), obj_to_create)
-
-        # the objects should be incremented sequentially
-        self.assertTrue(np.all(np.diff(np.sort(np.array(list(obj_ids)))) == 1))
-
-    def test_decrementing_object_count(self):
-        obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
-
-        # the count should be the same for each object and be equal to the number of objects created
-        self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count)
-
-        # deleting objects should reduce the count
-        for n in range(len(test_objects)):
-            test_objects.pop(-1)
-            self.assertEqual(cg.CountedObject.get_count(), obj_to_create + initial_count - n - 1)
-
-    def test_creating_obj_after_deletion(self):
-        # create a list of objects then delete them all
-
-        obj_to_create = 20
-        initial_count = cg.CountedObject.get_count()
-        test_objects = [cg.CountedObject() for _ in range(obj_to_create)]
-        max_id = test_objects[-1].get_id()
-        del test_objects
-
-        # make sure that a new object indexes up and does not reuse any of the deleted IDs
-        new_object = cg.CountedObject()
-        self.assertEqual(new_object.get_id(), max_id + 1)
-
+        obj_id = self.obj.get_id()
+        for _ in range(20):
+            next_id = cg.CountedObject().get_id()
+            self.assertTrue(next_id > obj_id)
+            obj_id = next_id
 
 class WorldObjectTestCase(unittest.TestCase):
     """
@@ -281,8 +246,13 @@ class TestTracerSurface(unittest.TestCase):
         self.radius = 3
         self.sphere = cg.Sphere(self.radius)
 
+    def test_multiple_surface_id(self):
+        sphere_id = self.sphere.get_id()
+        cylinder_id = cg.Cylinder().get_id()
+        self.assertNotEqual(sphere_id, cylinder_id)
+
     def test_getting_surface_id(self):
-        sphere_id = id(self.sphere)
+        sphere_id = self.sphere.get_id()
 
         id_tuple = self.sphere.surface_ids[0]
         self.assertEqual(sphere_id, id_tuple[0])
@@ -302,7 +272,7 @@ class TestTracerSurface(unittest.TestCase):
         hits, surface_ids = self.sphere.intersect(rays)
         self.assertEqual(hits.shape, surface_ids.shape)
 
-        self.assertTrue(np.allclose(surface_ids, id(self.sphere)))
+        self.assertTrue(np.allclose(surface_ids, self.sphere.get_id()))
 
     def test_intersection_moved_object(self):
         # if we move the sphere by it's radius, a ray at (0,0,-1) with v=(0,0,1) will intersect at t=1
@@ -501,9 +471,6 @@ class TestCuboid(unittest.TestCase):
 
         actual = cube.primitive.axis_spans
         self.assertTrue(np.allclose(actual, expected_span), actual)
-
-
-
 
 
 if __name__ == '__main__':

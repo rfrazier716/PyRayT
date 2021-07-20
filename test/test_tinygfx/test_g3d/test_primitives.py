@@ -2,6 +2,8 @@ import tinygfx.g3d.primitives as primitives
 import numpy as np
 import unittest
 
+from tinygfx import g3d as cg
+
 
 class TestHomogeneousCoordinate(unittest.TestCase):
     def setUp(self):
@@ -625,3 +627,5 @@ class TestCylinder(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+

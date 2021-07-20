@@ -9,7 +9,9 @@ from tinygfx.g3d.operations import binomial_root, element_wise_dot
 def _corners_to_cube_points(min_corner, max_corner):
     axis_spans = np.sort(np.vstack((min_corner[:3], max_corner[:3])), axis=0).T
     # the corner points are 8 points that make up the span of the cube
-    corner_points = np.vstack([Point(x, y, z) for x, y, z in itertools.product(*axis_spans)]).T
+    corner_points = np.vstack(
+        [Point(x, y, z) for x, y, z in itertools.product(*axis_spans)]
+    ).T
     return corner_points
 
 
@@ -82,7 +84,9 @@ class HomogeneousCoordinate(np.ndarray):
 
 class Point(HomogeneousCoordinate):
     def __init__(self, x=0, y=0, z=0, *args, **kwargs):
-        super().__init__(x, y, z, 1)  # call the homogeneous coordinate constructor, points have a coord of 1
+        super().__init__(
+            x, y, z, 1
+        )  # call the homogeneous coordinate constructor, points have a coord of 1
 
 
 class Vector(HomogeneousCoordinate):
@@ -202,8 +206,13 @@ class Rectangle(Shape2D):
         if single_dim:
             points = np.atleast_2d(points).T
 
-        in_shape = np.all(np.abs(points) <= np.tile((self._x_length / 2, self._y_length / 2), (points.shape[-1], 1)).T,
-                          axis=0)
+        in_shape = np.all(
+            np.abs(points)
+            <= np.tile(
+                (self._x_length / 2, self._y_length / 2), (points.shape[-1], 1)
+            ).T,
+            axis=0,
+        )
 
         return in_shape[0] if single_dim else in_shape
 
@@ -213,7 +222,9 @@ class Sphere(SurfacePrimitive):
         super().__init__(*args, **kwargs)
         self._radius = radius  # this is the sphere's radius in object space, it can be manipulated in world space with
         # bounding points make up a cube with a side length of 2*radius
-        self.bounding_points = _corners_to_cube_points((-radius, -radius, -radius), (radius, radius, radius))
+        self.bounding_points = _corners_to_cube_points(
+            (-radius, -radius, -radius), (radius, radius, radius)
+        )
         # scale and transform operations
 
     def get_radius(self):
@@ -238,14 +249,22 @@ class Sphere(SurfacePrimitive):
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
         # calculate the a,b, and c of the polynomial roots equation
-        a = element_wise_dot(directions, directions, axis=0)  # a must be positive because it's the squared magnitude
-        b = 2 * element_wise_dot(directions, origins, axis=0)  # be can be positive or negative
-        c = element_wise_dot(origins, origins, axis=0) - self._radius ** 2  # c can be positive or negative
+        a = element_wise_dot(
+            directions, directions, axis=0
+        )  # a must be positive because it's the squared magnitude
+        b = 2 * element_wise_dot(
+            directions, origins, axis=0
+        )  # be can be positive or negative
+        c = (
+            element_wise_dot(origins, origins, axis=0) - self._radius ** 2
+        )  # c can be positive or negative
 
         # calculate the discriminant, but override the sqrt if it would result in a negative number
         disc = b ** 2 - 4 * a * c
         root = np.sqrt(np.maximum(0, disc))
-        hits = np.array(((-b + root), (-b - root))) / (2 * a)  # the positive element of the polynomial root
+        hits = np.array(((-b + root), (-b - root))) / (
+            2 * a
+        )  # the positive element of the polynomial root
 
         # shape should return entire hits array, but masked with np.inf for invalid discriminants
         valid_hits = np.where(disc >= 0, hits, np.inf)
@@ -264,7 +283,9 @@ class Sphere(SurfacePrimitive):
             if dims == 1:
                 padded_intersections = np.atleast_2d(intersections).T
             else:
-                raise AttributeError(f"Argument intersections has too many dimensions, expect 1 or 2, got {dims}")
+                raise AttributeError(
+                    f"Argument intersections has too many dimensions, expect 1 or 2, got {dims}"
+                )
 
         # for a sphere the normal is pretty easy, just scale the coordinate
         world_normals = padded_intersections.copy()
@@ -288,8 +309,10 @@ class Paraboloid(SurfacePrimitive):
         self._focus = focus
         self._height = height
         radius_at_max = np.sqrt(4 * self._focus * self._height)
-        self.bounding_points = _corners_to_cube_points((-radius_at_max, -radius_at_max, -0),
-                                                       (radius_at_max, radius_at_max, self._height))
+        self.bounding_points = _corners_to_cube_points(
+            (-radius_at_max, -radius_at_max, -0),
+            (radius_at_max, radius_at_max, self._height),
+        )
 
     def get_focus(self):
         return self._focus
@@ -308,18 +331,25 @@ class Paraboloid(SurfacePrimitive):
 
         # get the components of the polynomial root equation
         a = element_wise_dot(directions_xy, directions_xy, axis=0)
-        b = 2 * (element_wise_dot(origins_xy, directions_xy, axis=0)) - 4 * self._focus * directions[2]
-        c = element_wise_dot(origins_xy, origins_xy, axis=0) - 4 * self._focus * origins[2]
+        b = (
+            2 * (element_wise_dot(origins_xy, directions_xy, axis=0))
+            - 4 * self._focus * directions[2]
+        )
+        c = (
+            element_wise_dot(origins_xy, origins_xy, axis=0)
+            - 4 * self._focus * origins[2]
+        )
 
         # calculate the binomial roots of the function
         disc = b ** 2 - 4 * a * c  # the discriminant of the sqrt in the roots equation
         # linear cases are where there's no expontential term, have to be handled separately
         linear_cases = np.isclose(a, 0)
-        root = np.sqrt(np.maximum(0, disc))  # the square root of the discriminant protected from being nan
+        root = np.sqrt(
+            np.maximum(0, disc)
+        )  # the square root of the discriminant protected from being nan
 
         # solve for the polynomial roots
-        parabola_hits = np.vstack(((-b + root), (-b - root))) / (
-                2 * a + linear_cases)
+        parabola_hits = np.vstack(((-b + root), (-b - root))) / (2 * a + linear_cases)
 
         # Now correct for the cases that should be infinite (no intersection)
         parabola_hits = np.where(disc >= 0, parabola_hits, np.inf)
@@ -346,8 +376,8 @@ class Paraboloid(SurfacePrimitive):
 
         # calculate the intersections and then apply edge cases
         bounding_hits = np.empty((2, padded_rays.shape[-1]))
-        denominator = (directions[2] + parallel_to_plane)
-        bounding_hits[0] = - origins[2] / denominator
+        denominator = directions[2] + parallel_to_plane
+        bounding_hits[0] = -origins[2] / denominator
         bounding_hits[1] = (self._height - origins[2]) / denominator
 
         # need to replace edge cases with appropriate values
@@ -355,7 +385,9 @@ class Paraboloid(SurfacePrimitive):
         # otherwise it should be +inf
         # second hit should always be +inf
         bounding_hits = np.where(parallel_to_plane, np.inf, bounding_hits)
-        bounding_hits[0] = np.where(np.logical_and(parallel_to_plane, inside_bounds), -np.inf, bounding_hits[0])
+        bounding_hits[0] = np.where(
+            np.logical_and(parallel_to_plane, inside_bounds), -np.inf, bounding_hits[0]
+        )
 
         # combine all hits and sort them, this will give [min_p, min_b, max_p, max_b]
         all_hits = np.hstack((parabola_hits, bounding_hits))
@@ -378,7 +410,11 @@ class Paraboloid(SurfacePrimitive):
         normals[2] = -2 * self._focus
 
         # if the intersection is with the cap the normal should be in the positive Z direction
-        normals = np.where(np.isclose(intersections[2], self._height), np.array([[0], [0], [1.0], [0]]), normals)
+        normals = np.where(
+            np.isclose(intersections[2], self._height),
+            np.array([[0], [0], [1.0], [0]]),
+            normals,
+        )
         normals /= np.linalg.norm(normals, axis=0)
         return normals if not single_point else normals[:, 0]
 
@@ -392,8 +428,10 @@ class Plane(SurfacePrimitive):
         super().__init__(*args, **kwargs)
         self._width = width  # width is x-dim
         self._length = length  # length is y-dim
-        self.bounding_points = _corners_to_cube_points((-self._width / 2, -self._length / 2, -.01),
-                                                       (self._width / 2, self._length / 2, .01))
+        self.bounding_points = _corners_to_cube_points(
+            (-self._width / 2, -self._length / 2, -0.01),
+            (self._width / 2, self._length / 2, 0.01),
+        )
 
     def intersect(self, rays):
         """
@@ -410,7 +448,9 @@ class Plane(SurfacePrimitive):
         directions = padded_rays[1, :-1]  # should be a 3xn array of vectors
 
         # need to check where the ray hits the 4 planes that bound this plane (determining width and length)
-        boundary_hits = np.empty((2, 2 * origins.shape[-1]))  # make an empty array for boundary hits
+        boundary_hits = np.empty(
+            (2, 2 * origins.shape[-1])
+        )  # make an empty array for boundary hits
         for axis, dim in enumerate((self._width, self._length)):
             is_zero = np.isclose(directions[axis], 0)
             # need a special case if the position is skew to an axis, have to know if the point is in the projected
@@ -421,9 +461,12 @@ class Plane(SurfacePrimitive):
             hit_1 = -(origins[axis] - dim / 2) / (directions[axis] + is_zero)
             hit_2 = -(origins[axis] + dim / 2) / (directions[axis] + is_zero)
 
-            boundary_hits[0, axis * origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, skew_case_hit,
-                                                                                                 hit_1)
-            boundary_hits[1, axis * origins.shape[-1]:(1 + axis) * origins.shape[-1]] = np.where(is_zero, np.inf, hit_2)
+            boundary_hits[
+                0, axis * origins.shape[-1] : (1 + axis) * origins.shape[-1]
+            ] = np.where(is_zero, skew_case_hit, hit_1)
+            boundary_hits[
+                1, axis * origins.shape[-1] : (1 + axis) * origins.shape[-1]
+            ] = np.where(is_zero, np.inf, hit_2)
 
         # now sort the boundary hits and reshape to be a 4xn matrix
         boundary_hits.sort(axis=0)
@@ -440,7 +483,9 @@ class Plane(SurfacePrimitive):
         plane_hits = np.where(skew_ray, np.inf, plane_hits)
 
         # now filter out based on if plane hits is in the region
-        hits_in_bounds = np.logical_and(plane_hits >= boundary_hits[1], plane_hits <= boundary_hits[2])
+        hits_in_bounds = np.logical_and(
+            plane_hits >= boundary_hits[1], plane_hits <= boundary_hits[2]
+        )
         plane_hits = np.where(hits_in_bounds, plane_hits, np.inf)
 
         # plane_hits should be 2 elements long so we can do CSG on it (but really it's a double leement
@@ -464,7 +509,9 @@ class Cube(SurfacePrimitive):
         # a 3x2 matrix that tracks the min and max values for each axis,
         self.axis_spans = np.sort(np.vstack((min_corner[:3], max_corner[:3])), axis=0).T
         # the corner points are 8 points that make up the span of the cube
-        self.bounding_points = np.vstack([Point(x, y, z) for x, y, z in itertools.product(*self.axis_spans)]).T
+        self.bounding_points = np.vstack(
+            [Point(x, y, z) for x, y, z in itertools.product(*self.axis_spans)]
+        ).T
 
     def intersect(self, rays):
         # So, if the minimum intersection of an axis exceeds the maximum intersection of a separate axis, rays do not
@@ -486,17 +533,29 @@ class Cube(SurfacePrimitive):
             is_zero = np.isclose(directions[axis], 0)
             # need a special case if the position is skew to an axis, have to know if the point is in teh projected
             # square
-            skew_case_min = np.where(np.logical_and(
-                origins[axis] <= self.axis_spans[axis, 1],
-                origins[axis] >= self.axis_spans[axis, 0]), -np.inf, np.inf)
+            skew_case_min = np.where(
+                np.logical_and(
+                    origins[axis] <= self.axis_spans[axis, 1],
+                    origins[axis] >= self.axis_spans[axis, 0],
+                ),
+                -np.inf,
+                np.inf,
+            )
 
             # now update the intersection point for each plane
-            new_hits[0] = np.where(np.logical_not(is_zero),
-                                   -(origins[axis] - self.axis_spans[axis, 0]) / (directions[axis] + is_zero),
-                                   skew_case_min)
+            new_hits[0] = np.where(
+                np.logical_not(is_zero),
+                -(origins[axis] - self.axis_spans[axis, 0])
+                / (directions[axis] + is_zero),
+                skew_case_min,
+            )
 
-            new_hits[1] = np.where(np.logical_not(is_zero),
-                                   -(origins[axis] - self.axis_spans[axis, 1]) / (directions[axis] + is_zero), np.inf)
+            new_hits[1] = np.where(
+                np.logical_not(is_zero),
+                -(origins[axis] - self.axis_spans[axis, 1])
+                / (directions[axis] + is_zero),
+                np.inf,
+            )
 
             # now we need to sort the new hits so 0 is the min and 1 is the max
             new_hits = np.sort(new_hits, axis=0)
@@ -506,9 +565,14 @@ class Cube(SurfacePrimitive):
             hits[3 + axis] = new_hits[1]
 
         cube_hits = np.zeros(
-            new_hits.shape)  # cube hits will be a 2xn array of where the points actually intersect the cube
-        cube_hits[0] = np.max(hits[:3], axis=0)  # first hit is the max value of the minimums
-        cube_hits[1] = np.min(hits[3:], axis=0)  # second hit is the min value of the maximums
+            new_hits.shape
+        )  # cube hits will be a 2xn array of where the points actually intersect the cube
+        cube_hits[0] = np.max(
+            hits[:3], axis=0
+        )  # first hit is the max value of the minimums
+        cube_hits[1] = np.min(
+            hits[3:], axis=0
+        )  # second hit is the min value of the maximums
 
         # if the min is larger than the max the ray missed the cube and should be replaced with inf
         cube_hits = np.where(cube_hits[0] < cube_hits[1], cube_hits, np.inf)
@@ -559,14 +623,18 @@ class Cylinder(SurfacePrimitive):
     A cylinder with a radius of 1 in the XY plane, extending from -1 to 1
     """
 
-    def __init__(self, radius=1, min_height=-1, max_height=1, capped=True, *args, **kwargs):
+    def __init__(
+        self, radius=1, min_height=-1, max_height=1, capped=True, *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self._radius = radius  # this is the sphere's radius in object space, it can be manipulated in world space with
         # scale and transform operations
         self._h_min = min_height
         self._h_max = max_height
         self._capped = capped
-        self.bounding_points = Cube((-radius, -radius, min_height), (radius, radius, max_height)).bounding_points
+        self.bounding_points = Cube(
+            (-radius, -radius, min_height), (radius, radius, max_height)
+        ).bounding_points
 
     def get_radius(self):
         """
@@ -595,14 +663,21 @@ class Cylinder(SurfacePrimitive):
         directions_2d = directions[:-1]
 
         # calculate the a,b, and c of the polynomial roots equation
-        a = element_wise_dot(directions_2d, directions_2d,
-                             axis=0)  # a must be positive because it's the squared magnitude
-        b = 2 * element_wise_dot(directions_2d, origins_2d, axis=0)  # be can be positive or negative
-        c = element_wise_dot(origins_2d, origins_2d, axis=0) - self._radius ** 2  # c can be positive or negative
+        a = element_wise_dot(
+            directions_2d, directions_2d, axis=0
+        )  # a must be positive because it's the squared magnitude
+        b = 2 * element_wise_dot(
+            directions_2d, origins_2d, axis=0
+        )  # be can be positive or negative
+        c = (
+            element_wise_dot(origins_2d, origins_2d, axis=0) - self._radius ** 2
+        )  # c can be positive or negative
 
         # calculate the sidewall hits
         hits = np.zeros((4, directions.shape[-1]))
-        sidewall_hits = np.sort(binomial_root(a, b, c), axis=0)  # have to sort the roots for intersections
+        sidewall_hits = np.sort(
+            binomial_root(a, b, c), axis=0
+        )  # have to sort the roots for intersections
 
         # now we need to clip the parabola hits with two two planes that define the max and min of the height
 
@@ -610,11 +685,13 @@ class Cylinder(SurfacePrimitive):
         parallel_to_plane = np.isclose(directions[2], 0)
 
         # as well as track if the ray originates between the planes
-        inside_bounds = np.logical_and(origins[2] >= self._h_min, origins[2] <= self._h_max)
+        inside_bounds = np.logical_and(
+            origins[2] >= self._h_min, origins[2] <= self._h_max
+        )
 
         # calculate the intersections and then apply edge cases
         bounding_hits = np.empty((2, padded_rays.shape[-1]))
-        denominator = (directions[2] + parallel_to_plane)
+        denominator = directions[2] + parallel_to_plane
         bounding_hits[0] = (self._h_min - origins[2]) / denominator
         bounding_hits[1] = (self._h_max - origins[2]) / denominator
 
@@ -623,7 +700,9 @@ class Cylinder(SurfacePrimitive):
         # otherwise it should be +inf
         # second hit should always be +inf
         bounding_hits = np.where(parallel_to_plane, np.inf, bounding_hits)
-        bounding_hits[0] = np.where(np.logical_and(parallel_to_plane, inside_bounds), -np.inf, bounding_hits[0])
+        bounding_hits[0] = np.where(
+            np.logical_and(parallel_to_plane, inside_bounds), -np.inf, bounding_hits[0]
+        )
 
         # combine all hits and sort them, this will give [min_p, min_b, max_p, max_b]
         all_hits = np.hstack((sidewall_hits, bounding_hits))
@@ -649,10 +728,16 @@ class Cylinder(SurfacePrimitive):
             z_coord = intersections[2]
             negative_normals = np.isclose(z_coord, self._h_min)
             positive_normals = np.isclose(z_coord, self._h_max)
-            normals = np.where(negative_normals, np.array([[0], [0], [-1], [0]]), normals)
-            normals = np.where(positive_normals, np.array([[0], [0], [1], [0]]), normals)
+            normals = np.where(
+                negative_normals, np.array([[0], [0], [-1], [0]]), normals
+            )
+            normals = np.where(
+                positive_normals, np.array([[0], [0], [1], [0]]), normals
+            )
 
-        normals /= np.linalg.norm(normals, axis=0)  # make sure normals are unit magnitude
+        normals /= np.linalg.norm(
+            normals, axis=0
+        )  # make sure normals are unit magnitude
 
         # if a 1d array was passed, transpose it and strip a dimension
         return normals[:, 0] if single_point else normals

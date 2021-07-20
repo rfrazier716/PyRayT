@@ -19,8 +19,8 @@ class TestCSGAttributes(unittest.TestCase):
         self.assertEqual(len(surface_ids), 2)
 
         # the first id should be the id of the l_child
-        self.assertEqual(surface_ids[0][0], id(self.l_shape))
-        self.assertEqual(surface_ids[1][0], id(self.r_shape))
+        self.assertEqual(surface_ids[0][0], self.l_shape.get_id())
+        self.assertEqual(surface_ids[1][0], self.r_shape.get_id())
 
         # if we add another csg operation there should be three surface ids
         nested_csg = csg.CSGSurface(cg.Sphere(1), self.csg, csg.Operation.UNION)
@@ -82,14 +82,14 @@ class TestCSGAdd(unittest.TestCase):
         r_sphere_hits, _ = self.r_shape.intersect(rays)
         self.assertTrue(np.allclose(hits[:2, y_vals < -0.5], r_sphere_hits[:, y_vals < -0.5]))
         self.assertTrue(
-            np.all(surfaces[:2, np.logical_and(y_vals < -0.5, np.logical_not(hit_missed))] == id(self.r_shape)))
+            np.all(surfaces[:2, np.logical_and(y_vals < -0.5, np.logical_not(hit_missed))] == self.r_shape.get_id()))
 
         # any hits >-0.5 should be identical to the left sphere hits
         # the surface should be the surface of the left sphere
         l_sphere_hits, _ = self.l_shape.intersect(rays)
         self.assertTrue(np.allclose(hits[:2, y_vals > -0.5], l_sphere_hits[:, y_vals > -0.5]))
         self.assertTrue(
-            np.all(surfaces[:2, np.logical_and(y_vals > -0.5, np.logical_not(hit_missed))] == id(self.l_shape)))
+            np.all(surfaces[:2, np.logical_and(y_vals > -0.5, np.logical_not(hit_missed))] == self.l_shape.get_id()))
 
     # def test_moving_to_nonintersection(self):
     #     with self.assertRaises(ValueError):
@@ -142,12 +142,12 @@ class TestCSGIntersect(unittest.TestCase):
         # any hits <-0.5 should be identical to the left sphere hits
         self.assertTrue(np.allclose(hits[:2, y_vals < -0.5], l_sphere_hits[:, y_vals < -0.5]))
         self.assertTrue(
-            np.all(surfaces[:2, np.logical_and(y_vals < -0.5, np.logical_not(hit_missed))] == id(self.l_shape)))
+            np.all(surfaces[:2, np.logical_and(y_vals < -0.5, np.logical_not(hit_missed))] == self.l_shape.get_id()))
 
         # any hits >-0.5 should be identical to the right sphere hits
         self.assertTrue(np.allclose(hits[:2, y_vals > -0.5], r_sphere_hits[:, y_vals > -0.5]))
         self.assertTrue(
-            np.all(surfaces[:2, np.logical_and(y_vals > -0.5, np.logical_not(hit_missed))] == id(self.r_shape)))
+            np.all(surfaces[:2, np.logical_and(y_vals > -0.5, np.logical_not(hit_missed))] == self.r_shape.get_id()))
 
 class TestCSGDifference(unittest.TestCase):
     def setUp(self) -> None:
@@ -198,15 +198,15 @@ class TestCSGDifference(unittest.TestCase):
         r_sphere_hits, _ = self.r_shape.intersect(rays)
         self.assertTrue(np.allclose(hits[:2, y_vals > 0], l_sphere_hits[:, y_vals > 0]))
         self.assertTrue(
-            np.all(surfaces[:2, np.logical_and(y_vals > 0, np.logical_not(hit_missed))] == id(self.l_shape)))
+            np.all(surfaces[:2, np.logical_and(y_vals > 0, np.logical_not(hit_missed))] == self.l_shape.get_id()))
 
         # for hits between -0.5 and 0 the outer hits should belong to the left sphere, and inner belong to the right
         # sphere
         subset = np.logical_and(y_vals > -0.5, y_vals < 0)
         self.assertTrue(np.allclose(hits[[[0], [3]], subset], l_sphere_hits[:, subset]), f"{l_sphere_hits[:, subset]}")
-        self.assertTrue(np.all(surfaces[[[0], [3]], subset] == id(self.l_shape)))
+        self.assertTrue(np.all(surfaces[[[0], [3]], subset] == self.l_shape.get_id()))
         self.assertTrue(np.allclose(hits[1:3, subset], r_sphere_hits[:, subset]), f"{r_sphere_hits[:, subset]}")
-        self.assertTrue(np.all(surfaces[1:3, subset] == id(self.r_shape)))
+        self.assertTrue(np.all(surfaces[1:3, subset] == self.r_shape.get_id()))
 
 
 class TestArrayCSGOperation(unittest.TestCase):

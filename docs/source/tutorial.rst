@@ -68,7 +68,7 @@ value is a 4D :class:`~tinygfx.g3d.primitives.HomogeneousCoordinate`, with dimen
 
 Rotation
 `````````
-In addition to movement, components can be rotated about the principle axes.  The orientation of an optical component can be checked with :meth:`~tinygfx.g3d.world_objects.WorldObject.get_orientation` which returns a vector pointing along the components axis. By default our lens is pointing towards the positive X axis.
+In addition to movement, components can be rotated about the principle axes, **not** the body center.  The orientation of an optical component can be checked with :meth:`~tinygfx.g3d.world_objects.WorldObject.get_orientation` which returns a vector pointing along the components axis. By default our lens is pointing towards the positive X axis.
 
 .. prompt:: python >>> auto
 
@@ -87,7 +87,7 @@ Unlike movement, the order that operations are chained does matter for rotations
 world origin and then move.
 
 +-------------------------------------+----------------+-------------------+
-|             Opereration             | Final Position | Final Orientation |
+|              Operation              | Final Position | Final Orientation |
 +=====================================+================+===================+
 | :code:`lens.move_x(5).rotate_z(90)` | (0, 5, 0)      | (0, 1, 0)         |
 +-------------------------------------+----------------+-------------------+
@@ -120,7 +120,7 @@ Performing a Ray Trace
 
 In a world where we don't trust the lensmaker's equation, we'd want to verify that rays originating at a lens' derived focal point are actually collimated. To do this we'll perform a ray trace with the :class:`~pyrayt._pyrayt.RayTracer` object. 
 
-When creating a ray tracer, you need to provide all sources and components that will be part of the traced system. Since we only have one source and one component, it's pretty simple. We're also going to set how many rays the trace will generate for each source, as well as the generation limit for the rays. :code:`generation_limit` is a parameter of the ray trace that specifies how many ray-surface interactions a unique ray can have before it is terminated by the raytracer.
+When creating a ray tracer, you need to provide all sources and components that will be part of the traced system. Since we only have one source and one component, it's pretty simple. We're also going to set how many rays the trace will generate for each source, as well as the generation limit for the rays. :code:`generation_limit` is a parameter of the ray trace that specifies how many ray-surface interactions a unique ray can have before it is terminated by the ray tracer.
 
 .. prompt:: python >>> auto
 
@@ -153,7 +153,7 @@ Before diving into the raw data, we want to take a look at the resulting trace t
 
 It's a good thing we checked because this is not what we want to see! The rays generate fine and interact with the lens, but instead of leaving the lens they terminate at the back surface. This means we have no way to know if the lens actually collimates the rays or not. From the ray tracer's perspective, however, it accomplished its job without error. 
 
-At every generation the raytracer checks if the ray intersects any surface in the simulation. If it can't find an intersection, the ray tracer considers that ray as no longer part of our simulation and terminates it. In order to verify the rays are collimated, we need to add a second surface after the lens that the rays can interact with. For that we'll add a :func:`~pyrayt.components.baffle`.
+At every generation the ray tracer checks if the ray intersects any surface in the simulation. If it can't find an intersection, the ray tracer considers that ray as no longer part of our simulation and terminates it. In order to verify the rays are collimated, we need to add a second surface after the lens that the rays can interact with. For that we'll add a :func:`~pyrayt.components.baffle`.
 
 Baffles are generic components that mimic a perfect absorber, any ray that intersects a baffle is terminated and removed from the simulation. However, since the baffle is part of the simulation components, those rays will be stored in the ray trace as terminating on that surface instead of being eliminated unceremoniously. This makes it perfect for modelling things like imagers, photodiodes, or apertures. let's add a baffle to the ray trace and move it along the positive x-axis some distance away from the lens.
 

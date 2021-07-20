@@ -13,9 +13,12 @@ def smallest_positive_root(a, b, c):
     :return: an array of length n with the smallest positive root for the array
     """
     disc = b ** 2 - 4 * a * c  # find the discriminant
-    root = np.sqrt(np.maximum(0, disc))  # the square root of the discriminant protected from being nan
+    root = np.sqrt(
+        np.maximum(0, disc)
+    )  # the square root of the discriminant protected from being nan
     polyroots = np.array(((-b + root), (-b - root))) / (
-            2 * a + np.isclose(a, 0))  # the positive element of the polynomial root
+        2 * a + np.isclose(a, 0)
+    )  # the positive element of the polynomial root
 
     # want to keep the smallest hit that is positive, so if hits[1]<0, just keep the positive hit
     nearest_hit = np.where(polyroots[1] >= 0, np.amin(polyroots, axis=0), polyroots[0])
@@ -33,14 +36,17 @@ def binomial_root(a, b, c, disc=None):
 
     :return: an array of length n with the smallest positive root for the array
     """
-    disc = b ** 2 - 4 * a * c if disc is None else disc  # find the discriminant, or use the provided one
+    disc = (
+        b ** 2 - 4 * a * c if disc is None else disc
+    )  # find the discriminant, or use the provided one
     # linear cases are where there's no expontential term, have to be handled separately
     linear_cases = np.isclose(a, 0)
-    root = np.sqrt(np.maximum(0, disc))  # the square root of the discriminant protected from being nan
+    root = np.sqrt(
+        np.maximum(0, disc)
+    )  # the square root of the discriminant protected from being nan
 
     # solve for the polynomial roots
-    polyroots = np.vstack(((-b + root), (-b - root))) / (
-            2 * a + np.isclose(a, 0))
+    polyroots = np.vstack(((-b + root), (-b - root))) / (2 * a + np.isclose(a, 0))
     # Now correct for the cases that should be infinite
     polyroots = np.where(disc >= 0, polyroots, np.inf)
 
@@ -52,7 +58,7 @@ def binomial_root(a, b, c, disc=None):
     # this is for cylinder intersections cases
     c_terms_only = np.logical_and(linear_cases, np.isclose(b, 0))
     polyroots = np.where(c_terms_only, np.inf, polyroots)
-    polyroots[0] = np.where(np.logical_and(c_terms_only, c<=0), -np.inf, polyroots[0])
+    polyroots[0] = np.where(np.logical_and(c_terms_only, c <= 0), -np.inf, polyroots[0])
 
     return polyroots
 
@@ -72,7 +78,7 @@ def element_wise_dot(mat_1, mat_2, axis=0):
 
     einsum_string = "ij,ij->j"
     if axis == 1:
-        einsum_string = 'ij,ij->i'
+        einsum_string = "ij,ij->i"
 
     return np.einsum(einsum_string, mat_1, mat_2)
 
@@ -92,7 +98,7 @@ def reflect(vectors, normals):
 
     # if only one normal was provided reflect every vector off of it
     elif normals.ndim == 1:
-        dots = np.einsum('ij,i->j', vectors, normals)
+        dots = np.einsum("ij,i->j", vectors, normals)
         return vectors - 2 * np.tile(normals, (vectors.shape[1], 1)).T * dots
 
     # otherwise it's full blown matrix math
@@ -117,26 +123,40 @@ def refract(vectors, normals, n1, n2, n_global=1):
         medium
     """
     vectors /= np.linalg.norm(vectors, axis=0)
-    cos_theta1_p = element_wise_dot(vectors, normals, axis=0)  # the angle dotted with the normals
-    cos_theta1_n = element_wise_dot(vectors, -normals, axis=0)  # the vector dotted with the negative normals
+    cos_theta1_p = element_wise_dot(
+        vectors, normals, axis=0
+    )  # the angle dotted with the normals
+    cos_theta1_n = element_wise_dot(
+        vectors, -normals, axis=0
+    )  # the vector dotted with the negative normals
 
     # anywhere that cos_theta1_p>0, we're exiting the medium and the n2 value should be updated with the global index
     n2_local = np.where(cos_theta1_p > 0, n_global, n2)
-    normals = np.where(cos_theta1_p > 0, -normals, normals)  # update normals so they always are along ray direction
+    normals = np.where(
+        cos_theta1_p > 0, -normals, normals
+    )  # update normals so they always are along ray direction
     r = n1 / n2_local  # the ratio of refractive indices
 
     # we want to keep the positive values only, which is the angle between the norm and the vector
     cos_theta1 = np.where(cos_theta1_p > 0, cos_theta1_p, cos_theta1_n)
 
     # see https://en.wikipedia.org/wiki/Snell%27s_law#Vector_form for more details on using this
-    radicand = 1 - (r ** 2) * (1 - cos_theta1 ** 2)  # radicand of the square root function
+    radicand = 1 - (r ** 2) * (
+        1 - cos_theta1 ** 2
+    )  # radicand of the square root function
     cos_theta2 = np.sqrt(
-        np.maximum(0, radicand))  # pipe in a zero there so that we don't take the sqrt of a negative number
+        np.maximum(0, radicand)
+    )  # pipe in a zero there so that we don't take the sqrt of a negative number
 
     # return the refracted or reflected ray depending on the radicand
-    refracted = np.where(radicand > 0, r * vectors + (r * cos_theta1 - cos_theta2) * normals,
-                         vectors + 2 * cos_theta1 * normals)
+    refracted = np.where(
+        radicand > 0,
+        r * vectors + (r * cos_theta1 - cos_theta2) * normals,
+        vectors + 2 * cos_theta1 * normals,
+    )
     refracted /= np.linalg.norm(refracted, axis=0)  # normalize the vectors
 
-    n_refracted = np.where(radicand > 0, n2_local, n1)  # the refracted index is the original material if TIR
+    n_refracted = np.where(
+        radicand > 0, n2_local, n1
+    )  # the refracted index is the original material if TIR
     return refracted, n_refracted
