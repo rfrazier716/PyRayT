@@ -25,6 +25,7 @@ sphinx-autodoc-typehints = "^1.11.1"
 sphinx-prompt = "^1.4.0"
 black = "^21.7b0"
 pylint = "^2.9.3"
+sphinx-autobuild = "^2021.3.14"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
