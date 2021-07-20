@@ -20,11 +20,15 @@
 *** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
+[![Build-Status][build-shield]][build-url]
+[![Docs][docs-shield]][docs-url]
+[![Version][version-shield]][version-url]
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
 [![MIT License][license-shield]][license-url]
+[![Style][style-shield]][style-url]
 
 
 
@@ -126,22 +130,29 @@ Project Link: [https://github.com/rfrazier716/PyRayT](https://github.com/rfrazie
 * [best-README-template](https://github.com/othneildrew/Best-README-Template)
 
 
-[contributors-shield]: https://img.shields.io/github/contributors/rfrazier716/pyrayt.svg?style=for-the-badge
-
+[contributors-shield]: https://img.shields.io/github/contributors/rfrazier716/pyrayt.svg?style=flat
 [contributors-url]: https://github.com/rfrazier716/pyrayt/graphs/contributors
 
-[forks-shield]: https://img.shields.io/github/forks/rfrazier716/pyrayt.svg?style=for-the-badge
-
+[forks-shield]: https://img.shields.io/github/forks/rfrazier716/pyrayt.svg?style=flat
 [forks-url]: https://github.com/rfrazier716/pyrayt/network/members
 
-[stars-shield]: https://img.shields.io/github/stars/rfrazier716/pyrayt.svg?style=for-the-badge
-
+[stars-shield]: https://img.shields.io/github/stars/rfrazier716/pyrayt.svg?style=flat
 [stars-url]: https://github.com/rfrazier716/pyrayt/stargazers
 
-[issues-shield]: https://img.shields.io/github/issues/rfrazier716/pyrayt.svg?style=for-the-badge
-
+[issues-shield]: https://img.shields.io/github/issues/rfrazier716/pyrayt.svg?style=flat
 [issues-url]: https://github.com/rfrazier716/pyrayt/issues
 
-[license-shield]: https://img.shields.io/github/license/rfrazier716/pyrayt.svg?style=for-the-badge
-
+[license-shield]: https://img.shields.io/github/license/rfrazier716/pyrayt.svg?style=flat
 [license-url]: https://github.com/rfrazier716/pyrayt/blob/master/LICENSE.txt
+
+[docs-shield]: https://readthedocs.org/projects/pyrayt/badge/?version=latest&style=flat
+[docs-url]: https://pyrayt.readthedocs.io
+
+[build-shield]: https://circleci.com/gh/rfrazier716/PyRayT.svg?style=shield
+[build-url]: https://app.circleci.com/pipelines/github/rfrazier716/PyRayT
+
+[version-shield]: https://img.shields.io/pypi/v/pyrayt
+[version-url]: https://pypi.org/project/pyrayt/
+
+[style-shield]: https://img.shields.io/badge/code%20style-black-000000.svg
+[style-url]: https://github.com/psf/black
