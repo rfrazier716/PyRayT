@@ -1,3 +1,4 @@
+from typing import Union
 import numpy as np
 from pyrayt._pyrayt import RaySet
 from tinygfx.g3d import materials as cg_matl
@@ -58,6 +59,33 @@ class BasicRefractor(TracableMaterial):
         normals = surface.get_world_normals(ray_set.rays[0])
         ray_set.rays[1], ray_set.index = cg.refract(
             ray_set.rays[1], normals, ray_set.index, self._index
+        )
+        return ray_set
+
+
+class SellmeierRefractor(TracableMaterial):
+    def __init__(self, b1=0, b2=0, b3=0, c1=0, c2=0, c3=0):
+        self.b1 = b1
+        self.b2 = b2
+        self.b3 = b3
+        self.c1 = c1
+        self.c2 = c2
+        self.c3 = c3
+
+    def _index(self, wavelength: Union[float, np.ndarray]) -> float:
+
+        return np.sqrt(
+            1
+            + (self.b1 * wavelength ** 2) / (wavelength ** 2 - self.c1)
+            + (self.b2 * wavelength ** 2) / (wavelength ** 2 - self.c2)
+            + (self.b3 * wavelength ** 2) / (wavelength ** 2 - self.c3)
+        )
+
+    def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
+        # This is the same as the basic refractor but includes dispersion
+        normals = surface.get_world_normals(ray_set.rays[0])
+        ray_set.rays[1], ray_set.index = cg.refract(
+            ray_set.rays[1], normals, ray_set.index, self._index(ray_set.wavelength)
         )
         return ray_set
 

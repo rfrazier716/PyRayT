@@ -109,6 +109,64 @@ class TestRefractiveMaterial(unittest.TestCase):
         self.assertTrue(np.allclose(new_angle, expected_angle), f"expected {expected_angle}, got {new_angle[0]}")
         self.assertTrue(np.allclose(rays.index, self.index))
 
+class TestSellmeierRefractor(unittest.TestCase):
+
+    def test_dispersive_index_single(self):
+        coeffs = [
+            [1, 0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 1, 0],
+            [0, 0, 1, 0, 0, 1]
+        ]
+        for coeff in coeffs:
+            material = materials.SellmeierRefractor(*coeff)
+            self.assertAlmostEqual(material._index(2.0), np.sqrt(7/3))
+    
+    def test_dispersive_index_array(self):
+        coeffs = [
+            [1, 0, 0, 1, 0, 0],
+            [0, 1, 0, 0, 1, 0],
+            [0, 0, 1, 0, 0, 1]
+        ]
+        for coeff in coeffs:
+            material = materials.SellmeierRefractor(*coeff)
+            indices = material._index(np.full(100,2.0))
+            expected = np.sqrt(7/3)
+            self.assertTrue(np.allclose(indices, expected), f"expected {expected} but got {indices[:10]}")
+    
+    def test_refraction_at_normal_incidence(self):
+        # make a ray set propogating along the -z axis (so that it enters the material)
+        rays = pyrayt.RaySet(2)
+        rays.wavelength[:] = 2.0
+        rays.rays[1,2] = -1.0
+
+        # Create a material and surface to interact with
+        material = materials.SellmeierRefractor(b1=1, c1 = 1)
+        surface = cg.XYPlane()
+
+        # trace the rays through the material
+        new_rays = material.trace(surface, rays)
+
+        # assert that the index is updated
+        self.assertTrue(np.allclose(new_rays.index, np.sqrt(7/3)), f"new rays have index {new_rays.index}, expected {np.sqrt(7/3)}")
+    
+    def test_refraction_at_angled_incidence(self):
+        # make a ray set propagating along at a 45 degree angle
+        rays = pyrayt.RaySet(10)
+        rays.wavelength[:] = 2.0
+        rays.rays[1,2] = -1.0
+        rays.rays[1,1] = 1.0
+
+        # Create a material and surface to interact with
+        material = materials.SellmeierRefractor(b1=1, c1 = 1)
+        surface = cg.XYPlane()
+
+        # trace the rays through the material
+        new_rays = material.trace(surface, rays)
+
+        # assert that the index is updated
+        new_angle = np.arctan(np.abs(new_rays.rays[1,1]/new_rays.rays[1,2]))
+        expected_angle = np.arcsin(np.sqrt(3/7)*np.sqrt(2)/2)
+        self.assertTrue(np.allclose(new_angle, expected_angle), f"new rays have angle {new_angle}, expected {expected_angle}")
 
 if __name__ == '__main__':
     unittest.main()
