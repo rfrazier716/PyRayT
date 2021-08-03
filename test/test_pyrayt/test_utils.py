@@ -13,7 +13,7 @@ class TestWaveToRGB(unittest.TestCase):
         expected_rgb = np.asarray([
             [0, 0, 1],
             [0, 1, 1],
-            [0, 1, 1],
+            [0, 1, 0],
             [1, 1, 0],
             [1, 0, 0]
         ])
