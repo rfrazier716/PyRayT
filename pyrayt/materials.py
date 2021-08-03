@@ -95,4 +95,14 @@ absorber = _AbsorbingMaterial()  # an
 
 # instance of the absorbing material class to call
 mirror = _ReflectingMaterial()
-glass = BasicRefractor(1.5)
+glass = {
+    "ideal": BasicRefractor(1.5),
+    "BK7": SellmeierRefractor(
+        1.03961212,
+        0.231792344,
+        1.01046945,
+        6.00069867e-3,
+        2.00179144e-2,
+        1.03560653e02,
+    ),
+}

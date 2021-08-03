@@ -20,7 +20,7 @@ def _lens(func):
 
     @wraps(func)
     def wrapper_function(*args, **kwargs):
-        lens_arguments = {"aperture": 1, "material": matl.glass}
+        lens_arguments = {"aperture": 1, "material": matl.glass["ideal"]}
         # update default values with any supplied by the user
         lens_arguments.update(kwargs)
         return func(*args, **lens_arguments).rotate_y(90).rotate_x(90)
@@ -304,6 +304,20 @@ def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.Interse
     mirror.move_z(-focus)
     return mirror
 
+
+def equilateral_prism(side_length: float, width: float, material=matl.glass["BK7"]) -> cg.csg.Intersectable:
+    # make the first cuboid which will remain after the corners are subtracted
+    cut_length = 1.1*side_length/np.sin(60*np.pi/180) # how long the cuts will need to be to remove the material from the cube\
+    
+    # create a prism by cutting away corners from the cube
+    prism = cg.csg.difference(
+        cg.csg.difference(
+            cg.Cuboid.from_sides(side_length, width, side_length, material = material),
+            cg.Cuboid.from_sides(cut_length, 1.1*width, cut_length, material=material).move(-cut_length/2, 0, cut_length/2).rotate_y(30).move(-side_length/2, 0, -side_length/2)
+        ),
+        cg.Cuboid.from_sides(cut_length, 1.1*width, cut_length, material=material).move(cut_length/2, 0, cut_length/2).rotate_y(-30).move(side_length/2, 0, -side_length/2)
+    ).move_z(side_length/2*(1-np.sin(60*np.pi/180)))
+    return prism
 
 def baffle(aperture: Union[float, Tuple[float, float]]) -> cg.Intersectable:
     """

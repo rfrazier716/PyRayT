@@ -1,37 +1,42 @@
 import pyrayt
-from pyrayt.utils import lensmakers_equation
+import numpy as np
+import tinygfx.g3d as cg
 
 
 def main() -> None:
 
-    crown_glass_coeffs = [1.03961212 , 0.231792344,  	1.01046945, 6.00069867E-3, 2.00179144E-2, 1.03560653E02]
-    crown_glass = pyrayt.materials.SellmeierRefractor(*crown_glass_coeffs)
+    # Create an equilateral prism that will refract the light
+    # The default material for prisms is BK7 Crown Glass
+    prism_size = 1
+    prism = pyrayt.components.equilateral_prism(prism_size, prism_size)
+    prism.move_x(prism_size / 4)
 
-    # Create the Collimating Lens
-    r1 = 100 # The radius of curvature for the first lens surface
-    r2 = 100  # Radius of Curvature for the second lens surface
-    thickness = 10  # the lens' maximum thickness
-    aperture = 50  # the aperture of the lens, (a circular aperture with diameter == 1)
-    focus = lensmakers_equation(r1, -r2, crown_glass._index(0.63), thickness)
-    print(crown_glass._index(0.63))
-    print(focus)
-    lens = pyrayt.components.biconvex_lens(r1, r2, thickness, aperture=aperture, material = crown_glass)
+    # A baffle is required to view the rays, otherwise they'll be terminated when they exit the prism
+    baffle = pyrayt.components.baffle((1, 1)).rotate_y(90).move(1, 0, -0.5)
 
-    # Create a source and move it to the -focus
-    sources = [pyrayt.components.ConeOfRays(cone_angle=5, wavelength=x).move_x(-focus) for x in [0.405, 0.530, 0.650]]
+    # Sources are typically monochromatic, so to create a Rainbow of Rays we'll need to create a list of sources that will be simulated
+    sources = [
+        pyrayt.components.LineOfRays(spacing=0.1, wavelength=x)
+        .move_x(-prism_size / 2)
+        .rotate_y(-3)
+        for x in np.linspace(0.44, 0.75, 11)
+    ]
 
-    # Create a baffle so we can view the collimated rays
-    baffle = pyrayt.components.baffle((aperture, aperture)).move_x(2*focus)
-
-    # load everything into a ray-trace object
-    tracer = pyrayt.RayTracer(sources, [lens, baffle])
-    tracer.set_rays_per_source(20)
-    tracer.set_generation_limit(100)
+    # load everything into a ray tracer
+    tracer = pyrayt.RayTracer(sources, [prism, baffle])
+    tracer.set_rays_per_source(
+        1
+    )  # We only need one ray per source for this since we already have 11 sources
 
     # Run the Ray trace and view results
-    results = tracer.trace()
-    tracer.show(color_function='wavelength', resolution=1080, ray_width=0.05)
-    # uncomment this line to view the plot
+    tracer.trace()
+    tracer.show(
+        color_function="wavelength",  # Use the wavelength color function to shade rays by wavelength, otherwise they'll all be one color
+        resolution=1080,  # Horizontal resolution of the render
+        ray_width=0.005,  # The width to draw the rays
+        view="xz",  # Projected view for the display, The prism is oriented in the XZ plane so we want to view that projection.
+    )
+
 
 if __name__ == "__main__":
     main()
