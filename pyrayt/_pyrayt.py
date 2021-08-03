@@ -448,7 +448,9 @@ class RayTracer(object):
         self._simulation_complete = True
         self._state = self._States.IDLE
 
-    def show(self, view="xy", axis=None, color_function=None, ray_width=0.01, **kwargs) -> None:
+    def show(
+        self, view="xy", axis=None, color_function=None, ray_width=0.01, **kwargs
+    ) -> None:
         """
         Plot the ray trace results in a MatPlotLib figure with orthographic projection.
         If no trace has been run, the componets are rendered and displayed instead.
@@ -456,7 +458,7 @@ class RayTracer(object):
         :param view: the projected axis of the results, options are 'xy' or 'xz'
         :param axis: the matplotlib axis to plot the results in, if no axis is provided the current axis is resolved
             using plt.gca()
-        :param color_function: Color function to use when drawing rays, options are 'wavelength', or 'source'. By 
+        :param color_function: Color function to use when drawing rays, options are 'wavelength', or 'source'. By
             default will color all rays a uniform color.
         :param ray_width: Width of the rays to draw. This is passed to pyplot.quiver() as 'width'.
         :param kwargs: additional keyword arguments to pass to :func:`~tinygfx.g3d.renderers.draw`, which renders the
@@ -464,11 +466,10 @@ class RayTracer(object):
         """
 
         # figure out what color to use based on the color function argument
-        color="C0"
+        color = "C0"
         if color_function == "wavelength":
-            color=wavelength_to_rgb(self._frame.data['wavelength'])
-        # TODO! Add definition for source 
-            
+            color = wavelength_to_rgb(self._frame.data["wavelength"])
+        # TODO! Add definition for source
 
         shaded = kwargs.pop("shaded", False)
         show_at_end = False
