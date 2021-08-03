@@ -77,3 +77,18 @@ def wavelength_to_rgb(wavelength: Tuple[float, np.ndarray], gamma=0.8) -> np.nda
     color = np.where(wavelength >= zone_min, zone, color) # fill the color array at the appropriate spots
     
     return color.T
+
+def lensmakers_equation(r1: float, r2: float, n_lens: float, thickness: float) -> float:
+    """
+    Calculate the focal length of a thick spherical lens using the lensmaker's equation.
+
+    :param r1: the first radius of curvature, positive for convex, negative for concave
+    :param r2: the second radius of curvature, negative for convex, positive for concave
+    :param n_lens: the refractive index of the lens
+    :param thickness: The thickness of the lens
+
+    :return: The focal length of the lens based on the paraxial approximation
+    """
+
+    p = (n_lens - 1) * (1 / r1 - 1 / r2 + (n_lens - 1) * thickness / (n_lens * r1 * r2))
+    return 1 / p
