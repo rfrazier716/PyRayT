@@ -256,6 +256,9 @@ def draw(
     bounds=None,
     resolution=640,
 ):
+    if not hasattr(surfaces, "__iter__"):
+        surfaces = (surfaces,)
+
     # draw a surface for a given projection
     bounding_box = np.hstack(
         [surface.bounding_volume.bounding_points[:3] for surface in surfaces]
