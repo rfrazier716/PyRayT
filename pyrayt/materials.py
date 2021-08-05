@@ -48,22 +48,34 @@ class _ReflectingMaterial(TracableMaterial):
         ray_set.rays[1] = cg.reflect(ray_set.rays[1], normals)
         return ray_set
 
-
-class BasicRefractor(TracableMaterial):
-    def __init__(self, refractive_index, *args, **kwargs):
-        self._index = refractive_index
-        super().__init__(cg_matl.gooch.BLUE, *args, **kwargs)
+class _Glass(TracableMaterial):
+    def __init__(self, *args, **kwargs):
+        super().__init__( base_material=cg_matl.gooch.BLUE, *args, **kwargs)
 
     def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
-        # a reflecting material will
         normals = surface.get_world_normals(ray_set.rays[0])
         ray_set.rays[1], ray_set.index = cg.refract(
-            ray_set.rays[1], normals, ray_set.index, self._index
+            ray_set.rays[1], normals, ray_set.index, self.index_at(ray_set.wavelength)
         )
         return ray_set
 
+    @abc.abstractmethod
+    def index_at(self, wavelength: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        pass
 
-class SellmeierRefractor(TracableMaterial):
+class BasicRefractor(_Glass):
+    def __init__(self, refractive_index, *args, **kwargs):
+        self._refractive_index = refractive_index
+        super().__init__()
+
+    def index_at(self, wavelength: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        if isinstance(wavelength, np.ndarray):
+            return np.full(wavelength.shape, self._refractive_index)
+        else:
+            return self._refractive_index
+
+
+class SellmeierRefractor(_Glass):
     def __init__(self, b1=0, b2=0, b3=0, c1=0, c2=0, c3=0):
         self.b1 = b1
         self.b2 = b2
@@ -72,7 +84,9 @@ class SellmeierRefractor(TracableMaterial):
         self.c2 = c2
         self.c3 = c3
 
-    def _index(self, wavelength: Union[float, np.ndarray]) -> float:
+        super().__init__() # Call the parent constructor
+
+    def index_at(self, wavelength: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
 
         return np.sqrt(
             1
@@ -80,15 +94,6 @@ class SellmeierRefractor(TracableMaterial):
             + (self.b2 * wavelength ** 2) / (wavelength ** 2 - self.c2)
             + (self.b3 * wavelength ** 2) / (wavelength ** 2 - self.c3)
         )
-
-    def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
-        # This is the same as the basic refractor but includes dispersion
-        normals = surface.get_world_normals(ray_set.rays[0])
-        ray_set.rays[1], ray_set.index = cg.refract(
-            ray_set.rays[1], normals, ray_set.index, self._index(ray_set.wavelength)
-        )
-        return ray_set
-
 
 absorber = _AbsorbingMaterial()  # an
 """A bulk absorbing material"""
@@ -105,4 +110,12 @@ glass = {
         2.00179144e-2,
         1.03560653e02,
     ),
+    "SF5": SellmeierRefractor(
+        1.52481889,
+        0.187085527,
+        1.42729015,
+        0.011254756,
+        0.0588995392,
+        129.141675
+    )
 }

@@ -69,6 +69,81 @@ def _sphere_sample(n_pts: int, max_angle: float) -> np.ndarray:
     uv_samples[1] *= 2 * np.pi  # convert row 1 to phi samples
     return uv_samples
 
+@_lens
+def thick_lens(r1: float, r2: float, thickness: float, **kwargs) -> cg.Intersectable:
+    """
+    Creates a Thick lens with arbitrary surface curvature.
+
+    See https://en.wikipedia.org/wiki/Radius_of_curvature_(optics) for convention on positive vs. negative radius of curvature.
+
+
+    :param r1: Radius of curvature for the first lens surface. Set to :code:`np.inf` for a planar surface.
+    :type r1: float
+    :param r2: Radius of curvature for the second lens surface. Set to :code:`np.inf` for a planar surface.
+    :type r2: float
+    :param thickness: Thickness of the lens along the optical (x) axis. For a convex lens this will be the thickest point, for a concave lens
+        it will be the thinnest.
+    :type thickness: float
+    :return: A traceable lens centered at the origin. The returned lens is oriented such that the
+        first surfaces faces the -X axis, and the second surface faces +X. The aperture is defined in the YZ Plane
+    :rtype: cg.Intersectable
+    """
+
+    aperture_thickness, aperture_offset = _lens_full_thickness(r1, r2, thickness, kwargs.get('aperture'))
+
+    # create the original lens
+    lens = _create_aperture(kwargs.get('aperture'), aperture_thickness).move_z(aperture_offset / 2)
+    lens.material = kwargs.get('material')
+
+    # build the left side, if it's infinite leave it blank
+    if np.isfinite(r1):
+        left_side = cg.Sphere(r1, material=kwargs.get('material')).move_z(r1-thickness / 2)
+        # if it's concave, we cut out, convex, we intersect
+        lens = cg.csg.intersect(lens, left_side) if r1> 0 else cg.csg.difference(lens, left_side)
+
+    # build the right side, if it's infinite leave it blank
+    if np.isfinite(r2):
+        right_side = cg.Sphere(r2, material=kwargs.get('material')).move_z(r2+thickness / 2)
+        # if it's concave, we cut out, convex, we intersect
+        lens = cg.csg.intersect(lens, right_side) if r2 < 0 else cg.csg.difference(lens, right_side)
+    
+    return lens
+
+def _lens_full_thickness(r1, r2, thickness, aperture) -> Tuple[float, float]:
+    """Helper function to Create the aperture for a thick lens
+
+    :param r1: [description]
+    :type r1: [type]
+    :param r2: [description]
+    :type r2: [type]
+    :param thickness: [description]
+    :type thickness: [type]
+    :param aperture: [description]
+    :type aperture: [type]
+    """
+    if not hasattr(aperture, "__len__"):
+        # if the aperture is a single value (circular) the max height is the radius
+        max_height = aperture/2
+
+    else:
+        # otherwise it's rectangular in which case the max height is the norm of the aperture
+        max_height = np.linalg.norm(aperture)/2
+
+    # The left thickness is based on the radius of curvature, positive is concave, negative is convex
+    left_thickness = thickness/2
+    if np.isfinite(r1) and r1 < 0:
+        left_thickness += -(r1 + np.sqrt(r1**2 - (max_height)**2))
+    
+    right_thickness = thickness / 2
+    if np.isfinite(r2) and r2 > 0:
+        right_thickness += r2 - np.sqrt(r2**2 - (max_height)**2)
+
+    center_shift = right_thickness - left_thickness
+    total_thickness = right_thickness + left_thickness
+
+    # return the total thickness of the aperture plus any shift along the x-axis
+    return total_thickness, center_shift
+
 
 @_lens
 def biconvex_lens(r1: float, r2: float, thickness: float, **kwargs) -> cg.Intersectable:
@@ -341,6 +416,11 @@ def baffle(aperture: Union[float, Tuple[float, float]]) -> cg.Intersectable:
 
     return cg.XYPlane(aperture[0], aperture[1], material=matl.absorber).rotate_y(90)
 
+def aperture(size: Union[float, Tuple[float, float]], aperture_size: Union[float, Tuple[float, float]]) -> cg.Intersectable:
+    aperture_stop = baffle(size).rotate_y(-90)
+    aperture = _create_aperture(aperture_size, thickness=0.1)
+
+    return cg.csg.difference(aperture_stop, aperture).rotate_y(90).rotate_x(-90)
 
 class Source(cg.WorldObject, abc.ABC):
     def __init__(self, wavelength=0.633, *args, **kwargs):

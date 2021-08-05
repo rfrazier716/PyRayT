@@ -119,7 +119,7 @@ class TestSellmeierRefractor(unittest.TestCase):
         ]
         for coeff in coeffs:
             material = materials.SellmeierRefractor(*coeff)
-            self.assertAlmostEqual(material._index(2.0), np.sqrt(7/3))
+            self.assertAlmostEqual(material.index_at(2.0), np.sqrt(7/3))
     
     def test_dispersive_index_array(self):
         coeffs = [
@@ -129,7 +129,7 @@ class TestSellmeierRefractor(unittest.TestCase):
         ]
         for coeff in coeffs:
             material = materials.SellmeierRefractor(*coeff)
-            indices = material._index(np.full(100,2.0))
+            indices = material.index_at(np.full(100,2.0))
             expected = np.sqrt(7/3)
             self.assertTrue(np.allclose(indices, expected), f"expected {expected} but got {indices[:10]}")
     
