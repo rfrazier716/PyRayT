@@ -471,6 +471,23 @@ class LineOfRays(Source):
         rayset.wavelength = self._wavelength
         return rayset
 
+class CircleOfRays(Source):
+    def __init__(self, diameter=1, wavelength=0.633, *args, **kwargs):
+        super().__init__(wavelength, *args, **kwargs)
+        self._diameter = diameter
+
+    def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
+        """
+        creates a circle of rays directed towards the positive x-axis with the specified diameter
+        """
+        rayset = pyrayt.RaySet(n_rays)
+        # if we want more than one ray, linearly space them, otherwise default position is fine
+        theta = np.linspace(0, 2*np.pi, n_rays)
+        rayset.rays[0, 1] = self._diameter/2*np.sin(theta)  # space rays along the y-axis
+        rayset.rays[0, 2] = self._diameter/2*np.cos(theta)  # space rays along the y-axis
+        rayset.rays[1, 0] = 1  # direct rays along positive x
+        rayset.wavelength = self._wavelength
+        return rayset
 
 class ConeOfRays(Source):
     def __init__(self, cone_angle: float, wavelength=0.633, *args, **kwargs):
