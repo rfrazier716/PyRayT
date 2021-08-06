@@ -346,6 +346,13 @@ class RayTracer(object):
         """
         return self._frame.data
 
+    def calculate_source_ids(self):
+        """
+        Calculates the Source ID for every ray in the dataframe, adding it as a column
+        """
+        ids = ( self._frame.data["id"]/self._rays_per_source).astype(int)
+        self._frame.data['source_id'] = ids
+
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
 
@@ -469,7 +476,13 @@ class RayTracer(object):
         color = "C0"
         if color_function == "wavelength":
             color = wavelength_to_rgb(self._frame.data["wavelength"])
-        # TODO! Add definition for source
+        elif color_function == "source":
+            n_colors = len(self._sources)
+            colors = wavelength_to_rgb(np.linspace(0.45,0.65, n_colors)) # generate the colors we'll use
+            color = np.empty((3, self._frame.data.shape[0]))
+            for n, this_color in enumerate(colors):
+                color = np.where(np.logical_and(self._frame.data['id']>=n*self._rays_per_source, self._frame.data['id']<(n+1)*self._rays_per_source), np.atleast_2d(this_color).T, color)
+            color=color.T # transpose so it can be treated as colors again
 
         shaded = kwargs.pop("shaded", False)
         show_at_end = False
