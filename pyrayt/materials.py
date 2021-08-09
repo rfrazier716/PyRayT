@@ -4,7 +4,7 @@ from pyrayt._pyrayt import RaySet
 from tinygfx.g3d import materials as cg_matl
 import tinygfx.g3d as cg
 import abc
-
+from functools import lru_cache
 
 class TracableMaterial(cg_matl.gooch.Material):
     def __init__(self, base_material, *args, **kwargs):
@@ -58,6 +58,17 @@ class _Glass(TracableMaterial):
             ray_set.rays[1], normals, ray_set.index, self.index_at(ray_set.wavelength)
         )
         return ray_set
+
+    @lru_cache
+    def abbe(self) -> float:
+        """
+        Calculates the Abbe number of the material 
+        """
+        n_short = self.index_at(0.4861)
+        n_center = self.index_at(0.5893)
+        n_long = self.index_at(0.6563)
+
+        return (n_center -1)/(n_short - n_long)
 
     @abc.abstractmethod
     def index_at(self, wavelength: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
