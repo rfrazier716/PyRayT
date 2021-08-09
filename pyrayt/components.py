@@ -512,6 +512,31 @@ class ConeOfRays(Source):
         rayset.wavelength = self._wavelength
         return rayset
 
+class WedgeOfRays(Source):
+    def __init__(self, angle: float, wavelength=0.633, *args, **kwargs):
+        super().__init__(wavelength, *args, **kwargs)
+        self._angle = angle * np.pi / 180.0
+
+    def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
+        """
+        creates a wedge of rays directed towards the positive x-axis along the y-axis
+
+        :param n_rays:
+        :return:
+        """
+        rayset = pyrayt.RaySet(n_rays)
+
+        # generate the wedge angles
+        angles = np.linspace(-self._angle/2, self._angle / 2, n_rays)
+
+        # tilt rays along the wedge
+        rayset.rays[1, 0] = np.cos(angles) # x-dim
+        rayset.rays[1, 1] = np.sin(angles) # y-dim
+
+        # the position in the x-direction is the cosine of the ray angle
+        rayset.wavelength = self._wavelength
+        return rayset
+
 
 class Lamp(Source):
     """
