@@ -525,3 +525,23 @@ class RayTracer(object):
 
         if show_at_end:
             plt.show()
+
+class pin(object):
+    """
+    Pins a world_object to the giving transform matrix state, undoing any object transforms at the exit of the block
+    """
+    _starting_matrices: []
+    
+    def __init__(self, *objects_to_pin):
+        self._obj_set = objects_to_pin
+    
+    def __enter__(self): 
+        self._starting_matrices = [surface.get_world_transform() for surface in self._obj_set]
+        return self._obj_set
+    
+    def __exit__(self, exception_type, exception_value, traceback):
+        
+        for this_object, starting_matrix in zip(self._obj_set, self._starting_matrices):
+            final_matrix = this_object.get_world_transform()
+            matrix_change = np.matmul(final_matrix, np.linalg.inv(starting_matrix))
+            this_object.transform(np.linalg.inv(matrix_change))
