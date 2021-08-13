@@ -538,10 +538,25 @@ class RayTracer(object):
 
 class pin(object):
     """
-    Pins a world_object to the giving transform matrix state, undoing any object transforms at the exit of the block
+    A context manager that pins a number of components at their given position and rotation. On exiting the context, all components are reset to their original states.
+
+    e.g:
+
+    .. code-block:: python
+
+        lens = pyrayt.components.lens(10, -10, 1)
+        lens.get_position() # [0,0,0,1]
+
+        with pin(lens):
+            # in the context manager you can freely manipulate the position of objects
+            lens.move_x(100)
+            lens.get_position() # [100, 0, 0, 1]
+        
+        # Once the context manager exits, any changes to position are reverted
+        lens.get_position() # [0, 0, 0, 1]
     """
 
-    _starting_matrices: []
+    _starting_matrices: List
 
     def __init__(self, *objects_to_pin):
         self._obj_set = objects_to_pin

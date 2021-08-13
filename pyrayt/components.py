@@ -82,7 +82,7 @@ def thick_lens(r1: float, r2: float, thickness: float, **kwargs) -> cg.Intersect
     :type r1: float
     :param r2: Radius of curvature for the second lens surface. Set to :code:`np.inf` for a planar surface.
     :type r2: float
-    :param thickness: Thickness of the lens along the optical (x) axis. For a convex lens this will be the thickest point, for a concave lens
+    :param thickness: Thickness of the lens along the optical (x) axis. For a biconvex lens this will be the thickest point, for a concave lens
         it will be the thinnest.
     :type thickness: float
     :return: A traceable lens centered at the origin. The returned lens is oriented such that the
@@ -399,8 +399,19 @@ def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.Interse
 
 
 def equilateral_prism(
-    side_length: float, width: float, material=matl.glass["BK7"]
+    side_length: float, width: float, material: matl.TracableMaterial=matl.glass["BK7"]
 ) -> cg.csg.Intersectable:
+    """Creates an equilateral prism.
+
+    :param side_length: Side length of the triangular edges.
+    :type side_length: float
+    :param width: Width of the prism.
+    :type width: float
+    :param material: Prism material, defaults to matl.glass["BK7"]
+    :type material: pyrayt.materials.TracableMaterial, optional
+    :return: An equilateral prism with the body center located at the origin. The triangular faces are parallel to the YZ plane and the base of the prism is parallel to the XY plane.
+    :rtype: cg.csg.Intersectable
+    """
     # make the first cuboid which will remain after the corners are subtracted
     cut_length = (
         1.1 * side_length / np.sin(60 * np.pi / 180)
