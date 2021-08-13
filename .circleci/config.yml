@@ -176,7 +176,7 @@ workflows:
       - coverage:
           requires:
             - build
-            - integration-tests
+            - unit-tests
       
       - lint:
           requires:
