@@ -6,6 +6,7 @@ import tinygfx.g3d as cg
 import abc
 from functools import lru_cache
 
+
 class TracableMaterial(cg_matl.gooch.Material):
     def __init__(self, base_material, *args, **kwargs):
         super().__init__(*args, **kwargs)  # call the next constructor
@@ -48,9 +49,10 @@ class _ReflectingMaterial(TracableMaterial):
         ray_set.rays[1] = cg.reflect(ray_set.rays[1], normals)
         return ray_set
 
+
 class _Glass(TracableMaterial):
     def __init__(self, *args, **kwargs):
-        super().__init__( base_material=cg_matl.gooch.BLUE, *args, **kwargs)
+        super().__init__(base_material=cg_matl.gooch.BLUE, *args, **kwargs)
 
     def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
         normals = surface.get_world_normals(ray_set.rays[0])
@@ -62,24 +64,29 @@ class _Glass(TracableMaterial):
     @lru_cache
     def abbe(self) -> float:
         """
-        Calculates the Abbe number of the material 
+        Calculates the Abbe number of the material
         """
         n_short = self.index_at(0.4861)
         n_center = self.index_at(0.5893)
         n_long = self.index_at(0.6563)
 
-        return (n_center -1)/(n_short - n_long)
+        return (n_center - 1) / (n_short - n_long)
 
     @abc.abstractmethod
-    def index_at(self, wavelength: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def index_at(
+        self, wavelength: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
         pass
+
 
 class BasicRefractor(_Glass):
     def __init__(self, refractive_index, *args, **kwargs):
         self._refractive_index = refractive_index
         super().__init__()
 
-    def index_at(self, wavelength: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def index_at(
+        self, wavelength: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
         if isinstance(wavelength, np.ndarray):
             return np.full(wavelength.shape, self._refractive_index)
         else:
@@ -95,9 +102,11 @@ class SellmeierRefractor(_Glass):
         self.c2 = c2
         self.c3 = c3
 
-        super().__init__() # Call the parent constructor
+        super().__init__()  # Call the parent constructor
 
-    def index_at(self, wavelength: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def index_at(
+        self, wavelength: Union[float, np.ndarray]
+    ) -> Union[float, np.ndarray]:
 
         return np.sqrt(
             1
@@ -105,6 +114,7 @@ class SellmeierRefractor(_Glass):
             + (self.b2 * wavelength ** 2) / (wavelength ** 2 - self.c2)
             + (self.b3 * wavelength ** 2) / (wavelength ** 2 - self.c3)
         )
+
 
 absorber = _AbsorbingMaterial()  # an
 """A bulk absorbing material"""
@@ -122,19 +132,9 @@ glass = {
         1.03560653e02,
     ),
     "SF5": SellmeierRefractor(
-        1.52481889,
-        0.187085527,
-        1.42729015,
-        0.011254756,
-        0.0588995392,
-        129.141675
+        1.52481889, 0.187085527, 1.42729015, 0.011254756, 0.0588995392, 129.141675
     ),
     "SF2": SellmeierRefractor(
-        1.40301821,
-        0.231767504,
-        0.939056586,
-        0.0105795466,
-        0.0493226978,
-        112.405955
-    )
+        1.40301821, 0.231767504, 0.939056586, 0.0105795466, 0.0493226978, 112.405955
+    ),
 }
