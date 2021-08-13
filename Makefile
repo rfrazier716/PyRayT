@@ -1,0 +1,2 @@
+format:
+	black pyrayt tinygfx
