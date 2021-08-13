@@ -132,11 +132,11 @@ def _lens_full_thickness(r1, r2, thickness, aperture) -> Tuple[float, float]:
     # The left thickness is based on the radius of curvature, positive is concave, negative is convex
     left_thickness = thickness/2
     if np.isfinite(r1) and r1 < 0:
-        left_thickness += -(r1 + np.sqrt(r1**2 - (max_height)**2))
+        left_thickness += np.abs(r1)-np.sqrt(np.abs(r1)**2 - max_height**2)
     
     right_thickness = thickness / 2
     if np.isfinite(r2) and r2 > 0:
-        right_thickness += r2 - np.sqrt(r2**2 - (max_height)**2)
+        right_thickness += np.abs(r2)-np.sqrt(np.abs(r2)**2 - max_height**2)
 
     center_shift = right_thickness - left_thickness
     total_thickness = right_thickness + left_thickness
