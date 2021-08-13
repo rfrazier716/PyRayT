@@ -8,7 +8,11 @@ from functools import lru_cache
 
 
 class TracableMaterial(cg_matl.gooch.Material):
-    def __init__(self, base_material, *args, **kwargs):
+    def __init__(self, base_material=cg_matl.gooch.BLACK, *args, **kwargs):
+        """Base class for any material that can be traced with RayTracer objects
+
+        :param base_material: The base material to render the object with. used by the tinygfx module.
+        """
         super().__init__(*args, **kwargs)  # call the next constructor
         self._base_material = (
             base_material  # the material to call whenever the object is being rendered
@@ -21,14 +25,22 @@ class TracableMaterial(cg_matl.gooch.Material):
 
     @abc.abstractmethod
     def trace(self, surface, ray_set: RaySet) -> RaySet:
-        """
-        Traces Rays through the surface, returning an updated RaySet Object
+        """Trace Function for the material. Calculates the interaction of a :class:`RaySet` with a material, modifying the ray set in place. 
+
+        :param surface: The surface the material is attached to, used to calculate surface normals
+        :type surface: cg.TracerSurface
+        :param ray_set: the set of rays whose interaction is being calculated 
+        :type ray_set: RaySet
+        :return: a reference to the original ray_set with parameters updated to accurately represent the state of the ray after interacting with the surface.
+        :rtype: RaySet
         """
         pass
 
 
 class _AbsorbingMaterial(TracableMaterial):
     def __init__(self, *args, **kwargs):
+        """An Ideal absorber. Any ray interacting with an absorber will have it's velocity vector set to <0,0,0>, which will signal to the RayTrace object to terminate the ray.
+        """
         super().__init__(
             cg_matl.gooch.BLACK, *args, **kwargs
         )  # call the parent constructor
@@ -41,6 +53,8 @@ class _AbsorbingMaterial(TracableMaterial):
 
 class _ReflectingMaterial(TracableMaterial):
     def __init__(self, *args, **kwargs):
+        """An Ideal reflector, Any ray interacting with this reflector will be reflected with no change to refractive index or intensity.
+        """
         super().__init__(cg_matl.gooch.BLUE, *args, **kwargs)
 
     def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
@@ -50,8 +64,11 @@ class _ReflectingMaterial(TracableMaterial):
         return ray_set
 
 
-class _Glass(TracableMaterial):
+class Glass(TracableMaterial):
+    
     def __init__(self, *args, **kwargs):
+        """Abstract base class for glasses with convenience functions for common parameters.
+        """
         super().__init__(base_material=cg_matl.gooch.BLUE, *args, **kwargs)
 
     def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
@@ -64,7 +81,7 @@ class _Glass(TracableMaterial):
     @lru_cache
     def abbe(self) -> float:
         """
-        Calculates the Abbe number of the material
+        Calculates the `Abbe number <https://en.wikipedia.org/wiki/Abbe_number>`_ of the material.
         """
         n_short = self.index_at(0.4861)
         n_center = self.index_at(0.5893)
@@ -76,11 +93,23 @@ class _Glass(TracableMaterial):
     def index_at(
         self, wavelength: Union[float, np.ndarray]
     ) -> Union[float, np.ndarray]:
+        """Calculates the refractive index of the glass for the given wavelength.
+
+        :param wavelength: The wavelength to sample, can be either a single float or a numpy array. Expected units are microns.
+        :type wavelength: Union[float, np.ndarray]
+        :return: The refractive index of the material, the shape of the returned value will match the shape/type of the wavelength argument.
+        :rtype: Union[float, np.ndarray]
+        """
         pass
 
 
-class BasicRefractor(_Glass):
-    def __init__(self, refractive_index, *args, **kwargs):
+class BasicRefractor(Glass):
+    def __init__(self, refractive_index: float, *args, **kwargs):
+        """A simplified refractive model for nondispersive materials
+
+        :param refractive_index: refractive index of the material. 
+        :type refractive_index: float
+        """
         self._refractive_index = refractive_index
         super().__init__()
 
@@ -93,8 +122,12 @@ class BasicRefractor(_Glass):
             return self._refractive_index
 
 
-class SellmeierRefractor(_Glass):
+class SellmeierRefractor(Glass):
     def __init__(self, b1=0, b2=0, b3=0, c1=0, c2=0, c3=0):
+        """A dispersive Refractive index model based on the `Sellmeier equation <https://en.wikipedia.org/wiki/Sellmeier_equation>`_. The six arguments (b1->b3, c1->c3) follow the expected convention found in literature.
+
+        Sellmeier Coefficients for common glasses can be found at `refractiveindex.info <https://refractiveindex.info/?shelf=glass&book=BK7&page=SCHOTT>`_. 
+        """
         self.b1 = b1
         self.b2 = b2
         self.b3 = b3
@@ -121,6 +154,8 @@ absorber = _AbsorbingMaterial()  # an
 
 # instance of the absorbing material class to call
 mirror = _ReflectingMaterial()
+"""A perfectly reflecting material"""
+
 glass = {
     "ideal": BasicRefractor(1.5),
     "BK7": SellmeierRefractor(
@@ -138,3 +173,5 @@ glass = {
         1.40301821, 0.231767504, 0.939056586, 0.0105795466, 0.0493226978, 112.405955
     ),
 }
+"""A Dictionary of common glasses.
+"""

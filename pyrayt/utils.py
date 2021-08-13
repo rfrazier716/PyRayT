@@ -3,19 +3,16 @@ import numpy as np
 
 
 def wavelength_to_rgb(wavelength: Tuple[float, np.ndarray], gamma=0.8) -> np.ndarray:
+    """Calculated the Appropriate RGB value for a wavelength of light based on linear interpolation. Wavelengthts outside of 0.38-0.75um are clipped to the limits.
 
+    :param wavelength: The wavelength of light to calculate color for, in microns. Can be either a float or an array of floats
+    :type wavelength: Tuple[float, np.ndarray]
+    :param gamma: Scaling coefficient for the colors, defaults to 0.8
+    :type gamma: float, optional
+    :return: An array of [R,G,B] values. Each index of the array corresponds to the RGB value of the wavelength at the same index of the input array.
+    :rtype: np.ndarray
     """
-    This converts a given wavelength of light to an
-    approximate RGB color value. The wavelength must be given
-    in nanometers in the range from 380 nm through 750 nm
-    (789 THz through 400 THz).
 
-    Based on code by Dan Bruton
-    http://www.physics.sfasu.edu/astro/color/spectra.html
-
-    This code adapted from noah.org
-    http://www.noah.org/wiki/Wavelength_to_RGB_in_Python
-    """
     wavelength = np.asarray(wavelength)  # convert the wavelength into a numpy array
     color = np.empty((3, wavelength.shape[0]))  # an empty matrix to generate color
 
@@ -107,7 +104,7 @@ def wavelength_to_rgb(wavelength: Tuple[float, np.ndarray], gamma=0.8) -> np.nda
 
 def lensmakers_equation(r1: float, r2: float, n_lens: float, thickness: float) -> float:
     """
-    Calculate the focal length of a thick spherical lens using the lensmaker's equation.
+    Calculates the focal length of a thick spherical lens using the lensmaker's equation.
 
     :param r1: the first radius of curvature, positive for convex, negative for concave
     :param r2: the second radius of curvature, negative for convex, positive for concave

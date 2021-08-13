@@ -73,3 +73,6 @@ autosectionlabel_prefix_document = True
 
 # autoclass the init function instead of the class function
 autoclass_content = 'init'
+
+# inherit parent docstrings
+autodoc_inherit_docstrings = True
