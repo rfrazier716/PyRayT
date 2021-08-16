@@ -20,7 +20,7 @@ def _lens(func):
 
     @wraps(func)
     def wrapper_function(*args, **kwargs):
-        lens_arguments = {"aperture": 1, "material": matl.glass}
+        lens_arguments = {"aperture": 1, "material": matl.glass["ideal"]}
         # update default values with any supplied by the user
         lens_arguments.update(kwargs)
         return func(*args, **lens_arguments).rotate_y(90).rotate_x(90)
@@ -68,6 +68,99 @@ def _sphere_sample(n_pts: int, max_angle: float) -> np.ndarray:
     uv_samples[0] = np.arccos(1 - uv_samples[0] * (1 - np.cos(max_angle)))
     uv_samples[1] *= 2 * np.pi  # convert row 1 to phi samples
     return uv_samples
+
+
+@_lens
+def thick_lens(r1: float, r2: float, thickness: float, **kwargs) -> cg.Intersectable:
+    """
+    Creates a Thick lens with arbitrary surface curvature.
+
+    See https://en.wikipedia.org/wiki/Radius_of_curvature_(optics) for convention on positive vs. negative radius of curvature.
+
+
+    :param r1: Radius of curvature for the first lens surface. Set to :code:`np.inf` for a planar surface.
+    :type r1: float
+    :param r2: Radius of curvature for the second lens surface. Set to :code:`np.inf` for a planar surface.
+    :type r2: float
+    :param thickness: Thickness of the lens along the optical (x) axis. For a biconvex lens this will be the thickest point, for a concave lens
+        it will be the thinnest.
+    :type thickness: float
+    :return: A traceable lens centered at the origin. The returned lens is oriented such that the
+        first surfaces faces the -X axis, and the second surface faces +X. The aperture is defined in the YZ Plane
+    :rtype: cg.Intersectable
+    """
+
+    aperture_thickness, aperture_offset = _lens_full_thickness(
+        r1, r2, thickness, kwargs.get("aperture")
+    )
+
+    # create the original lens
+    lens = _create_aperture(kwargs.get("aperture"), aperture_thickness).move_z(
+        aperture_offset / 2
+    )
+    lens.material = kwargs.get("material")
+
+    # build the left side, if it's infinite leave it blank
+    if np.isfinite(r1):
+        left_side = cg.Sphere(r1, material=kwargs.get("material")).move_z(
+            r1 - thickness / 2
+        )
+        # if it's concave, we cut out, convex, we intersect
+        lens = (
+            cg.csg.intersect(lens, left_side)
+            if r1 > 0
+            else cg.csg.difference(lens, left_side)
+        )
+
+    # build the right side, if it's infinite leave it blank
+    if np.isfinite(r2):
+        right_side = cg.Sphere(r2, material=kwargs.get("material")).move_z(
+            r2 + thickness / 2
+        )
+        # if it's concave, we cut out, convex, we intersect
+        lens = (
+            cg.csg.intersect(lens, right_side)
+            if r2 < 0
+            else cg.csg.difference(lens, right_side)
+        )
+
+    return lens
+
+
+def _lens_full_thickness(r1, r2, thickness, aperture) -> Tuple[float, float]:
+    """Helper function to Create the aperture for a thick lens
+
+    :param r1: [description]
+    :type r1: [type]
+    :param r2: [description]
+    :type r2: [type]
+    :param thickness: [description]
+    :type thickness: [type]
+    :param aperture: [description]
+    :type aperture: [type]
+    """
+    if not hasattr(aperture, "__len__"):
+        # if the aperture is a single value (circular) the max height is the radius
+        max_height = aperture / 2
+
+    else:
+        # otherwise it's rectangular in which case the max height is the norm of the aperture
+        max_height = np.linalg.norm(aperture) / 2
+
+    # The left thickness is based on the radius of curvature, positive is concave, negative is convex
+    left_thickness = thickness / 2
+    if np.isfinite(r1) and r1 < 0:
+        left_thickness += np.abs(r1) - np.sqrt(np.abs(r1) ** 2 - max_height ** 2)
+
+    right_thickness = thickness / 2
+    if np.isfinite(r2) and r2 > 0:
+        right_thickness += np.abs(r2) - np.sqrt(np.abs(r2) ** 2 - max_height ** 2)
+
+    center_shift = right_thickness - left_thickness
+    total_thickness = right_thickness + left_thickness
+
+    # return the total thickness of the aperture plus any shift along the x-axis
+    return total_thickness, center_shift
 
 
 @_lens
@@ -305,6 +398,44 @@ def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.Interse
     return mirror
 
 
+def equilateral_prism(
+    side_length: float,
+    width: float,
+    material: matl.TracableMaterial = matl.glass["BK7"],
+) -> cg.csg.Intersectable:
+    """Creates an equilateral prism.
+
+    :param side_length: Side length of the triangular edges.
+    :type side_length: float
+    :param width: Width of the prism.
+    :type width: float
+    :param material: Prism material, defaults to matl.glass["BK7"]
+    :type material: pyrayt.materials.TracableMaterial, optional
+    :return: An equilateral prism with the body center located at the origin. The triangular faces are parallel to the YZ plane and the base of the prism is parallel to the XY plane.
+    :rtype: cg.csg.Intersectable
+    """
+    # make the first cuboid which will remain after the corners are subtracted
+    cut_length = (
+        1.1 * side_length / np.sin(60 * np.pi / 180)
+    )  # how long the cuts will need to be to remove the material from the cube\
+
+    # create a prism by cutting away corners from the cube
+    prism = cg.csg.difference(
+        cg.csg.difference(
+            cg.Cuboid.from_sides(side_length, width, side_length, material=material),
+            cg.Cuboid.from_sides(cut_length, 1.1 * width, cut_length, material=material)
+            .move(-cut_length / 2, 0, cut_length / 2)
+            .rotate_y(30)
+            .move(-side_length / 2, 0, -side_length / 2),
+        ),
+        cg.Cuboid.from_sides(cut_length, 1.1 * width, cut_length, material=material)
+        .move(cut_length / 2, 0, cut_length / 2)
+        .rotate_y(-30)
+        .move(side_length / 2, 0, -side_length / 2),
+    ).move_z(side_length / 2 * (1 - np.sin(60 * np.pi / 180)))
+    return prism
+
+
 def baffle(aperture: Union[float, Tuple[float, float]]) -> cg.Intersectable:
     """
     Creates a planar baffle that absorbs all intersecting rays.
@@ -317,12 +448,44 @@ def baffle(aperture: Union[float, Tuple[float, float]]) -> cg.Intersectable:
     return cg.XYPlane(aperture[0], aperture[1], material=matl.absorber).rotate_y(90)
 
 
+def aperture(
+    size: Union[float, Tuple[float, float]],
+    aperture_size: Union[float, Tuple[float, float]],
+) -> cg.Intersectable:
+    """Creates a planar baffle with a central opening specified by the :code:`aperture_size` argument. Rays that intersect the baffle are absorbed but will transmit through the apertured region.
+
+    :param size: The size of the absorbing region of the aperture. See :ref:`Specifying Apertures <Apertures>` for additional details.
+    :type size: float | Tuple[float, float]
+    :param aperture_size: The size of the aperture opeining. See :ref:`Specifying Apertures <Apertures>` for additional details.
+    :type aperture_size: Union[float, Tuple[float, float]]
+    :return: A planar aperture with both baffle and opening centered at the origin, coplanar to the YZ plane.
+    :rtype: cg.Intersectable
+    """
+
+    aperture_stop = baffle(size).rotate_y(-90)
+    aperture = _create_aperture(aperture_size, thickness=0.1)
+
+    return cg.csg.difference(aperture_stop, aperture).rotate_y(90).rotate_x(-90)
+
+
 class Source(cg.WorldObject, abc.ABC):
     def __init__(self, wavelength=0.633, *args, **kwargs):
+        """Base Class for all Sources
+
+        :param wavelength: Wavelength of the source, defaults to 0.633 (units in um)
+        :type wavelength: float, optional
+        """
         super().__init__(*args, **kwargs)
         self._wavelength = wavelength
 
     def generate_rays(self, n_rays: int) -> pyrayt.RaySet:
+        """Generates a :class:`~pyrayt.RaySet` based on the source parameters.
+
+        :param n_rays: The number of rays to put in the resulting rayset
+        :type n_rays: int
+        :return: A set of rays whose position, direction, and wavelength are set based on the source type.
+        :rtype: pyrayt.RaySet
+        """
         ray_set = self._local_ray_generation(n_rays)
         ray_set.rays = np.matmul(
             self._world_coordinate_transform, ray_set.rays
@@ -367,18 +530,49 @@ class LineOfRays(Source):
         return rayset
 
 
+class CircleOfRays(Source):
+    def __init__(self, diameter=1, wavelength=0.633, *args, **kwargs):
+        """A Source that uniformly generates parallel rays about a circular arc.
+
+        :param diameter: Diameter of the circle rays are generated about, defaults to 1
+        :type diameter: int, optional
+        :param wavelength: wavelength of the rays, defaults to 0.633
+        :type wavelength: float, optional
+        """
+        super().__init__(wavelength, *args, **kwargs)
+        self._diameter = diameter
+
+    def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
+
+        rayset = pyrayt.RaySet(n_rays)
+        # if we want more than one ray, linearly space them, otherwise default position is fine
+        theta = np.linspace(0, 2 * np.pi, n_rays)
+        rayset.rays[0, 1] = (
+            self._diameter / 2 * np.sin(theta)
+        )  # space rays along the y-axis
+        rayset.rays[0, 2] = (
+            self._diameter / 2 * np.cos(theta)
+        )  # space rays along the y-axis
+        rayset.rays[1, 0] = 1  # direct rays along positive x
+        rayset.wavelength = self._wavelength
+        return rayset
+
+
 class ConeOfRays(Source):
     def __init__(self, cone_angle: float, wavelength=0.633, *args, **kwargs):
+        """Source that generates a set of rays originating from the same point, uniformly distributed about the x-axis with the specified cone angle.
+
+        e.g: An un-rotated. source with a cone angle of 45 degrees will expand to a uniformly distributed circle with a radius of 10mm after traveling 10mm along the optical axis.
+
+        :param cone_angle: Angle between every ray and the optical axis, in degrees.
+        :type cone_angle: float
+        :param wavelength: [description], defaults to 0.633
+        :type wavelength: float, optional
+        """
         super().__init__(wavelength, *args, **kwargs)
         self._angle = cone_angle * np.pi / 180.0
 
     def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
-        """
-        creates a line of rays directed towards the positive x-axis along the y-axis
-
-        :param n_rays:
-        :return:
-        """
         rayset = pyrayt.RaySet(n_rays)
         # if we want more than one ray, change them to have the desired cone angle
         if n_rays > 1:
@@ -391,14 +585,48 @@ class ConeOfRays(Source):
         return rayset
 
 
-class Lamp(Source):
-    """
-    a lamp
-    """
+class WedgeOfRays(Source):
+    def __init__(self, angle: float, wavelength=0.633, *args, **kwargs):
+        """Source that generates a wedge of rays originating from a point, directed towards the positive x-axis along the y-axis. The angle of the rays is uniformly distributed between [-angle/2, angle/2].
 
+        :param angle: The full angle of the wedge source.
+        :type angle: float
+        :param wavelength: Wavelength of the source, defaults to 0.633
+        :type wavelength: float, optional
+        """
+        super().__init__(wavelength, *args, **kwargs)
+        self._angle = angle * np.pi / 180.0
+
+    def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
+
+        rayset = pyrayt.RaySet(n_rays)
+
+        # generate the wedge angles
+        angles = np.linspace(-self._angle / 2, self._angle / 2, n_rays)
+
+        # tilt rays along the wedge
+        rayset.rays[1, 0] = np.cos(angles)  # x-dim
+        rayset.rays[1, 1] = np.sin(angles)  # y-dim
+
+        # the position in the x-direction is the cosine of the ray angle
+        rayset.wavelength = self._wavelength
+        return rayset
+
+
+class Lamp(Source):
     def __init__(
         self, width: float, length: float, max_angle: float = 90, *args, **kwargs
     ) -> None:
+        """Source that generates a lambertian distribution of rays. Every ray originates with a random position and direction about the surface of the lamp. The intensity of the distribution follows `Lambert's Cosine Law <https://en.wikipedia.org/wiki/Lambert%27s_cosine_law>`_.
+
+
+        :param width: Width of the rectangular region that rays can generate from
+        :type width: float
+        :param length: Length of the rectangular region that rays can generate from.
+        :type length: float
+        :param max_angle: The maximum angle a ray can generate projected along the x-axis, defaults to 90 (degrees)
+        :type max_angle: float, optional
+        """
         super().__init__(*args, **kwargs)
         self._max_angle = (
             max_angle * np.pi / 180
@@ -427,6 +655,8 @@ class Lamp(Source):
 
 
 class StaticLamp(Lamp):
+    """Identical to a :class:`Lamp`, except the ray generation function is cached so the same set of rays is generated across multiple simulations. Useful for running Monte-Carlo models where the random noise of the source is larger than the resolution you're trying to capture at."""
+
     @lru_cache(10)
     def generate_rays(self, n_rays: int) -> pyrayt.RaySet:
         return super().generate_rays(n_rays)

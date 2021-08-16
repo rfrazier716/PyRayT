@@ -21,7 +21,7 @@ copyright = '2021, Ryan Frazier'
 author = 'Ryan Frazier'
 
 # The full version, including alpha/beta/rc tags
-release = '0.2.1'
+release = '0.3.0'
 
 # -- General configuration ---------------------------------------------------
 
@@ -30,7 +30,6 @@ release = '0.2.1'
 # ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.autosummary',
-              'sphinx_panels',
               'encyclopedia',
               'sphinx-prompt',
               'sphinx.ext.autosectionlabel',
@@ -73,4 +72,7 @@ pygments_style = 'sphinx'
 autosectionlabel_prefix_document = True
 
 # autoclass the init function instead of the class function
-autoclass_content = 'init'
+autoclass_content = 'both'
+
+# inherit parent docstrings
+autodoc_inherit_docstrings = True

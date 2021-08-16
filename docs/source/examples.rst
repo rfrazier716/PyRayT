@@ -2,7 +2,5 @@
  Additional Examples 
 #####################
 
-
-Creating a Custom Part
-============================
+* `Designing and Characterizing a Single Lens Imager <https://github.com/rfrazier716/PyRayT/blob/main/examples/lens_design.ipynb>`_.
 

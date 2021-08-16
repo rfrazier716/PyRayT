@@ -472,14 +472,14 @@ class Cuboid(TracerSurface):
         )
 
     @classmethod
-    def from_sides(cls, x=1, y=1, z=1):
+    def from_sides(cls, x=1, y=1, z=1, **kwargs):
         corners = np.tile((-0.5, 0.5), (3, 1)).T * np.array((x, y, z))
-        return cls(*corners)
+        return cls(*corners, **kwargs)
 
     @classmethod
-    def from_length(cls, length):
+    def from_length(cls, length, **kwargs):
         corners = length * np.tile((-0.5, 0.5), (3, 1)).T
-        return cls(*corners)
+        return cls(*corners, **kwargs)
 
 
 class Cylinder(TracerSurface):

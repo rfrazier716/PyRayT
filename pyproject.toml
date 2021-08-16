@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pyrayt"
-version = "0.2.1"
+version = "0.3.0"
 description = "a toolchain for developing and simulating optical packages"
 authors = ["Frazier, Ryan"]
 license = "MIT"
@@ -26,6 +26,7 @@ sphinx-prompt = "^1.4.0"
 black = "^21.7b0"
 pylint = "^2.9.3"
 sphinx-autobuild = "^2021.3.14"
+ipykernel = "^6.0.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

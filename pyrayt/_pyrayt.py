@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from .utils import wavelength_to_rgb
 from enum import Enum
 import matplotlib.pyplot as plt
 
@@ -345,6 +346,13 @@ class RayTracer(object):
         """
         return self._frame.data
 
+    def calculate_source_ids(self):
+        """
+        Calculates the Source ID for every ray in the dataframe, adding it as a column
+        """
+        ids = (self._frame.data["id"] / self._rays_per_source).astype(int)
+        self._frame.data["source_id"] = ids
+
     def _st_initialize(self):
         self.reset()  # reset the renderer states/generation number
 
@@ -447,7 +455,9 @@ class RayTracer(object):
         self._simulation_complete = True
         self._state = self._States.IDLE
 
-    def show(self, view="xy", axis=None, **kwargs) -> None:
+    def show(
+        self, view="xy", axis=None, color_function=None, ray_width=0.01, **kwargs
+    ) -> None:
         """
         Plot the ray trace results in a MatPlotLib figure with orthographic projection.
         If no trace has been run, the componets are rendered and displayed instead.
@@ -455,9 +465,34 @@ class RayTracer(object):
         :param view: the projected axis of the results, options are 'xy' or 'xz'
         :param axis: the matplotlib axis to plot the results in, if no axis is provided the current axis is resolved
             using plt.gca()
-        :param kwargs: additional keyword arguemnts to pass to :func:`~tinygfx.g3d.renderers.draw`, which renders the
+        :param color_function: Color function to use when drawing rays, options are 'wavelength', or 'source'. By
+            default will color all rays a uniform color.
+        :param ray_width: Width of the rays to draw. This is passed to pyplot.quiver() as 'width'.
+        :param kwargs: additional keyword arguments to pass to :func:`~tinygfx.g3d.renderers.draw`, which renders the
             components
         """
+
+        # figure out what color to use based on the color function argument
+        color = "C0"
+        if color_function == "wavelength":
+            color = wavelength_to_rgb(self._frame.data["wavelength"])
+        elif color_function == "source":
+            n_colors = len(self._sources)
+            colors = wavelength_to_rgb(
+                np.linspace(0.45, 0.65, n_colors)
+            )  # generate the colors we'll use
+            color = np.empty((3, self._frame.data.shape[0]))
+            for n, this_color in enumerate(colors):
+                color = np.where(
+                    np.logical_and(
+                        self._frame.data["id"] >= n * self._rays_per_source,
+                        self._frame.data["id"] < (n + 1) * self._rays_per_source,
+                    ),
+                    np.atleast_2d(this_color).T,
+                    color,
+                )
+            color = color.T  # transpose so it can be treated as colors again
+
         shaded = kwargs.pop("shaded", False)
         show_at_end = False
         if axis is None:
@@ -491,11 +526,50 @@ class RayTracer(object):
                 self._frame.data[y0],
                 u,
                 v,
+                color=color,
                 scale=1,
                 units="x",
-                width=0.01,
-                color="C0",
+                width=ray_width,
             )
 
         if show_at_end:
             plt.show()
+
+
+class pin(object):
+    """
+    A context manager that pins a number of components at their given position and rotation. On exiting the context, all components are reset to their original states.
+
+    e.g:
+
+    .. code-block:: python
+
+        lens = pyrayt.components.lens(10, -10, 1)
+        lens.get_position() # [0,0,0,1]
+
+        with pin(lens):
+            # in the context manager you can freely manipulate the position of objects
+            lens.move_x(100)
+            lens.get_position() # [100, 0, 0, 1]
+
+        # Once the context manager exits, any changes to position are reverted
+        lens.get_position() # [0, 0, 0, 1]
+    """
+
+    _starting_matrices: List
+
+    def __init__(self, *objects_to_pin):
+        self._obj_set = objects_to_pin
+
+    def __enter__(self):
+        self._starting_matrices = [
+            surface.get_world_transform() for surface in self._obj_set
+        ]
+        return self._obj_set
+
+    def __exit__(self, exception_type, exception_value, traceback):
+
+        for this_object, starting_matrix in zip(self._obj_set, self._starting_matrices):
+            final_matrix = this_object.get_world_transform()
+            matrix_change = np.matmul(final_matrix, np.linalg.inv(starting_matrix))
+            this_object.transform(np.linalg.inv(matrix_change))

@@ -48,7 +48,7 @@ jobs:
             sh ./scripts/poetry_init.sh
       - run:
           name: run unittests
-          command: $POETRY run python -m unittest discover
+          command: $POETRY run python -m unittest discover -s ./test -p test_*.py
 
   coverage:
     docker: # use the Docker executor
@@ -128,7 +128,7 @@ jobs:
             sh ./scripts/poetry_init.sh  
       - run:
           name: Integration Tests
-          command: $POETRY run python -m unittest discover integration_tests
+          command: $POETRY run python -m unittest discover -s ./test -p int_test_*.py
 
   deploy:
     docker: # use the Docker executor
@@ -176,6 +176,7 @@ workflows:
       - coverage:
           requires:
             - build
+            - unit-tests
       
       - lint:
           requires:

@@ -26,13 +26,15 @@ def main() -> None:
     aperture = 1  # the aperture of the lens, (a circular aperture with diameter == 1)
 
     lens = pyrayt.components.biconvex_lens(r1, r2, thickness, aperture=aperture)
-    focus = lensmakers_equation(r1, -r2, 1.5, thickness) # calculate the focus of the lens
+    focus = lensmakers_equation(
+        r1, -r2, 1.5, thickness
+    )  # calculate the focus of the lens
 
     # Create a source and move it to the -focus
     source = pyrayt.components.ConeOfRays(cone_angle=6).move_x(-focus)
 
     # Create a baffle so we can view the collimated rays
-    baffle = pyrayt.components.baffle((1,1)).move_x(1)
+    baffle = pyrayt.components.baffle((1, 1)).move_x(1)
 
     # load everything into a ray-trace object
     tracer = pyrayt.RayTracer(source, [lens, baffle])
@@ -43,6 +45,7 @@ def main() -> None:
     results = tracer.trace()
     tracer.show()
     # uncomment this line to view the plot
+
 
 if __name__ == "__main__":
     main()
