@@ -91,7 +91,6 @@ For full installation instructions, follow the [Installation](https://pyrayt.rea
 
 PyRayT is currently in active development. Below are a couple planned features for future releases:
 
-- Support for Chromatic Dispersion
 - Support for absorbing (k!=0) materials
 - Full 3D rendering of Simulation Results (think Zemax)
 - Exporting designs to a portable format and reloading previous simulations
