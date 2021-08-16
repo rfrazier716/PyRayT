@@ -72,7 +72,7 @@ pygments_style = 'sphinx'
 autosectionlabel_prefix_document = True
 
 # autoclass the init function instead of the class function
-autoclass_content = 'init'
+autoclass_content = 'both'
 
 # inherit parent docstrings
 autodoc_inherit_docstrings = True

@@ -7,7 +7,7 @@ PyRayT requires Python 3.7 or 3.8. If you do not already have a Python interpret
 Below we assume you have the default Python environment already configured on your computer and you intend to install :code:`pyrayt` inside of it. If you want to create and work with Python virtual environments, please follow instructions on `venv`_ and `virtual environments`_.
 
 .. _`venv`: https://docs.python.org/3/library/venv.html
-.. _`virtual environments`:https://docs.python-guide.org/dev/virtualenvs/
+.. _`virtual environments`: https://docs.python-guide.org/dev/virtualenvs/
 
 First, make sure you have the latest version of :code:`pip` (the Python package manager) installed. If you do not, refer to the `Pip documentation <https://pip.pypa.io/en/stable/installing/>`_ and install :code:`pip` first.
 

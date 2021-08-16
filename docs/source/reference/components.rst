@@ -24,8 +24,9 @@ Basic Sources
 
 * :class:`~pyrayt.components.LineOfRays` - A set of rays linearly spaced in one dimension
 * :class:`~pyrayt.components.ConeOfRays` - A radially distributed set of rays originating from a point, with a predefined diverging angle
-* :class:`~pyrayt.components.PointOfRays` - A spatically distributed set of rays originating from a point, with a predefined diverging angle
 * :class:`~pyrayt.components.WedgeOfRays` - A set of rays angularly distributed in one dimension
+* :class:`~pyrayt.components.CircleOfRays` - A set of parallel rays uniformly distributed about a circular arc.
+* :class:`~pyrayt.components.PointOfRays` - A spatically distributed set of rays originating from a point, with a predefined diverging angle
 * :class:`~pyryat.components.GridOfRays` - A set of rays uniformly distributed about an aperture, propogating alonge the +X axis
 
 Additional Sources
@@ -73,7 +74,7 @@ Lens Keyword arguments
 Any of the following keyword arguments can be passed to a lens function.
 
 * **material** (:class:`~pyrayt.materials.TracableMaterial`) - The lens material, defaults to a simple refractive material with n=1.5
-* **aperture** (`specified aperture <Apertures>`) - The lenses aperture, defaults to a circular aperture with a diameter of 1
+* **aperture** (`specified aperture <Apertures>`_) - The lenses aperture, defaults to a circular aperture with a diameter of 1
 
 Spherical Lenses
 ~~~~~~~~~~~~~~~~~
@@ -99,7 +100,7 @@ Mirrors
 Mirror Keyword arguments
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-* **material** (:class:`~pyrayt.materials.TracableMaterial`) - The mirror material. Defaults .to a perfect reflector
+* **material** (:class:`~pyrayt.materials.TracableMaterial`) - The mirror material. Defaults to a perfect reflector
 * **aperture** (`specified aperture <Apertures>`_) - The mirror aperture. Defaults to a circular aperture with a diameter of 1.
 
 Planar Mirrors
@@ -125,7 +126,7 @@ Nonstandard Mirrors
 Miscellaneous
 ``````````````
 
-* :func:`~pyryat.components.pinhole` :rp:`pinholes`
+* :func:`~pyrayt.components.aperture` :rp:`pinholes`
 * :func:`~pyrayt.components.baffle`
 * :func:`~pyryat.comonents.prism` :rp:`prisms`
 

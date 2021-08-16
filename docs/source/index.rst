@@ -21,7 +21,7 @@ Explore the Docs
    reference/index
    examples
    license
-   changelog
+   release
    generated/index
 
 Indices and tables

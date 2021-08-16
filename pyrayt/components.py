@@ -450,6 +450,16 @@ def aperture(
     size: Union[float, Tuple[float, float]],
     aperture_size: Union[float, Tuple[float, float]],
 ) -> cg.Intersectable:
+    """Creates a planar baffle with a central opening specified by the :code:`aperture_size` argument. Rays that intersect the baffle are absorbed but will transmit through the apertured region. 
+
+    :param size: The size of the absorbing region of the aperture. See :ref:`Specifying Apertures <Apertures>` for additional details.
+    :type size: float | Tuple[float, float]
+    :param aperture_size: The size of the aperture opeining. See :ref:`Specifying Apertures <Apertures>` for additional details.
+    :type aperture_size: Union[float, Tuple[float, float]]
+    :return: A planar aperture with both baffle and opening centered at the origin, coplanar to the YZ plane.
+    :rtype: cg.Intersectable
+    """
+
     aperture_stop = baffle(size).rotate_y(-90)
     aperture = _create_aperture(aperture_size, thickness=0.1)
 
@@ -458,10 +468,22 @@ def aperture(
 
 class Source(cg.WorldObject, abc.ABC):
     def __init__(self, wavelength=0.633, *args, **kwargs):
+        """Base Class for all Sources
+
+        :param wavelength: Wavelength of the source, defaults to 0.633 (units in um)
+        :type wavelength: float, optional
+        """
         super().__init__(*args, **kwargs)
         self._wavelength = wavelength
 
     def generate_rays(self, n_rays: int) -> pyrayt.RaySet:
+        """Generates a :class:`~pyrayt.RaySet` based on the source parameters.
+
+        :param n_rays: The number of rays to put in the resulting rayset
+        :type n_rays: int
+        :return: A set of rays whose position, direction, and wavelength are set based on the source type.
+        :rtype: pyrayt.RaySet
+        """
         ray_set = self._local_ray_generation(n_rays)
         ray_set.rays = np.matmul(
             self._world_coordinate_transform, ray_set.rays
@@ -508,13 +530,18 @@ class LineOfRays(Source):
 
 class CircleOfRays(Source):
     def __init__(self, diameter=1, wavelength=0.633, *args, **kwargs):
+        """A Source that uniformly generates parallel rays about a circular arc.
+
+        :param diameter: Diameter of the circle rays are generated about, defaults to 1
+        :type diameter: int, optional
+        :param wavelength: wavelength of the rays, defaults to 0.633
+        :type wavelength: float, optional
+        """
         super().__init__(wavelength, *args, **kwargs)
         self._diameter = diameter
 
     def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
-        """
-        creates a circle of rays directed towards the positive x-axis with the specified diameter
-        """
+
         rayset = pyrayt.RaySet(n_rays)
         # if we want more than one ray, linearly space them, otherwise default position is fine
         theta = np.linspace(0, 2 * np.pi, n_rays)
@@ -531,16 +558,19 @@ class CircleOfRays(Source):
 
 class ConeOfRays(Source):
     def __init__(self, cone_angle: float, wavelength=0.633, *args, **kwargs):
+        """Source that generates a set of rays originating from the same point, uniformly distributed about the x-axis with the specified cone angle.
+
+        e.g: An un-rotated. source with a cone angle of 45 degrees will expand to a uniformly distributed circle with a radius of 10mm after traveling 10mm along the optical axis. 
+
+        :param cone_angle: Angle between every ray and the optical axis, in degrees.
+        :type cone_angle: float
+        :param wavelength: [description], defaults to 0.633
+        :type wavelength: float, optional
+        """
         super().__init__(wavelength, *args, **kwargs)
         self._angle = cone_angle * np.pi / 180.0
 
     def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
-        """
-        creates a line of rays directed towards the positive x-axis along the y-axis
-
-        :param n_rays:
-        :return:
-        """
         rayset = pyrayt.RaySet(n_rays)
         # if we want more than one ray, change them to have the desired cone angle
         if n_rays > 1:
@@ -555,16 +585,18 @@ class ConeOfRays(Source):
 
 class WedgeOfRays(Source):
     def __init__(self, angle: float, wavelength=0.633, *args, **kwargs):
+        """Source that generates a wedge of rays originating from a point, directed towards the positive x-axis along the y-axis. The angle of the rays is uniformly distributed between [-angle/2, angle/2].
+
+        :param angle: The full angle of the wedge source.
+        :type angle: float
+        :param wavelength: Wavelength of the source, defaults to 0.633
+        :type wavelength: float, optional
+        """
         super().__init__(wavelength, *args, **kwargs)
         self._angle = angle * np.pi / 180.0
 
     def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
-        """
-        creates a wedge of rays directed towards the positive x-axis along the y-axis
-
-        :param n_rays:
-        :return:
-        """
+  
         rayset = pyrayt.RaySet(n_rays)
 
         # generate the wedge angles
@@ -580,13 +612,20 @@ class WedgeOfRays(Source):
 
 
 class Lamp(Source):
-    """
-    a lamp
-    """
 
     def __init__(
         self, width: float, length: float, max_angle: float = 90, *args, **kwargs
     ) -> None:
+        """    Source that generates a lambertian distribution of rays. Every ray originates with a random position and direction about the surface of the lamp. The intensity of the distribution follows `Lambert's Cosine Law <https://en.wikipedia.org/wiki/Lambert%27s_cosine_law>`_.
+
+
+        :param width: Width of the rectangular region that rays can generate from
+        :type width: float
+        :param length: Length of the rectangular region that rays can generate from.
+        :type length: float
+        :param max_angle: The maximum angle a ray can generate projected along the x-axis, defaults to 90 (degrees)
+        :type max_angle: float, optional
+        """
         super().__init__(*args, **kwargs)
         self._max_angle = (
             max_angle * np.pi / 180
@@ -615,6 +654,9 @@ class Lamp(Source):
 
 
 class StaticLamp(Lamp):
+    """Identical to a :class:`Lamp`, except the ray generation function is cached so the same set of rays is generated across multiple simulations. Useful for running Monte-Carlo models where the random noise of the source is larger than the resolution you're trying to capture at.
+    """
+    
     @lru_cache(10)
     def generate_rays(self, n_rays: int) -> pyrayt.RaySet:
         return super().generate_rays(n_rays)
