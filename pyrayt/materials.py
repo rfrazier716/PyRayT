@@ -25,11 +25,11 @@ class TracableMaterial(cg_matl.gooch.Material):
 
     @abc.abstractmethod
     def trace(self, surface, ray_set: RaySet) -> RaySet:
-        """Trace Function for the material. Calculates the interaction of a :class:`RaySet` with a material, modifying the ray set in place. 
+        """Trace Function for the material. Calculates the interaction of a :class:`RaySet` with a material, modifying the ray set in place.
 
         :param surface: The surface the material is attached to, used to calculate surface normals
         :type surface: cg.TracerSurface
-        :param ray_set: the set of rays whose interaction is being calculated 
+        :param ray_set: the set of rays whose interaction is being calculated
         :type ray_set: RaySet
         :return: a reference to the original ray_set with parameters updated to accurately represent the state of the ray after interacting with the surface.
         :rtype: RaySet
@@ -39,8 +39,7 @@ class TracableMaterial(cg_matl.gooch.Material):
 
 class _AbsorbingMaterial(TracableMaterial):
     def __init__(self, *args, **kwargs):
-        """An Ideal absorber. Any ray interacting with an absorber will have it's velocity vector set to <0,0,0>, which will signal to the RayTrace object to terminate the ray.
-        """
+        """An Ideal absorber. Any ray interacting with an absorber will have it's velocity vector set to <0,0,0>, which will signal to the RayTrace object to terminate the ray."""
         super().__init__(
             cg_matl.gooch.BLACK, *args, **kwargs
         )  # call the parent constructor
@@ -53,8 +52,7 @@ class _AbsorbingMaterial(TracableMaterial):
 
 class _ReflectingMaterial(TracableMaterial):
     def __init__(self, *args, **kwargs):
-        """An Ideal reflector, Any ray interacting with this reflector will be reflected with no change to refractive index or intensity.
-        """
+        """An Ideal reflector, Any ray interacting with this reflector will be reflected with no change to refractive index or intensity."""
         super().__init__(cg_matl.gooch.BLUE, *args, **kwargs)
 
     def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
@@ -65,10 +63,8 @@ class _ReflectingMaterial(TracableMaterial):
 
 
 class Glass(TracableMaterial):
-    
     def __init__(self, *args, **kwargs):
-        """Abstract base class for glasses with convenience functions for common parameters.
-        """
+        """Abstract base class for glasses with convenience functions for common parameters."""
         super().__init__(base_material=cg_matl.gooch.BLUE, *args, **kwargs)
 
     def trace(self, surface: cg.TracerSurface, ray_set: RaySet) -> RaySet:
@@ -107,7 +103,7 @@ class BasicRefractor(Glass):
     def __init__(self, refractive_index: float, *args, **kwargs):
         """A simplified refractive model for nondispersive materials
 
-        :param refractive_index: refractive index of the material. 
+        :param refractive_index: refractive index of the material.
         :type refractive_index: float
         """
         self._refractive_index = refractive_index
@@ -126,7 +122,7 @@ class SellmeierRefractor(Glass):
     def __init__(self, b1=0, b2=0, b3=0, c1=0, c2=0, c3=0):
         """A dispersive Refractive index model based on the `Sellmeier equation <https://en.wikipedia.org/wiki/Sellmeier_equation>`_. The six arguments (b1->b3, c1->c3) follow the expected convention found in literature.
 
-        Sellmeier Coefficients for common glasses can be found at `refractiveindex.info <https://refractiveindex.info/?shelf=glass&book=BK7&page=SCHOTT>`_. 
+        Sellmeier Coefficients for common glasses can be found at `refractiveindex.info <https://refractiveindex.info/?shelf=glass&book=BK7&page=SCHOTT>`_.
         """
         self.b1 = b1
         self.b2 = b2

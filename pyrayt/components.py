@@ -399,7 +399,9 @@ def parabolic_mirror(focus: float, thickness: float, **kwargs) -> cg.csg.Interse
 
 
 def equilateral_prism(
-    side_length: float, width: float, material: matl.TracableMaterial=matl.glass["BK7"]
+    side_length: float,
+    width: float,
+    material: matl.TracableMaterial = matl.glass["BK7"],
 ) -> cg.csg.Intersectable:
     """Creates an equilateral prism.
 
@@ -450,7 +452,7 @@ def aperture(
     size: Union[float, Tuple[float, float]],
     aperture_size: Union[float, Tuple[float, float]],
 ) -> cg.Intersectable:
-    """Creates a planar baffle with a central opening specified by the :code:`aperture_size` argument. Rays that intersect the baffle are absorbed but will transmit through the apertured region. 
+    """Creates a planar baffle with a central opening specified by the :code:`aperture_size` argument. Rays that intersect the baffle are absorbed but will transmit through the apertured region.
 
     :param size: The size of the absorbing region of the aperture. See :ref:`Specifying Apertures <Apertures>` for additional details.
     :type size: float | Tuple[float, float]
@@ -560,7 +562,7 @@ class ConeOfRays(Source):
     def __init__(self, cone_angle: float, wavelength=0.633, *args, **kwargs):
         """Source that generates a set of rays originating from the same point, uniformly distributed about the x-axis with the specified cone angle.
 
-        e.g: An un-rotated. source with a cone angle of 45 degrees will expand to a uniformly distributed circle with a radius of 10mm after traveling 10mm along the optical axis. 
+        e.g: An un-rotated. source with a cone angle of 45 degrees will expand to a uniformly distributed circle with a radius of 10mm after traveling 10mm along the optical axis.
 
         :param cone_angle: Angle between every ray and the optical axis, in degrees.
         :type cone_angle: float
@@ -596,7 +598,7 @@ class WedgeOfRays(Source):
         self._angle = angle * np.pi / 180.0
 
     def _local_ray_generation(self, n_rays: int) -> pyrayt.RaySet:
-  
+
         rayset = pyrayt.RaySet(n_rays)
 
         # generate the wedge angles
@@ -612,11 +614,10 @@ class WedgeOfRays(Source):
 
 
 class Lamp(Source):
-
     def __init__(
         self, width: float, length: float, max_angle: float = 90, *args, **kwargs
     ) -> None:
-        """    Source that generates a lambertian distribution of rays. Every ray originates with a random position and direction about the surface of the lamp. The intensity of the distribution follows `Lambert's Cosine Law <https://en.wikipedia.org/wiki/Lambert%27s_cosine_law>`_.
+        """Source that generates a lambertian distribution of rays. Every ray originates with a random position and direction about the surface of the lamp. The intensity of the distribution follows `Lambert's Cosine Law <https://en.wikipedia.org/wiki/Lambert%27s_cosine_law>`_.
 
 
         :param width: Width of the rectangular region that rays can generate from
@@ -654,9 +655,8 @@ class Lamp(Source):
 
 
 class StaticLamp(Lamp):
-    """Identical to a :class:`Lamp`, except the ray generation function is cached so the same set of rays is generated across multiple simulations. Useful for running Monte-Carlo models where the random noise of the source is larger than the resolution you're trying to capture at.
-    """
-    
+    """Identical to a :class:`Lamp`, except the ray generation function is cached so the same set of rays is generated across multiple simulations. Useful for running Monte-Carlo models where the random noise of the source is larger than the resolution you're trying to capture at."""
+
     @lru_cache(10)
     def generate_rays(self, n_rays: int) -> pyrayt.RaySet:
         return super().generate_rays(n_rays)

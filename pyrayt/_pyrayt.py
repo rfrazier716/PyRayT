@@ -551,7 +551,7 @@ class pin(object):
             # in the context manager you can freely manipulate the position of objects
             lens.move_x(100)
             lens.get_position() # [100, 0, 0, 1]
-        
+
         # Once the context manager exits, any changes to position are reverted
         lens.get_position() # [0, 0, 0, 1]
     """
