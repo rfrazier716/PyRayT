@@ -74,7 +74,7 @@ class Glass(TracableMaterial):
         )
         return ray_set
 
-    @lru_cache
+    @lru_cache(100)
     def abbe(self) -> float:
         """
         Calculates the `Abbe number <https://en.wikipedia.org/wiki/Abbe_number>`_ of the material.

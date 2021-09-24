@@ -154,3 +154,6 @@ htmlcov
 
 # Jupyter Notebooks
 notebooks/
+
+# pyenv config
+.python-version
