@@ -651,8 +651,6 @@ class Cylinder(SurfacePrimitive):
         """
         For Cylinder intersections first find the intersection point with an infinite cylinder, than check if
             the caps are intersected before or after the cylinder
-        :param rays:
-        :return:
         """
         padded_rays = np.atleast_3d(rays)
         origins = padded_rays[0, :-1]  # should be a 3xn array of points

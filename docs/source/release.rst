@@ -2,6 +2,11 @@
 Release Notes
 =======================
 
+v0.3.1
+-------
+
+* Fixed minor bug where package would not run on Python 3.7
+
 v0.3.0
 -------
 
