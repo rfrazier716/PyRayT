@@ -20,6 +20,14 @@ pyrayt.materials module
    :undoc-members:
    :show-inheritance:
 
+pyrayt.utils module
+-----------------------
+
+.. automodule:: pyrayt.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

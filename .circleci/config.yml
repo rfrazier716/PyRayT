@@ -2,8 +2,12 @@ version: 2.1
 
 jobs:
   build:
+    parameters:
+      py_version:
+        type: string
+        default: "3.8"
     docker: # use the Docker executor
-      - image: python:3.8
+      - image: python:<<parameters.py_version>>
 
     environment: 
       PIP_CACHE_DIR: ~/project/.cache/pip/
@@ -11,7 +15,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-            key: python-cache-{{ checksum "poetry.lock" }}
+            key: python<<parameters.py_version>>-cache-{{ checksum "poetry.lock" }}
 
       - run:
           name: Initialize Poetry
@@ -24,15 +28,19 @@ jobs:
           command: $POETRY install
 
       - save_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}
+          key: python<<parameters.py_version>>-cache-{{ checksum "poetry.lock" }}
           paths:
             - .cache/pip/
             - .poetry/
             - .venv/
 
   unit-tests:
+    parameters:
+      py_version:
+        type: string
+        default: "3.8"
     docker: # use the Docker executor
-      - image: python:3.8
+      - image: python:<<parameters.py_version>>
 
     environment: 
       PIP_CACHE_DIR: ~/project/.cache/pip/
@@ -40,7 +48,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}
+          key: python<<parameters.py_version>>-cache-{{ checksum "poetry.lock" }}
       - run:
           name: Initialize Poetry
           command: |
@@ -57,7 +65,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}
+          key: python3.8-cache-{{ checksum "poetry.lock" }}
       - run:
           name: Initialize Poetry
           command: |
@@ -81,7 +89,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}
+          key: python3.8-cache-{{ checksum "poetry.lock" }}
       - run:
           name: Initialize Poetry
           command: |
@@ -98,7 +106,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}
+          key: python3.8-cache-{{ checksum "poetry.lock" }}
       - run:
           name: Initialize Poetry
           command: |
@@ -114,13 +122,17 @@ jobs:
           path: ./lint_results.json
 
   integration-tests:
+    parameters:
+      py_version:
+        type: string
+        default: "3.8"
     docker: # use the Docker executor
-    - image: python:3.8
+    - image: python:<<parameters.py_version>>
 
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}
+          key: python<<parameters.py_version>>-cache-{{ checksum "poetry.lock" }}
       - run:
           name: Initialize Poetry
           command: |
@@ -137,7 +149,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: python-cache-{{ checksum "poetry.lock" }}
+          key: python3.8-cache-{{ checksum "poetry.lock" }}
       - run:
           name: Initialize Poetry
           command: |
@@ -148,13 +160,45 @@ jobs:
           command: $POETRY build
       - run: 
           name: Deploy to PYPI
-          command: $POETRY publish -u $PYPI_USERNAME -p $PYPI_PASSWORD
+          command: |
+            if [[ $CIRCLE_BRANCH == "main" ]]; then  
+              $POETRY publish -u $PYPI_USERNAME -p $PYPI_PASSWORD
+            else
+              $POETRY publish --dry-run
+            fi 
+            
 
 
 workflows:
   build_and_deploy:
     jobs:
       - build:
+          name: build37
+          py_version: "3.7"
+          filters:
+            tags:
+              only: /.*/
+
+      - unit-tests:
+          name: unit-tests37
+          py_version: "3.7"
+          requires:
+            - build37
+
+      - integration-tests:
+          name: integration-tests37
+          py_version: "3.7"
+          requires:
+            - build37
+          filters:
+            branches:
+              only:
+                - main
+                - development
+                - ci-debug
+
+      - build:
+          py_version: "3.8"
           filters:
             tags:
               only: /.*/
@@ -162,7 +206,7 @@ workflows:
       - unit-tests:
           requires:
             - build
-            
+
       - integration-tests:
           requires:
             - build
@@ -190,11 +234,12 @@ workflows:
           context:
             - PYPI
           requires:
-            - build
             - unit-tests
             - integration-tests
+            - unit-tests37
+            - integration-tests37
             - format
-            
+
           filters:
             branches:
               only:
